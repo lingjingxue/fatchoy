@@ -14,7 +14,7 @@ _test
 /logs
 /vendor
 bin/
-
+/go.sum
 
 # Project files
 .idea/
