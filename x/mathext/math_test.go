@@ -57,49 +57,49 @@ func TestMathMax(t *testing.T) {
 }
 
 func TestMathMin(t *testing.T) {
-	if a := Int8.Max(12, 11); a != 11 {
+	if a := Int8.Min(12, 11); a != 11 {
 		t.Fatalf("%d != %d", a, 11)
 	}
-	if a := Int16.Max(12, 11); a != 11 {
+	if a := Int16.Min(12, 11); a != 11 {
 		t.Fatalf("%d != %d", a, 11)
 	}
-	if a := Int32.Max(12, 11); a != 11 {
+	if a := Int32.Min(12, 11); a != 11 {
 		t.Fatalf("%d != %d", a, 11)
 	}
-	if a := Int64.Max(12, 11); a != 11 {
+	if a := Int64.Min(12, 11); a != 11 {
 		t.Fatalf("%d != %d", a, 11)
 	}
-	if a := Int.Max(12, 11); a != 11 {
+	if a := Int.Min(12, 11); a != 11 {
 		t.Fatalf("%d != %d", a, 11)
 	}
-	if a := Float32.Max(12, 11); a != 11.0 {
+	if a := Float32.Min(12, 11); a != 11.0 {
 		t.Fatalf("%f != %f", a, 11.0)
 	}
-	if a := Float64.Max(12, 11); a != 11.0 {
+	if a := Float64.Min(12, 11); a != 11.0 {
 		t.Fatalf("%f != %f", a, 11.0)
 	}
 }
 
 func TestMathDim(t *testing.T) {
-	if a := Int8.Max(22, 11); a != 11 {
+	if a := Int8.Dim(22, 11); a != 11 {
 		t.Fatalf("%d != %d", a, 11)
 	}
-	if a := Int16.Max(22, 11); a != 11 {
+	if a := Int16.Dim(22, 11); a != 11 {
 		t.Fatalf("%d != %d", a, 11)
 	}
-	if a := Int32.Max(22, 11); a != 11 {
+	if a := Int32.Dim(22, 11); a != 11 {
 		t.Fatalf("%d != %d", a, 11)
 	}
-	if a := Int64.Max(22, 11); a != 11 {
+	if a := Int64.Dim(22, 11); a != 11 {
 		t.Fatalf("%d != %d", a, 11)
 	}
-	if a := Int.Max(22, 11); a != 11 {
+	if a := Int.Dim(22, 11); a != 11 {
 		t.Fatalf("%d != %d", a, 11)
 	}
-	if a := Float32.Max(22, 11); a != 11.0 {
+	if a := Float32.Dim(22, 11); a != 11.0 {
 		t.Fatalf("%f != %f", a, 11.0)
 	}
-	if a := Float64.Max(22, 11); a != 11.0 {
+	if a := Float64.Dim(22, 11); a != 11.0 {
 		t.Fatalf("%f != %f", a, 11.0)
 	}
 }
