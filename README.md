@@ -2,6 +2,7 @@
 
 Golang Game Server Kit
 
+`go get gopkg.in/qchencc/fatchoy.v1`
 
 ## 各目录说明
 
@@ -14,8 +15,8 @@ codec       | 编解码
 sched       | 执行器
 version     | 版本号
 secure      | 密码生成
+discovery   | 服务发现
 x           | 工具包
-
 
 #### 包名规范
 
