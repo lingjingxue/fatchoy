@@ -14,7 +14,7 @@ import (
 
 	"gopkg.in/qchencc/fatchoy/debug"
 	"gopkg.in/qchencc/fatchoy/log"
-	"gopkg.in/qchencc/fatchoy/stats"
+	"gopkg.in/qchencc/fatchoy/x/stats"
 )
 
 var (
