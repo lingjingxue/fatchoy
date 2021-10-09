@@ -5,9 +5,12 @@
 package debug
 
 import (
+	"bytes"
 	"testing"
 )
 
 func TestBacktrace(t *testing.T) {
-
+	var buf bytes.Buffer
+	Backtrace("", &buf)
+	t.Logf("%s", buf.String())
 }

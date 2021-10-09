@@ -5,8 +5,8 @@
 package debug
 
 import (
-	"bytes"
 	"fmt"
+	"io"
 	"os"
 	"runtime"
 	"strings"
@@ -31,7 +31,7 @@ type Stack struct {
 	pcs []uintptr
 }
 
-func (s *Stack) String() string {
+func (s Stack) String() string {
 	var sb strings.Builder
 	for i, v := range s.pcs {
 		pc := Frame(v).PC()
@@ -58,18 +58,12 @@ func GetCallerStack(stack *Stack, skip int) {
 	stack.pcs = stack.pcs[0:n]
 }
 
-func Backtrace(val interface{}, f *os.File) {
-	if f == nil {
-		f = os.Stderr
-	}
+func Backtrace(val interface{}, w io.Writer) {
 	var stack Stack
-	GetCallerStack(&stack, 2)
-
-	var buf bytes.Buffer
+	GetCallerStack(&stack, 1)
 	var now = time.Now()
-	fmt.Fprintf(&buf, "Traceback[%s] (most recent call last):\n", now.Format(timestampLayout))
-	fmt.Fprintf(&buf, "%v %v\n", stack, val)
-	buf.WriteTo(f)
+	fmt.Fprintf(w, "Traceback[%s] (most recent call last):\n", now.Format(timestampLayout))
+	fmt.Fprintf(w, "%v %v\n", stack, val)
 }
 
 func CatchPanic() {
