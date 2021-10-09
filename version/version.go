@@ -24,17 +24,11 @@ import (
 // 第一个初始开发版本使用`0.1.0`
 // 第一个可以对外发布的版本使用`1.0.0`
 //
-// 使用方式：
-// go install -ldflags \
-// 	-X backend/internal/version._Version=$(VERSION) \
-//	-X backend/internal/version._Branch=$(GIT_BRANCH) \
-//	-X backend/internal/version._CommitRev=$(GIT_REV) \
-//	-X backend/internal/version._BuildTime=$(BUILD_TIME)
-// 	your_main_package
+
 
 var (
-	_Version   = "???"
-	_Branch    = "???"
+	_Version   = "0.1.0"
+	_Branch    = "v1"
 	_CommitRev = "???"
 	_BuildTime = "???"
 )

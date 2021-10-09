@@ -12,7 +12,7 @@ import (
 	"math/rand"
 	"testing"
 
-	"backend/pkg/x/strutil"
+	"gopkg.in/qchencc/fatchoy/strutil"
 )
 
 var showCompressRate = true
