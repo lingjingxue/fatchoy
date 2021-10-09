@@ -8,14 +8,20 @@ Golang Game Server Kit
   目录       |  描述
 ------------|------------
 log         | 日志
-uuid        | 分布式ID
-x           | 杂项工具函数
+debug       | 调试API
+packet      | 消息结构
+codec       | 编解码
+sched       | 执行器
+version     | 版本号
+secure      | 密码生成
+x           | 工具包
 
 
 #### 包名规范
 
+* API接口除非`Must`否则不使用panic抛出错误；
 * 使用下划线分隔的小写字母，并使用有意义的缩写
-* 包名要见文知义，让人看名字就知道这个包大体用来干什么的，要避免太通用的名称（如common,util,misc)
+* 包名要见文知义，让人看名字就知道这个包大体用来干什么的，避免太通用的名称（如common,util,misc)
 
 参考 [package names](https://go.dev/blog/package-names)
 
