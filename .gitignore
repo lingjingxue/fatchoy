@@ -1,0 +1,25 @@
+# Compiled Object files, Static and Dynamic libs (Shared Objects)
+*.o
+*.a
+*.so
+*.pyc
+
+*.log
+
+# Folders
+_obj
+_test
+.git/
+/build
+/logs
+/vendor
+bin/
+
+
+# Project files
+.idea/
+.vscode
+*.sublime-project
+*.sublime-workspace
+
+.env
