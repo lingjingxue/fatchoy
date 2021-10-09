@@ -6,6 +6,7 @@ package codec
 
 import (
 	"encoding/binary"
+	"fmt"
 
 	"github.com/golang/protobuf/proto"
 	"gopkg.in/qchencc/fatchoy"
@@ -120,4 +121,9 @@ func (m *testPacket) EncodeBodyToBytes() ([]byte, error) {
 
 func (m *testPacket) DecodeTo(msg proto.Message) error {
 	return proto.Unmarshal(m.body, msg)
+}
+
+func (m testPacket) String() string {
+	var checksum = Md5Sum(m.body)
+	return fmt.Sprintf("c:%d seq:%d 0x%x %s", m.Command(), m.Seq(), m.Flag(), checksum)
 }

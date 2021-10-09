@@ -48,7 +48,7 @@ func testProtoCodec(t *testing.T, size int, msgSent fatchoy.IMessage) {
 	encrypt, _ := secure.CreateCryptor("aes-192")
 	decrypt := cipher.NewCrypt("aes-192", encrypt.Key(), encrypt.IV())
 	// 如果加密方式是原地加密，会导致packet的body是加密后的内容
-	clone := msgSent.BodyAsBytes()
+	clone := append([]byte(nil), msgSent.BodyAsBytes()...)
 	if _, err := SerializePacket(&encoded, msgSent, encrypt, CodecVersionV1); err != nil {
 		t.Fatalf("Encode with size %d: %v", size, err)
 	}

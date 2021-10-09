@@ -46,7 +46,7 @@ func marshalPacket(w io.Writer, pkt fatchoy.IMessage, encryptor cipher.BlockCryp
 	}
 
 	if n := len(payload); n >= maxPayloadBytes {
-		err = errors.Errorf("message %v too large payload %d/%d", pkt.Command, n, maxPayloadBytes)
+		err = errors.Errorf("message %v too large payload %d/%d", pkt.Command(), n, maxPayloadBytes)
 		return 0, err
 	}
 
@@ -73,14 +73,14 @@ func unmarshalPacket(r io.Reader, header *CodecHeader, pkt fatchoy.IMessage, dec
 
 	var checksum = header.Checksum()
 	if bodyLen > maxPayloadBytes {
-		err := errors.Errorf("packet %v payload size overflow %d/%d", pkt.Command, bodyLen, maxPayloadBytes)
+		err := errors.Errorf("packet %v payload size overflow %d/%d", pkt.Command(), bodyLen, maxPayloadBytes)
 		return 0, err
 	}
 
 	var nbytes = CodecHeaderSize
 	if bodyLen == 0 {
 		if crc := header.CalcChecksum(nil); crc != checksum {
-			err := errors.Errorf("message %v header checksum mismatch %x != %x", pkt.Command, checksum, crc)
+			err := errors.Errorf("message %v header checksum mismatch %x != %x", pkt.Command(), checksum, crc)
 			return 0, err
 		}
 		return nbytes, nil
@@ -92,12 +92,12 @@ func unmarshalPacket(r io.Reader, header *CodecHeader, pkt fatchoy.IMessage, dec
 	}
 	nbytes += bodyLen
 	if crc := header.CalcChecksum(payload); checksum != crc {
-		err := errors.Errorf("message %v checksum mismatch %x != %x", pkt.Command, checksum, crc)
+		err := errors.Errorf("message %v checksum mismatch %x != %x", pkt.Command(), checksum, crc)
 		return 0, err
 	}
 	if (flag & fatchoy.PacketFlagEncrypted) > 0 {
 		if decrypt == nil {
-			err := errors.Errorf("message %v must be decrypted", pkt.Command)
+			err := errors.Errorf("message %v must be decrypted", pkt.Command())
 			return 0, err
 		}
 		payload = decrypt.Decrypt(payload)
