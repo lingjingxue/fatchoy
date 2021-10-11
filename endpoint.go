@@ -8,8 +8,8 @@ import (
 	"net"
 	"sync"
 
-	"gopkg.in/qchencc/fatchoy/x/stats"
 	"gopkg.in/qchencc/fatchoy/x/cipher"
+	"gopkg.in/qchencc/fatchoy/x/stats"
 )
 
 type MessageEndpoint interface {
@@ -50,7 +50,7 @@ type EndpointMap struct {
 
 func NewEndpointMap() *EndpointMap {
 	return &EndpointMap{
-		endpoints: make(map[NodeID]Endpoint, 16),
+		endpoints: make(map[NodeID]Endpoint),
 	}
 }
 
@@ -83,7 +83,7 @@ func (e *EndpointMap) Size() int {
 
 func (e *EndpointMap) Reset() {
 	e.Lock()
-	e.endpoints = make(map[NodeID]Endpoint, 16)
+	e.endpoints = make(map[NodeID]Endpoint)
 	e.Unlock()
 }
 

@@ -21,6 +21,10 @@ type Packet struct {
 	endpoint fatchoy.MessageEndpoint // 关联的endpoint
 }
 
+func Make() *Packet {
+	return &Packet{}
+}
+
 func New(command int32, seq int16, flag fatchoy.PacketFlag, body interface{}) *Packet {
 	return &Packet{
 		command: command,

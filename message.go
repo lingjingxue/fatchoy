@@ -58,4 +58,11 @@ type IMessage interface {
 
 	EncodeBodyToBytes() ([]byte, error)
 	DecodeTo(msg proto.Message) error
+
+	Reply(ack proto.Message) error
+	ReplyString(command int32, s string) error
+	ReplyBytes(command int32, b []byte) error
+
+	Refuse(errno int32) error
+	RefuseCommand(command, errno int32) error
 }
