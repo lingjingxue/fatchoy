@@ -10,11 +10,12 @@ Golang Game Server Kit
 ------------|------------
 log         | 日志
 debug       | 调试API
-packet      | 消息结构
 codec       | 编解码
+codes       | 错误码
 sched       | 执行器
-version     | 版本号
 secure      | 密码生成
+packet      | 消息结构
+qnet        | 网络通信
 discovery   | 服务发现
 x           | 工具包
 
