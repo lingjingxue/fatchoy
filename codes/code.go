@@ -9,7 +9,7 @@ import (
 	"strconv"
 )
 
-// 错误码定义
+// 通用错误码定义(0-100)
 type Code int32
 
 const (
