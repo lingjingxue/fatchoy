@@ -18,7 +18,7 @@ import (
 
 func TestStatsSet(t *testing.T) {
 	count := 10000
-	s := NewStats(count)
+	s := New(count)
 	for i := 0; i < count; i++ {
 		s.Set(i, int64(i*10))
 	}
@@ -32,7 +32,7 @@ func TestStatsSet(t *testing.T) {
 func TestStatsConcurrentSet(t *testing.T) {
 	count := 1000
 	var wg sync.WaitGroup
-	s := NewStats(count)
+	s := New(count)
 
 	t.Logf("Stats multiple Set")
 	for i := 0; i < count; i++ {
@@ -62,7 +62,7 @@ func TestStatsConcurrentSet(t *testing.T) {
 func TestStatsConcurrentAdd(t *testing.T) {
 	count := 100000
 	var wg sync.WaitGroup
-	s := NewStats(count)
+	s := New(count)
 	wg.Add(1)
 	go func() {
 		defer wg.Done()

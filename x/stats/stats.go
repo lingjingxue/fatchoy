@@ -13,7 +13,7 @@ type Stats struct {
 	counters []int64
 }
 
-func NewStats(n int) *Stats {
+func New(n int) *Stats {
 	return &Stats{counters: make([]int64, n)}
 }
 
