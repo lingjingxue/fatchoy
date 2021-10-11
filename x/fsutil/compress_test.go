@@ -11,8 +11,6 @@ import (
 	"fmt"
 	"math/rand"
 	"testing"
-
-	"gopkg.in/qchencc/fatchoy/x/strutil"
 )
 
 var showCompressRate = true
@@ -44,12 +42,12 @@ func testCase(t *testing.T, fn func(int) []byte) {
 }
 
 func TestCompressZlib(t *testing.T) {
-	testCase(t, strutil.RandBytes)
+	testCase(t, randBytes)
 }
 
 func TestCompressWriter(t *testing.T) {
 	for i := 1; i <= 100; i++ {
-		var data = strutil.RandBytes(256 + rand.Int()%1024)
+		var data = randBytes(256 + rand.Int()%1024)
 		compressed, err := CompressBytes(data)
 		if err != nil {
 			t.Fatalf("doCompressWithWriter: %v, turn: %d", err, i)
@@ -67,7 +65,7 @@ func TestCompressWriter(t *testing.T) {
 func TestCompressRate(t *testing.T) {
 	var stats = make([]float64, 0, 100)
 	for i := 1; i <= 100; i++ {
-		var data = strutil.RandBytes(64 + rand.Int()%8192)
+		var data = randBytes(64 + rand.Int()%8192)
 		compressed, err := CompressBytes(data)
 		if err != nil {
 			t.Fatalf("doCompressWithWriter: %v, turn: %d", err, i)
@@ -84,7 +82,7 @@ func TestCompressRate(t *testing.T) {
 }
 
 func BenchmarkZlibCompress1(b *testing.B) {
-	var data = strutil.RandBytes(8192)
+	var data = randBytes(8192)
 	_, err := CompressBytes(data)
 	if err != nil {
 		b.Fatalf("compress: %v", err)
@@ -95,7 +93,7 @@ func BenchmarkZlibCompress1(b *testing.B) {
 func BenchmarkZlibUncompress(b *testing.B) {
 	b.StopTimer()
 
-	var data = strutil.RandBytes(1024)
+	var data = randBytes(1024)
 	compressed, err := CompressBytes(data)
 	if err != nil {
 		b.Fatalf("compress: %v", err)

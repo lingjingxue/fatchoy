@@ -14,7 +14,7 @@ import (
 	"go.uber.org/zap/zapcore"
 	"golang.org/x/crypto/ssh/terminal"
 
-	"gopkg.in/qchencc/fatchoy/x/fsutil"
+	"gopkg.in/qchencc/fatchoy.v1/x/fsutil"
 )
 
 const timestampLayout = "2006-01-02 15:04:05.999"

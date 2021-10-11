@@ -12,9 +12,9 @@ import (
 	"sync/atomic"
 	"time"
 
-	"gopkg.in/qchencc/fatchoy/debug"
-	"gopkg.in/qchencc/fatchoy/log"
-	"gopkg.in/qchencc/fatchoy/x/stats"
+	"gopkg.in/qchencc/fatchoy.v1/debug"
+	"gopkg.in/qchencc/fatchoy.v1/log"
+	"gopkg.in/qchencc/fatchoy.v1/x/stats"
 )
 
 var (

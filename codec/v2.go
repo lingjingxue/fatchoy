@@ -7,9 +7,8 @@ package codec
 import (
 	"io"
 
-
-	"gopkg.in/qchencc/fatchoy"
-	"gopkg.in/qchencc/fatchoy/x/cipher"
+	"gopkg.in/qchencc/fatchoy.v1"
+	"gopkg.in/qchencc/fatchoy.v1/x/cipher"
 )
 
 type v2Codec struct {

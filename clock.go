@@ -7,7 +7,7 @@ package fatchoy
 import (
 	"time"
 
-	"gopkg.in/qchencc/fatchoy/x/datetime"
+	"gopkg.in/qchencc/fatchoy.v1/x/datetime"
 )
 
 var (

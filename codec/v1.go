@@ -8,8 +8,8 @@ import (
 	"io"
 
 	"github.com/pkg/errors"
-	"gopkg.in/qchencc/fatchoy"
-	"gopkg.in/qchencc/fatchoy/x/cipher"
+	"gopkg.in/qchencc/fatchoy.v1"
+	"gopkg.in/qchencc/fatchoy.v1/x/cipher"
 )
 
 // 编码器

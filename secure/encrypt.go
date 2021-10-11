@@ -11,7 +11,7 @@ import (
 	"crypto/sha256"
 
 	"github.com/pkg/errors"
-	"gopkg.in/qchencc/fatchoy/x/cipher"
+	"gopkg.in/qchencc/fatchoy.v1/x/cipher"
 )
 
 const (

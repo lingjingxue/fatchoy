@@ -9,11 +9,11 @@ import (
 	"io"
 
 	"github.com/pkg/errors"
-	"gopkg.in/qchencc/fatchoy"
-	"gopkg.in/qchencc/fatchoy/codes"
-	"gopkg.in/qchencc/fatchoy/log"
-	"gopkg.in/qchencc/fatchoy/x/cipher"
-	"gopkg.in/qchencc/fatchoy/x/fsutil"
+	"gopkg.in/qchencc/fatchoy.v1"
+	"gopkg.in/qchencc/fatchoy.v1/codes"
+	"gopkg.in/qchencc/fatchoy.v1/log"
+	"gopkg.in/qchencc/fatchoy.v1/x/cipher"
+	"gopkg.in/qchencc/fatchoy.v1/x/fsutil"
 )
 
 // 消息编解码

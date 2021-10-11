@@ -15,9 +15,9 @@ import (
 	"time"
 
 	"github.com/gorilla/websocket"
-	"gopkg.in/qchencc/fatchoy"
-	"gopkg.in/qchencc/fatchoy/codec"
-	"gopkg.in/qchencc/fatchoy/packet"
+	"gopkg.in/qchencc/fatchoy.v1"
+	"gopkg.in/qchencc/fatchoy.v1/codec"
+	"gopkg.in/qchencc/fatchoy.v1/packet"
 )
 
 func startClient(t *testing.T, addr, path string) {

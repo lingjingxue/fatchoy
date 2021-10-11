@@ -9,9 +9,9 @@ import (
 	"sync"
 	"sync/atomic"
 
-	"gopkg.in/qchencc/fatchoy"
-	"gopkg.in/qchencc/fatchoy/x/cipher"
-	"gopkg.in/qchencc/fatchoy/x/stats"
+	"gopkg.in/qchencc/fatchoy.v1"
+	"gopkg.in/qchencc/fatchoy.v1/x/cipher"
+	"gopkg.in/qchencc/fatchoy.v1/x/stats"
 )
 
 // TcpConn和WsConn的公共基类

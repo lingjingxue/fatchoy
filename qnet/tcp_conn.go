@@ -13,11 +13,11 @@ import (
 	"time"
 
 	"github.com/pkg/errors"
-	"gopkg.in/qchencc/fatchoy"
-	"gopkg.in/qchencc/fatchoy/codec"
-	"gopkg.in/qchencc/fatchoy/log"
-	"gopkg.in/qchencc/fatchoy/packet"
-	"gopkg.in/qchencc/fatchoy/x/stats"
+	"gopkg.in/qchencc/fatchoy.v1"
+	"gopkg.in/qchencc/fatchoy.v1/codec"
+	"gopkg.in/qchencc/fatchoy.v1/log"
+	"gopkg.in/qchencc/fatchoy.v1/packet"
+	"gopkg.in/qchencc/fatchoy.v1/x/stats"
 )
 
 var (

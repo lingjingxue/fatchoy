@@ -9,7 +9,7 @@ import (
 	"fmt"
 
 	"github.com/golang/protobuf/proto"
-	"gopkg.in/qchencc/fatchoy"
+	"gopkg.in/qchencc/fatchoy.v1"
 )
 
 type testPacket struct {

@@ -15,10 +15,10 @@ import (
 	"testing"
 	"time"
 
-	"gopkg.in/qchencc/fatchoy"
-	"gopkg.in/qchencc/fatchoy/codec"
-	"gopkg.in/qchencc/fatchoy/log"
-	"gopkg.in/qchencc/fatchoy/packet"
+	"gopkg.in/qchencc/fatchoy.v1"
+	"gopkg.in/qchencc/fatchoy.v1/codec"
+	"gopkg.in/qchencc/fatchoy.v1/log"
+	"gopkg.in/qchencc/fatchoy.v1/packet"
 )
 
 const (

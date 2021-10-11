@@ -8,10 +8,10 @@ import (
 	"bytes"
 	"testing"
 
-	"gopkg.in/qchencc/fatchoy"
-	"gopkg.in/qchencc/fatchoy/secure"
-	"gopkg.in/qchencc/fatchoy/x/cipher"
-	"gopkg.in/qchencc/fatchoy/x/strutil"
+	"gopkg.in/qchencc/fatchoy.v1"
+	"gopkg.in/qchencc/fatchoy.v1/secure"
+	"gopkg.in/qchencc/fatchoy.v1/x/cipher"
+	"gopkg.in/qchencc/fatchoy.v1/x/strutil"
 )
 
 func isEqualPacket(t *testing.T, a, b fatchoy.IMessage) bool {

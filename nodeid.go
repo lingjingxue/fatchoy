@@ -9,7 +9,7 @@ import (
 	"log"
 	"strconv"
 
-	"gopkg.in/qchencc/fatchoy/x/collections"
+	"gopkg.in/qchencc/fatchoy.v1/x/collections"
 )
 
 const (

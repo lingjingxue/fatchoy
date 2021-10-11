@@ -8,8 +8,8 @@ import (
 	"net"
 	"sync"
 
-	"gopkg.in/qchencc/fatchoy/x/cipher"
-	"gopkg.in/qchencc/fatchoy/x/stats"
+	"gopkg.in/qchencc/fatchoy.v1/x/cipher"
+	"gopkg.in/qchencc/fatchoy.v1/x/stats"
 )
 
 type MessageEndpoint interface {

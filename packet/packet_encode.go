@@ -8,8 +8,8 @@ import (
 	"encoding/binary"
 
 	"github.com/golang/protobuf/proto"
-	"gopkg.in/qchencc/fatchoy"
-	"gopkg.in/qchencc/fatchoy/log"
+	"gopkg.in/qchencc/fatchoy.v1"
+	"gopkg.in/qchencc/fatchoy.v1/log"
 )
 
 func (m *Packet) SetErrno(ec int32) {
