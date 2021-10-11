@@ -10,7 +10,7 @@ import (
 	"fmt"
 	"log/syslog"
 
-	"gopkg.in/qchencc/fatchoy/x/strutil"
+	"gopkg.in/qchencc/fatchoy.v1/x/strutil"
 
 	"go.uber.org/zap"
 	"go.uber.org/zap/zapcore"
