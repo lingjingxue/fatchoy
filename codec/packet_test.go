@@ -13,11 +13,11 @@ import (
 )
 
 type testPacket struct {
-	command int32
-	seq     int16
-	flag    fatchoy.PacketFlag
-	type_   fatchoy.PacketType
-	body    []byte
+	command  int32
+	seq      int16
+	flag     fatchoy.PacketFlag
+	type_    fatchoy.PacketType
+	body     []byte
 	endpoint fatchoy.MessageEndpoint
 }
 
@@ -126,4 +126,34 @@ func (m *testPacket) DecodeTo(msg proto.Message) error {
 func (m testPacket) String() string {
 	var checksum = Md5Sum(m.body)
 	return fmt.Sprintf("c:%d seq:%d 0x%x %s", m.Command(), m.Seq(), m.Flag(), checksum)
+}
+
+func (m *testPacket) ReplyCommand(command int32, ack proto.Message) error {
+	panic("not implemented")
+	return nil
+}
+
+func (m *testPacket) Reply(ack proto.Message) error {
+	panic("not implemented")
+	return nil
+}
+
+func (m *testPacket) ReplyString(command int32, s string) error {
+	panic("not implemented")
+	return nil
+}
+
+func (m *testPacket) ReplyBytes(command int32, b []byte) error {
+	panic("not implemented")
+	return nil
+}
+
+func (m *testPacket) Refuse(errno int32) error {
+	panic("not implemented")
+	return nil
+}
+
+func (m *testPacket) RefuseCommand(command int32, errno int32) error {
+	panic("not implemented")
+	return nil
 }

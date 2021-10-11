@@ -14,9 +14,10 @@ import (
 )
 
 const (
-	VersionV1    = 1
-	VersionV2    = 2
-	HeaderSize   = 16      // 包头大小
+	VersionV1 = 1
+	VersionV2 = 2
+
+	HeaderSize        = 16      // 包头大小
 	PayloadBytesLimit = 1 << 24 // 3字节限制
 )
 
@@ -89,7 +90,7 @@ func (h *Header) unmarshalFrom(pkt fatchoy.IMessage, bodySize, ver int) {
 	h[2] = byte(n >> 8)
 	h[3] = byte(n >> 16)
 	h[4] = byte(pkt.Flag())
-	h[5] = byte(pkt.Type())
+	h[5] = byte(pkt.Type() | fatchoy.PacketTypeBinary)
 	binary.LittleEndian.PutUint16(h[6:], uint16(pkt.Seq()))
 	binary.LittleEndian.PutUint32(h[8:], uint32(pkt.Command()))
 }

@@ -19,6 +19,11 @@ const (
 // message type
 type PacketType int8
 
+const (
+	PacketTypeBinary PacketType = 1 << 0
+	PacketTypeJSON   PacketType = 1 << 1
+)
+
 type Handler func(IMessage) error // 消息处理器
 type Filter func(IMessage) bool   // 过滤器
 
@@ -42,8 +47,6 @@ type IMessage interface {
 	Endpoint() MessageEndpoint
 	SetEndpoint(MessageEndpoint)
 
-	Body() interface{}
-
 	SetBodyNumber(n int64)
 	BodyAsNumber() int64
 
@@ -59,6 +62,7 @@ type IMessage interface {
 	EncodeBodyToBytes() ([]byte, error)
 	DecodeTo(msg proto.Message) error
 
+	ReplyCommand(command int32, ack proto.Message) error
 	Reply(ack proto.Message) error
 	ReplyString(command int32, s string) error
 	ReplyBytes(command int32, b []byte) error
