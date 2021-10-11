@@ -13,7 +13,7 @@ func TestNewPacket(t *testing.T) {
 	size := unsafe.Sizeof(Packet{})
 	println("sizeof packet:", size)
 
-	pkt := New(1234, 1001, 0x1, "")
+	pkt := New(1234, 1001, 0, 0x1, "")
 	if _, err := pkt.EncodeBodyToBytes(); err != nil {
 		t.Fail()
 	}

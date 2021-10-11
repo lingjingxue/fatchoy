@@ -13,11 +13,11 @@ import (
 
 // Packet表示一个应用层消息
 type Packet struct {
-	command  int32                   // 协议ID
-	seq      int16                   // 序列号
-	type_    fatchoy.PacketType      // 类型
-	flag     fatchoy.PacketFlag      // 标志位
-	body     interface{}             // 消息内容，number/string/bytes/pb.Packet
+	Cmd      int32                   `json:"cmd"`            // 协议ID
+	Sequence int16                   `json:"seq"`            // 序列号
+	Typ      fatchoy.PacketType      `json:"typ,omitempty"`  // 类型
+	Flg      fatchoy.PacketFlag      `json:"flg,omitempty"`  // 标志位
+	Body     interface{}             `json:"body,omitempty"` // 消息内容，number/string/bytes/pb.Packet
 	endpoint fatchoy.MessageEndpoint // 关联的endpoint
 }
 
@@ -25,53 +25,50 @@ func Make() *Packet {
 	return &Packet{}
 }
 
-func New(command int32, seq int16, flag fatchoy.PacketFlag, body interface{}) *Packet {
+func New(command int32, seq int16, typ fatchoy.PacketType, flag fatchoy.PacketFlag, body interface{}) *Packet {
 	return &Packet{
-		command: command,
-		flag:    flag,
-		seq:     seq,
-		body:    body,
+		Cmd:      command,
+		Flg:      flag,
+		Typ:      typ,
+		Sequence: seq,
+		Body:     body,
 	}
 }
 
 func (m *Packet) Command() int32 {
-	return m.command
+	return m.Cmd
 }
 
 func (m *Packet) SetCommand(v int32) {
-	m.command = v
+	m.Cmd = v
 }
 
 func (m *Packet) Seq() int16 {
-	return m.seq
+	return m.Sequence
 }
 
 func (m *Packet) SetSeq(v int16) {
-	m.seq = v
+	m.Sequence = v
 }
 
 func (m *Packet) Type() fatchoy.PacketType {
-	return m.type_
+	return m.Typ
 }
 
 func (m *Packet) SetType(v fatchoy.PacketType) {
-	m.type_ = v
+	m.Typ = v
 }
 
 func (m *Packet) Flag() fatchoy.PacketFlag {
-	return m.flag
+	return m.Flg
 }
 
 func (m *Packet) SetFlag(v fatchoy.PacketFlag) {
-	m.flag = v
-}
-
-func (m *Packet) Body() interface{} {
-	return m.body
+	m.Flg = v
 }
 
 func (m *Packet) SetBody(v interface{}) {
-	m.body = v
+	m.Body = v
 }
 
 func (m *Packet) Endpoint() fatchoy.MessageEndpoint {
@@ -83,19 +80,21 @@ func (m *Packet) SetEndpoint(endpoint fatchoy.MessageEndpoint) {
 }
 
 func (m *Packet) Reset() {
-	m.command = 0
-	m.seq = 0
-	m.flag = 0
-	m.body = nil
+	m.Cmd = 0
+	m.Sequence = 0
+	m.Flg = 0
+	m.Typ = 0
+	m.Body = nil
 	m.endpoint = nil
 }
 
 func (m *Packet) Clone() Packet {
 	return Packet{
-		command:  m.command,
-		flag:     m.flag,
-		seq:      m.seq,
-		body:     m.body,
+		Cmd:      m.Cmd,
+		Flg:      m.Flg,
+		Typ:      m.Typ,
+		Sequence: m.Sequence,
+		Body:     m.Body,
 		endpoint: m.endpoint,
 	}
 }
@@ -111,15 +110,15 @@ func (m *Packet) CloneBody() ([]byte, error) {
 }
 
 func (m *Packet) Errno() int32 {
-	if (m.flag & fatchoy.PacketFlagError) != 0 {
-		return m.command
+	if (m.Flg & fatchoy.PacketFlagError) != 0 {
+		return m.Cmd
 	}
 	return 0
 }
 
 // 返回响应
 func (m *Packet) ReplyCommand(command int32, ack proto.Message) error {
-	var pkt = New(command, m.seq, m.flag, ack)
+	var pkt = New(command, m.Sequence, m.Typ, m.Flg, ack)
 	return m.endpoint.SendPacket(pkt)
 }
 
@@ -134,24 +133,24 @@ func (m *Packet) Reply(ack proto.Message) error {
 
 // 响应string内容
 func (m *Packet) ReplyString(command int32, s string) error {
-	var pkt = New(command, m.seq, m.flag, s)
+	var pkt = New(command, m.Sequence, m.Typ, m.Flg, s)
 	return m.endpoint.SendPacket(pkt)
 }
 
 // 响应字节内容
 func (m *Packet) ReplyBytes(command int32, b []byte) error {
-	var pkt = New(command, m.seq, m.flag, b)
+	var pkt = New(command, m.Sequence, m.Typ, m.Flg, b)
 	return m.endpoint.SendPacket(pkt)
 }
 
 // 返回一个错误码消息
 func (m *Packet) Refuse(errno int32) error {
-	var ackMsgId = GetPairingAckID(m.command)
+	var ackMsgId = GetPairingAckID(m.Cmd)
 	return m.RefuseCommand(ackMsgId, errno)
 }
 
 func (m *Packet) RefuseCommand(command, errno int32) error {
-	var pkt = New(command, m.seq, m.flag|fatchoy.PacketFlagError, nil)
+	var pkt = New(command, m.Sequence, m.Typ, m.Flg|fatchoy.PacketFlagError, nil)
 	pkt.SetErrno(errno)
 	return m.endpoint.SendPacket(pkt)
 }
@@ -161,5 +160,5 @@ func (m Packet) String() string {
 	if m.endpoint != nil {
 		nodeID = m.endpoint.NodeID()
 	}
-	return fmt.Sprintf("%v c:%d seq:%d 0x%x", nodeID, m.Command(), m.Seq(), m.Flag())
+	return fmt.Sprintf("%v c:%d seq:%d 0x%x", nodeID, m.Cmd, m.Sequence, m.Flg)
 }
