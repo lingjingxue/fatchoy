@@ -7,16 +7,25 @@ package discovery
 import (
 	"context"
 	"fmt"
+	"math/rand"
 	"os"
 	"strconv"
 	"testing"
 	"time"
+
+	"gopkg.in/qchencc/fatchoy/log"
 )
 
 var (
 	etcdHostAddr = "127.0.0.1:2379"
-	etcdKeyspace = "/choyd"
+	etcdKeyspace = "/choyd-test"
+	nodeId       = strconv.Itoa(rand.Int() % 100000)
 )
+
+func init() {
+	rand.Seed(time.Now().UnixNano())
+	log.Setup(log.NewConfig("debug"))
+}
 
 func connectClient(t *testing.T) *Client {
 	var client = NewClient(etcdHostAddr, etcdKeyspace)
@@ -31,9 +40,9 @@ func TestEtcdClient_PutNode(t *testing.T) {
 	defer client.Close()
 
 	var node = make(Node)
-	node["ID"] = "123"
+	node["ID"] = nodeId
 	node["Type"] = "Bingo"
-	var name = "bingo/123"
+	var name = "bingo/" + nodeId
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second*3)
 	defer cancel()
 	if err := client.PutNode(ctx, name, node, 0); err != nil {
@@ -45,7 +54,7 @@ func TestEtcdClient_GetNode(t *testing.T) {
 	var client = connectClient(t)
 	defer client.Close()
 
-	var name = "bingo/123"
+	var name = "bingo/" + nodeId
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second*3)
 	defer cancel()
 	node, err := client.GetNode(ctx, name)
@@ -59,7 +68,7 @@ func TestEtcdClient_IsNodeExist(t *testing.T) {
 	var client = connectClient(t)
 	defer client.Close()
 
-	var name = "bingo/123"
+	var name = "bingo/" + nodeId
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second*3)
 	defer cancel()
 	found, err := client.IsNodeExist(ctx, name)
@@ -67,6 +76,10 @@ func TestEtcdClient_IsNodeExist(t *testing.T) {
 		t.Fatalf("is exist: %v\n", err)
 	}
 	t.Logf("node %s exist: %v\n", name, found)
+
+	if err := client.DelKey(ctx, name); err != nil {
+		t.Fatalf("delete node: %v\n", err)
+	}
 }
 
 func TestEtcdClient_ListDir(t *testing.T) {
@@ -88,7 +101,7 @@ func TestEtcdClient_ListDir(t *testing.T) {
 
 func createNode() Node {
 	var node = make(Node)
-	node["id"] = "123"
+	node["id"] = nodeId
 	node["type"] = "Bingo"
 	node["pid"] = strconv.Itoa(os.Getpid())
 	node["ts"] = strconv.Itoa(int(time.Now().Unix()))
@@ -108,7 +121,7 @@ func TestEtcdClient_RegisterNode(t *testing.T) {
 
 	var job = func() {
 		var node = createNode()
-		var name = "bingo/123"
+		var name = "bingo/" + nodeId
 		t.Logf("try to register %s", name)
 		leaseId, err = client.RegisterNode(rootCtx, name, node, 5)
 		if err != nil {
@@ -133,8 +146,8 @@ func TestEtcdClient_RegisterNode(t *testing.T) {
 		select {
 		case <-ticker.C:
 			ticks++
-			println("tick", ticks)
-			if ticks >= 20 {
+			fmt.Printf("RegisterNode re-register worker tick %d, in case of etcd server lost\n", ticks)
+			if ticks >= 10 {
 				return
 			}
 			if !registerDone {
@@ -153,10 +166,11 @@ func TestEtcdClient_RegisterAndKeepAliveForever(t *testing.T) {
 	defer client.Close()
 
 	var rootCtx = context.Background()
-	ctx, cancel := context.WithTimeout(rootCtx, time.Second*60)
+	ctx, cancel := context.WithTimeout(rootCtx, time.Second*30)
 	defer cancel()
 	var node = createNode()
-	var name = "bingo/123"
+	var name = "bingo/" + nodeId
+	t.Logf("register and keepalive forever, only for 30s")
 	if err := client.RegisterAndKeepAliveForever(ctx, name, node, 5); err != nil {
 		t.Fatalf("register forever: %v", err)
 	}
@@ -164,6 +178,7 @@ func TestEtcdClient_RegisterAndKeepAliveForever(t *testing.T) {
 	case <-ctx.Done():
 		break
 	}
+	t.Logf("done")
 }
 
 func TestEtcdClient_WatchDir(t *testing.T) {
@@ -171,22 +186,21 @@ func TestEtcdClient_WatchDir(t *testing.T) {
 	defer client.Close()
 
 	var rootCtx = context.Background()
-	ctx, cancel := context.WithTimeout(rootCtx, time.Second*600)
+	ctx, cancel := context.WithTimeout(rootCtx, time.Second*60)
 	defer cancel()
-	eventChan := client.WatchDir(ctx, "service")
 
-	var pollChan = func() bool {
+	var dir = "service"
+	eventChan := client.WatchDir(ctx, dir)
+
+	t.Logf("watch key %s/%s for 60s, you can add/delete some key by etcdctl", etcdKeyspace, dir)
+	for {
 		select {
 		case event, ok := <-eventChan:
 			if !ok {
-				return false
+				return
 			}
 			fmt.Printf("event: %v, key: %s, node: %v\n", event.Type, event.Key, event.Node)
 		}
-		return true
-	}
-
-	for pollChan() {
 	}
 }
 
@@ -200,6 +214,8 @@ func TestEtcdClient_WatchDirTo(t *testing.T) {
 
 	var nodeMap = NewNodeMap()
 	var dir = "service"
+
+	// list all nodes, and insert to map
 	nodes, err := client.ListDir(ctx, dir)
 	if err != nil {
 		t.Fatalf("list: %v", err)
@@ -208,6 +224,7 @@ func TestEtcdClient_WatchDirTo(t *testing.T) {
 		nodeMap.InsertNode(node)
 	}
 
+	t.Logf("watch key %s/%s for 60s, you can add/delete some key by etcdctl", etcdKeyspace, dir)
 	client.WatchDirTo(ctx, dir, nodeMap)
 
 	var ticker = time.NewTicker(time.Second * 5)

@@ -22,6 +22,7 @@ import (
 var (
 	ErrEmptyLeasePointer   = errors.New("empty lease pointer")
 	ErrNodeKeyAlreadyExist = errors.New("node key already exist")
+	ErrNoKeyDeleted        = errors.New("no key deleted")
 )
 
 const (
@@ -121,6 +122,19 @@ func (c *Client) PutNode(ctx context.Context, name string, value interface{}, le
 	return nil
 }
 
+// 删除一个key
+func (c *Client) DelKey(ctx context.Context, name string) error {
+	var key = c.formatKey(name)
+	resp, err := c.client.Delete(ctx, key)
+	if err != nil {
+		return err
+	}
+	if resp.Deleted == 0 {
+		return ErrNoKeyDeleted
+	}
+	return nil
+}
+
 // 列出目录下的所有节点
 func (c *Client) ListDir(ctx context.Context, dir string) ([]Node, error) {
 	var key = c.formatKey(dir)
@@ -213,7 +227,7 @@ func (c *Client) KeepAlive(ctx context.Context, leaseId int64) (chan struct{}, e
 		return nil, err
 	}
 	var signal = make(chan struct{})
-	go func() {
+	var doKeepAlive = func() {
 		defer func() {
 			signal <- struct{}{} // notify signal
 		}()
@@ -231,7 +245,8 @@ func (c *Client) KeepAlive(ctx context.Context, leaseId int64) (chan struct{}, e
 				return
 			}
 		}
-	}()
+	}
+	go doKeepAlive()
 	return signal, nil
 }
 
@@ -241,7 +256,7 @@ func (c *Client) RegisterAndKeepAliveForever(rootCtx context.Context, name strin
 	var signal chan struct{}
 	var leaseAlive bool
 
-	var doJob = func() error {
+	var doRegister = func() error {
 		var err error
 		log.Debugf("try to register key: %s", name)
 		leaseAlive = false
@@ -258,11 +273,11 @@ func (c *Client) RegisterAndKeepAliveForever(rootCtx context.Context, name strin
 		return nil
 	}
 
-	if err := doJob(); err != nil {
+	if err := doRegister(); err != nil {
 		return err
 	}
 
-	go func() {
+	var keepRegister = func() {
 		var ticker = time.NewTicker(time.Second * 3)
 		defer ticker.Stop()
 		for {
@@ -272,7 +287,7 @@ func (c *Client) RegisterAndKeepAliveForever(rootCtx context.Context, name strin
 
 			case <-ticker.C:
 				if !leaseAlive {
-					if err := doJob(); err != nil {
+					if err := doRegister(); err != nil {
 						log.Warnf("register and keepalive %s: %v", name, err)
 					}
 				}
@@ -282,7 +297,8 @@ func (c *Client) RegisterAndKeepAliveForever(rootCtx context.Context, name strin
 				log.Debugf("lease %x of node %s is not alive, try register later", leaseId, name)
 			}
 		}
-	}()
+	}
+	go keepRegister()
 	return nil
 }
 
