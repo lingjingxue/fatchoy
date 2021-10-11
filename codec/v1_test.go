@@ -49,12 +49,12 @@ func testProtoCodec(t *testing.T, size int, msgSent fatchoy.IMessage) {
 	decrypt := cipher.NewCrypt("aes-192", encrypt.Key(), encrypt.IV())
 	// 如果加密方式是原地加密，会导致packet的body是加密后的内容
 	clone := append([]byte(nil), msgSent.BodyAsBytes()...)
-	if _, err := SerializePacket(&encoded, msgSent, encrypt, CodecVersionV1); err != nil {
+	if _, err := Marshal(&encoded, msgSent, encrypt, VersionV1); err != nil {
 		t.Fatalf("Encode with size %d: %v", size, err)
 	}
 	msgSent.SetBodyBytes(nil)
 	var msgRecv testPacket
-	if _, err := DeserializePacket(&encoded, &msgRecv, decrypt); err != nil {
+	if _, err := Unmarshal(&encoded, &msgRecv, decrypt); err != nil {
 		t.Fatalf("Decode with size %d: %v", size, err)
 	}
 	msgSent.SetBodyBytes(clone)
@@ -79,11 +79,11 @@ func BenchmarkCodecMarshal(b *testing.B) {
 	b.StartTimer()
 
 	var buf bytes.Buffer
-	if _, err := SerializePacket(&buf, msg, nil, CodecVersionV1); err != nil {
+	if _, err := Marshal(&buf, msg, nil, VersionV1); err != nil {
 		b.Logf("Encode: %v", err)
 	}
 	var msg2 testPacket
-	if _, err := SerializePacket(&buf, &msg2, nil, CodecVersionV1); err != nil {
+	if _, err := Marshal(&buf, &msg2, nil, VersionV1); err != nil {
 		b.Logf("Decode: %v", err)
 	}
 }

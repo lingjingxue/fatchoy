@@ -27,11 +27,10 @@ func NewV1() ICodec {
 
 // 内部不应该修改pkt的body
 func (c *v1Codec) Marshal(w io.Writer, pkt fatchoy.IMessage, encryptor cipher.BlockCryptor) (int, error) {
-	return marshalPacket(w, pkt, encryptor, CodecVersionV1, int(c.maxPayloadBytes))
-
+	return marshalPacket(w, pkt, encryptor, VersionV1, int(c.maxPayloadBytes))
 }
 
-func (c *v1Codec) Unmarshal(r io.Reader, header *CodecHeader, pkt fatchoy.IMessage, decrypt cipher.BlockCryptor) (int, error) {
+func (c *v1Codec) Unmarshal(r io.Reader, header *Header, pkt fatchoy.IMessage, decrypt cipher.BlockCryptor) (int, error) {
 	return unmarshalPacket(r, header, pkt, decrypt, int(c.maxPayloadBytes))
 }
 
@@ -51,7 +50,7 @@ func marshalPacket(w io.Writer, pkt fatchoy.IMessage, encryptor cipher.BlockCryp
 	}
 
 	var bodyLen = len(payload)
-	var head CodecHeader
+	var head Header
 	head.unmarshalFrom(pkt, bodyLen, version)
 	head.SetupChecksum(payload)
 
@@ -63,7 +62,7 @@ func marshalPacket(w io.Writer, pkt fatchoy.IMessage, encryptor cipher.BlockCryp
 	return nbytes, err
 }
 
-func unmarshalPacket(r io.Reader, header *CodecHeader, pkt fatchoy.IMessage, decrypt cipher.BlockCryptor, maxPayloadBytes int) (int, error) {
+func unmarshalPacket(r io.Reader, header *Header, pkt fatchoy.IMessage, decrypt cipher.BlockCryptor, maxPayloadBytes int) (int, error) {
 	var bodyLen = header.Len()
 	var flag = fatchoy.PacketFlag(header.Flag())
 	pkt.SetFlag(flag)
@@ -77,7 +76,7 @@ func unmarshalPacket(r io.Reader, header *CodecHeader, pkt fatchoy.IMessage, dec
 		return 0, err
 	}
 
-	var nbytes = CodecHeaderSize
+	var nbytes = HeaderSize
 	if bodyLen == 0 {
 		if crc := header.CalcChecksum(nil); crc != checksum {
 			err := errors.Errorf("message %v header checksum mismatch %x != %x", pkt.Command(), checksum, crc)

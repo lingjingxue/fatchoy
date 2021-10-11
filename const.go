@@ -8,8 +8,3 @@ const (
 	SERVICE_ALL  = 0xFF
 	INSTANCE_ALL = 0xFFFF
 )
-
-// sync with errno.proto
-const (
-	ErrDataCodecFailure = 107
-)
