@@ -157,5 +157,5 @@ func (m Packet) String() string {
 	if m.endpoint != nil {
 		nodeID = m.endpoint.NodeID()
 	}
-	return fmt.Sprintf("%v c:%d seq:%d 0x%x", nodeID, m.Command, m.Seq, m.Flag)
+	return fmt.Sprintf("%v c:%d seq:%d 0x%x", nodeID, m.Command(), m.Seq(), m.Flag())
 }
