@@ -13,7 +13,10 @@ import (
 	"time"
 )
 
-const timestampLayout = "2006-01-02 15:04:05.999"
+const (
+	timestampLayout = "2006-01-02 15:04:05.999"
+	mainPkgName     = "main.main"
+)
 
 // code taken from https://github.com/pkg/error with modification
 
@@ -42,7 +45,7 @@ func (s Stack) String() string {
 		file, line := fn.FileLine(pc)
 		fnName := fn.Name()
 		fmt.Fprintf(&sb, "% 3d. %s() %s:%d\n", i+1, fnName, file, line)
-		if fnName == "main.main" {
+		if fnName == mainPkgName {
 			break
 		}
 	}
