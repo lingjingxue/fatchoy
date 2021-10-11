@@ -17,41 +17,42 @@ import (
 
 // Websocket server
 type WsServer struct {
-	ctx      context.Context
-	cancel   context.CancelFunc
-	server   *http.Server
-	upgrader *websocket.Upgrader //
-	pending  chan *WsConn        //
-	errChan  chan error          //
-	inbound  chan fatchoy.IMessage // incoming message queue
-	codecVer int                 // codec version
-	outsize  int                 // outgoing queue size
+	ctx          context.Context
+	cancel       context.CancelFunc
+	server       *http.Server
+	upgrader     *websocket.Upgrader   //
+	pending      chan *WsConn          //
+	errChan      chan error            //
+	inbound      chan fatchoy.IMessage // incoming message queue
+	codecVersion int                   // codec version
+	outsize      int                   // outgoing queue size
 }
 
-func NewWebsocketServer(parentCtx context.Context, addr, path string, inbound chan fatchoy.IMessage, codecVer, outsize int) *WsServer {
+func NewWebsocketServer(parentCtx context.Context, addr, path string, inbound chan fatchoy.IMessage, codecVersion, outsize int) *WsServer {
 	ctx, cancel := context.WithCancel(parentCtx)
 	mux := http.NewServeMux()
 	var server = &http.Server{
 		Addr:              addr,
 		Handler:           mux,
-		ReadTimeout:       100 * time.Second,
-		ReadHeaderTimeout: 10 * time.Second,
-		WriteTimeout:      10 * time.Second,
-		IdleTimeout:       60 * time.Second,
+		ReadTimeout:       120 * time.Second,
+		ReadHeaderTimeout: 5 * time.Second,
+		WriteTimeout:      30 * time.Second,
+		IdleTimeout:       45 * time.Second,
 		MaxHeaderBytes:    4096,
 		BaseContext:       func(listener net.Listener) context.Context { return ctx },
 	}
 	ws := &WsServer{
-		ctx:      ctx,
-		cancel:   cancel,
-		server:   server,
-		inbound:  inbound,
-		codecVer: codecVer,
-		outsize:  outsize,
-		errChan:  make(chan error, 32),
-		pending:  make(chan *WsConn, 128),
+		ctx:          ctx,
+		cancel:       cancel,
+		server:       server,
+		inbound:      inbound,
+		codecVersion: codecVersion,
+		outsize:      outsize,
+		errChan:      make(chan error, 32),
+		pending:      make(chan *WsConn, 128),
 		upgrader: &websocket.Upgrader{
 			HandshakeTimeout: 10 * time.Second,
+			CheckOrigin:      func(r *http.Request) bool { return true }, // allow CORS
 		},
 	}
 	mux.HandleFunc(path, ws.onRequest)
@@ -64,7 +65,7 @@ func (s *WsServer) onRequest(w http.ResponseWriter, r *http.Request) {
 		log.Errorf("WebSocket upgrade %s, %v", r.RemoteAddr, err)
 		return
 	}
-	wsconn := NewWsConn(r.Context(),0, s.codecVer, conn, s.errChan, s.inbound, s.outsize, nil)
+	wsconn := NewWsConn(r.Context(), 0, s.codecVersion, conn, s.errChan, s.inbound, s.outsize, nil)
 	log.Infof("websocket connection %s established", wsconn.RemoteAddr())
 	defer wsconn.Close()
 	wsconn.Go(true, false)

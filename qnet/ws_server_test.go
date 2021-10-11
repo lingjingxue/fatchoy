@@ -59,10 +59,13 @@ func startClient(t *testing.T, addr, path string) {
 }
 
 func TestWebsocketServer(t *testing.T) {
-	var addr = "127.0.0.1:10007"
+	var addr = "localhost:9090"
 	var path = "/example"
 	var incoming = make(chan fatchoy.IMessage, 1000)
-	server := NewWebsocketServer(context.Background(), addr, path, incoming, codec.VersionV2, 600)
+
+	ctx, cancel := context.WithTimeout(context.Background(), time.Minute*5)
+	defer cancel()
+	server := NewWebsocketServer(ctx, addr, path, incoming, codec.VersionV2, 600)
 	server.Go()
 
 	go startClient(t, addr, path)
@@ -87,10 +90,13 @@ func TestWebsocketServer(t *testing.T) {
 				return
 			}
 			msgcnt++
-			text := pkt.BodyAsBytes()
+			text := pkt.BodyAsString()
 			nbytes += len(text)
 			pkt.ReplyString(pkt.Command(), "pong")
 			// fmt.Printf("recv client message: %v\n", text))
+
+		case <-ctx.Done():
+			return
 		}
 	}
 	t.Logf("server recv %d messages, #%d bytes\n", msgcnt, nbytes)

@@ -17,6 +17,7 @@ import (
 
 	"gopkg.in/qchencc/fatchoy"
 	"gopkg.in/qchencc/fatchoy/codec"
+	"gopkg.in/qchencc/fatchoy/log"
 	"gopkg.in/qchencc/fatchoy/packet"
 )
 
@@ -24,6 +25,10 @@ const (
 	connectionCount   = 1
 	totalMessageCount = 1000000
 )
+
+func init() {
+	log.Setup(log.NewConfig("debug"))
+}
 
 func startQPSServer(t *testing.T, address string, ctor, done chan struct{}) {
 	var incoming = make(chan fatchoy.IMessage, totalMessageCount)
@@ -69,7 +74,7 @@ func startQPSClient(t *testing.T, address string, msgCount int, respChan chan in
 	var buf bytes.Buffer
 	var w = bufio.NewWriter(conn)
 	for i := 0; i < msgCount; i++ {
-		var pkt = packet.New(int32(i), 0, 0, "ping")
+		var pkt = packet.New(int32(i), 0, 0, 0, "ping")
 		buf.Reset()
 		if _, err := codec.Marshal(&buf, pkt, nil, codec.VersionV2); err != nil {
 			t.Fatalf("Encode: %v", err)

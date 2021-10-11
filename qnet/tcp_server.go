@@ -14,27 +14,27 @@ import (
 )
 
 type TcpServer struct {
-	ctx      context.Context       // chained context
-	cancel   context.CancelFunc    // cancel func
-	wg       sync.WaitGroup        // wait group
-	backlog  chan fatchoy.Endpoint // queue of incoming connections
-	errors   chan error            // error queue
-	lns      []net.Listener        // listener list
-	inbound  chan fatchoy.IMessage // incoming message buffer queue
-	codecVer int                   // codec version
-	outsize  int                   // size of outbound message queue
+	ctx          context.Context       // chained context
+	cancel       context.CancelFunc    // cancel func
+	wg           sync.WaitGroup        // wait group
+	backlog      chan fatchoy.Endpoint // queue of incoming connections
+	errors       chan error            // error queue
+	lns          []net.Listener        // listener list
+	inbound      chan fatchoy.IMessage // incoming message buffer queue
+	codecVersion int                   // codec version
+	outsize      int                   // size of outbound message queue
 }
 
-func NewTcpServer(parentCtx context.Context, inbound chan fatchoy.IMessage, codecVer, outsize int) *TcpServer {
+func NewTcpServer(parentCtx context.Context, inbound chan fatchoy.IMessage, codecVersion, outsize int) *TcpServer {
 	ctx, cancel := context.WithCancel(parentCtx)
 	return &TcpServer{
-		inbound:  inbound,
-		codecVer: codecVer,
-		outsize:  outsize,
-		ctx:      ctx,
-		cancel:   cancel,
-		backlog:  make(chan fatchoy.Endpoint, 128),
-		errors:   make(chan error, 16),
+		inbound:      inbound,
+		codecVersion: codecVersion,
+		outsize:      outsize,
+		ctx:          ctx,
+		cancel:       cancel,
+		backlog:      make(chan fatchoy.Endpoint, 128),
+		errors:       make(chan error, 16),
 	}
 }
 
@@ -89,7 +89,7 @@ func (s *TcpServer) serve(ln net.Listener) {
 }
 
 func (s *TcpServer) accept(conn net.Conn) {
-	var endpoint = NewTcpConn(s.ctx, 0, s.codecVer, conn, s.errors, s.inbound, s.outsize, nil)
+	var endpoint = NewTcpConn(s.ctx, 0, s.codecVersion, conn, s.errors, s.inbound, s.outsize, nil)
 	s.backlog <- endpoint // this may block current goroutine
 }
 

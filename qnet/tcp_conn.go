@@ -137,7 +137,7 @@ func (t *TcpConn) flush() {
 }
 
 func (t *TcpConn) writePacket(pkt fatchoy.IMessage) error {
-	n, err := codec.Marshal(t.writer, pkt, t.encrypt, t.codecVer)
+	n, err := codec.Marshal(t.writer, pkt, t.encrypt, t.codecVersion)
 	if err != nil {
 		return err
 	}

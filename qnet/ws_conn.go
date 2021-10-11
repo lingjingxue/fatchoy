@@ -35,12 +35,12 @@ type WsConn struct {
 	conn *websocket.Conn // websocket conn
 }
 
-func NewWsConn(parentCtx context.Context, node fatchoy.NodeID, codecVer int, conn *websocket.Conn, errChan chan error,
+func NewWsConn(parentCtx context.Context, node fatchoy.NodeID, codecVersion int, conn *websocket.Conn, errChan chan error,
 	incoming chan<- fatchoy.IMessage, outsize int, stat *stats.Stats) *WsConn {
 	wsconn := &WsConn{
 		conn: conn,
 	}
-	wsconn.StreamConn.init(parentCtx, node, codecVer, incoming, outsize, errChan, stat)
+	wsconn.StreamConn.init(parentCtx, node, codecVersion, incoming, outsize, errChan, stat)
 	wsconn.addr = conn.RemoteAddr().String()
 	conn.SetReadLimit(WSCONN_MAX_PAYLOAD)
 	conn.SetPingHandler(wsconn.handlePing)
@@ -55,6 +55,10 @@ func (c *WsConn) Go(writer, reader bool) {
 	if writer {
 		c.wg.Add(1)
 		go c.writePump()
+	}
+	if reader {
+		c.wg.Add(1)
+		go c.readLoop()
 	}
 }
 
@@ -78,7 +82,7 @@ func (c *WsConn) Close() error {
 	}
 	c.cancel()
 	c.notifyErr(NewError(ErrConnForceClose, c))
-	c.finally(ErrConnForceClose)
+	c.finally()
 	return nil
 }
 
@@ -89,56 +93,40 @@ func (c *WsConn) ForceClose(err error) {
 	}
 	c.cancel()
 	c.notifyErr(NewError(err, c))
-	go c.finally(err)
+	go c.finally()
 }
 
-func (c *WsConn) finally(err error) {
+func (c *WsConn) finally() {
 	c.wg.Wait()
-	if err := c.conn.WriteMessage(websocket.CloseMessage, []byte{}); err != nil {
-		log.Errorf("WsConn: write close message, %v", err)
-	}
-	if err := c.conn.Close(); err != nil {
-		log.Errorf("WsConn: close connection %v, %v", c.node, err)
-	}
 	close(c.outbound)
 	c.outbound = nil
 	c.inbound = nil
 	c.conn = nil
 }
 
-func (c *WsConn) sendPacket(pkt fatchoy.IMessage) error {
-	return c.sendBinary(pkt)
-}
-
 func (c *WsConn) writePacket(pkt fatchoy.IMessage) error {
 	var buf bytes.Buffer
-	n, err := codec.Marshal(&buf, pkt, c.encrypt, c.codecVer)
-	if err != nil {
-		log.Errorf("encode message %v: %v", pkt.Command, err)
-		return err
+	var messageType int
+	if (pkt.Type() & fatchoy.PacketTypeJSON) > 0 {
+		var enc = json.NewEncoder(&buf)
+		if err := enc.Encode(pkt); err != nil {
+			return err
+		}
+		messageType = websocket.TextMessage
+	} else {
+		_, err := codec.Marshal(&buf, pkt, c.encrypt, c.codecVersion)
+		if err != nil {
+			log.Errorf("encode message %v: %v", pkt.Command(), err)
+			return err
+		}
+		messageType = websocket.BinaryMessage
 	}
-	if err := c.conn.WriteMessage(websocket.BinaryMessage, buf.Bytes()); err != nil {
-		log.Errorf("WsConn: send message %v, %v", pkt.Command, err)
-		return err
-	}
-	c.stats.Add(StatPacketsSent, 1)
-	c.stats.Add(StatBytesSent, int64(n))
-	return nil
-}
-
-func (c *WsConn) sendBinary(pkt fatchoy.IMessage) error {
-	var buf bytes.Buffer
-	n, err := codec.Marshal(&buf, pkt, c.encrypt, c.codecVer)
-	if err != nil {
-		log.Errorf("encode message %v: %v", pkt.Command, err)
-		return err
-	}
-	if err := c.conn.WriteMessage(websocket.BinaryMessage, buf.Bytes()); err != nil {
-		log.Errorf("WsConn: send message %d, %v", pkt.Command, err)
+	if err := c.conn.WriteMessage(messageType, buf.Bytes()); err != nil {
+		log.Errorf("WsConn: send message %v, %v", pkt.Command(), err)
 		return err
 	}
 	c.stats.Add(StatPacketsSent, 1)
-	c.stats.Add(StatBytesSent, int64(n))
+	c.stats.Add(StatBytesSent, int64(buf.Len()))
 	return nil
 }
 
@@ -152,7 +140,9 @@ func (c *WsConn) writePump() {
 			if !ok {
 				return
 			}
-			c.sendPacket(pkt)
+			if err := c.writePacket(pkt); err != nil {
+				log.Errorf("send packet %d: %v", pkt.Command(), err)
+			}
 
 		case <-c.ctx.Done():
 			return
@@ -179,7 +169,7 @@ func (c *WsConn) readLoop() {
 
 // Exported API
 func (c *WsConn) ReadPacket(pkt fatchoy.IMessage) error {
-	c.conn.SetReadDeadline(fatchoy.Now().Add(WSConnReadTimeout))
+	c.conn.SetReadDeadline(time.Now().Add(WSConnReadTimeout))
 	msgType, data, err := c.conn.ReadMessage()
 	if err != nil {
 		return err
@@ -190,11 +180,14 @@ func (c *WsConn) ReadPacket(pkt fatchoy.IMessage) error {
 
 	switch msgType {
 	case websocket.TextMessage:
-		// log.Debugf("recv message: %s", data)
-		return json.Unmarshal(data, pkt)
+		if err := json.Unmarshal(data, pkt); err != nil {
+			return err
+		}
+		pkt.SetType(pkt.Type() | fatchoy.PacketTypeJSON)
 
 	case websocket.BinaryMessage:
 		_, err = codec.Unmarshal(bytes.NewReader(data), pkt, c.decrypt)
+		pkt.SetType(pkt.Type() | fatchoy.PacketTypeBinary)
 		return err
 
 	case websocket.PingMessage, websocket.PongMessage:

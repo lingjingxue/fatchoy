@@ -16,30 +16,30 @@ import (
 
 // TcpConn和WsConn的公共基类
 type StreamConn struct {
-	ctx      context.Context         // chained context
-	cancel   context.CancelFunc      // cancel func
-	wg       sync.WaitGroup          // wait group
-	closing  int32                   // closing flag
-	node     fatchoy.NodeID          // node id
-	addr     string                  // remote address
-	userdata interface{}             // user data
-	codecVer int                     // codec version
-	encrypt  cipher.BlockCryptor     // message encryption
-	decrypt  cipher.BlockCryptor     // message decryption
-	inbound  chan<- fatchoy.IMessage // inbound message queue
-	outbound chan fatchoy.IMessage   // outbound message queue
-	stats    *stats.Stats            // message stats
-	errChan  chan error              // error signal
+	ctx          context.Context         // chained context
+	cancel       context.CancelFunc      // cancel func
+	wg           sync.WaitGroup          // wait group
+	closing      int32                   // closing flag
+	node         fatchoy.NodeID          // node id
+	addr         string                  // remote address
+	userdata     interface{}             // user data
+	codecVersion int                     // codec version
+	encrypt      cipher.BlockCryptor     // message encryption
+	decrypt      cipher.BlockCryptor     // message decryption
+	inbound      chan<- fatchoy.IMessage // inbound message queue
+	outbound     chan fatchoy.IMessage   // outbound message queue
+	stats        *stats.Stats            // message stats
+	errChan      chan error              // error signal
 }
 
-func (c *StreamConn) init(parentCtx context.Context, node fatchoy.NodeID, codecVer int, inbound chan<- fatchoy.IMessage,
+func (c *StreamConn) init(parentCtx context.Context, node fatchoy.NodeID, codecVersion int, inbound chan<- fatchoy.IMessage,
 	outsize int, errChan chan error, stat *stats.Stats) {
 	if stat == nil {
 		stat = stats.New(NumStat)
 	}
 	c.node = node
 	c.stats = stat
-	c.codecVer = codecVer
+	c.codecVersion = codecVersion
 	c.inbound = inbound
 	c.errChan = errChan
 	c.outbound = make(chan fatchoy.IMessage, outsize)
