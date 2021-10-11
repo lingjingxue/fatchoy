@@ -11,17 +11,13 @@ import (
 )
 
 func TestNodeIDSimple(t *testing.T) {
-	var node = NodeTypeClient
-	if node.IsBackend() {
-		t.Fatalf("node should be a client session")
-	}
 	var srv = uint8(0xef)
 	var inst = uint16(0xabcd)
-	node = MakeNodeID(srv, inst)
-	t.Logf("node value: %v\n", node)
-	if !node.IsBackend() {
+	var node = MakeNodeID(srv, inst)
+	if !node.IsTypeBackend() {
 		t.Fatalf("node should be a backend instance")
 	}
+	t.Logf("node value: %v\n", node)
 
 	if v := node.Service(); uint8(v) != srv {
 		t.Fatalf("expect node service %x, but got %x", inst, v)
