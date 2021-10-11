@@ -1,0 +1,70 @@
+<!DOCTYPE HTML>
+<html>
+    <head>
+        <meta charset="utf-8">
+        <title>Websocket Client Demo</title>
+    </head>
+<body>
+    <input id="host_url" type="text" value="ws://localhost:9090/example">
+    <button id="connect_btn" type="button">connect</button>
+    <button id="close_btn" type="button">close</button>
+    <br>
+    <input id="msg_body" type="text" placeholder="message to send" value="">
+    <button id="send_btn" type="button">send</button>
+    <script type="text/javascript">
+        let ws = undefined;
+        let msg_seq = 1
+
+        function on_ws_open(event) {
+            console.log("ws connected:", event);
+        }
+
+        function on_ws_message(event) {
+            console.log("ws message:", event.data);
+
+            // send back after 1s
+            setTimeout(function (){
+                ws.send(event.data);
+            }, 2000)
+        }
+
+        function on_ws_close(event) {
+            console.log("ws closed:", event.code, event.reason);
+        }
+
+        function on_ws_error(event) {
+            console.log("ws error:", event);
+        }
+
+        function on_click_send() {
+            msg_seq += 1;
+            let content = document.getElementById("msg_body").value;
+            let msg = {'cmd': 100, 'seq': msg_seq, 'flg':0, 'typ': 0, body: content};
+            ws.send(JSON.stringify(msg));
+        }
+
+        function on_click_close() {
+            if (ws !== undefined) {
+                ws.close();
+            }
+        }
+
+        function on_click_connect() {
+            if (ws !== undefined) {
+                ws.close();
+            }
+            let url = document.getElementById("host_url").value;
+            console.log("ws start connect", url);
+            ws = new WebSocket(url);
+            ws.onopen = on_ws_open;
+            ws.onmessage = on_ws_message;
+            ws.onclose = on_ws_close;
+            ws.onerror = on_ws_error;
+        }
+
+        document.getElementById("connect_btn").addEventListener('click', on_click_connect, false);
+        document.getElementById("send_btn").addEventListener('click', on_click_send, false);
+        document.getElementById("close_btn").addEventListener('click', on_click_close, false);
+    </script>
+</body>
+</html>
