@@ -1,0 +1,35 @@
+// Copyright © 2021-present ichenq@outlook.com All rights reserved.
+// Distributed under the terms and conditions of the BSD License.
+// See accompanying files LICENSE.
+
+syntax = "proto3";
+
+package codes;
+
+// 错误码定义
+enum Code {
+  OK = 0;
+  Unknown = 1;                // 未知错误
+  Canceled = 2;               // 操作被取消
+  Aborted = 3;                // 操作被终止
+  Unavailable = 4;            // 服务不可用
+  DeadlineExceeded = 5;       // 过期超时
+  InvalidArgument = 6;        // 参数错误
+  OutOfRange = 7;             // 请求数据超出限制
+  RequestTimeout = 8;         // 请求超时
+  BadRequest = 9;             // 错误的请求
+  NotFound = 10;              // 请求资源未找到
+  PermissionDenied = 11;      // 权限不足
+  Unauthenticated = 12;       // 未认证
+  ResourceExhausted = 13;     // 资源已耗尽
+  NotImplemented = 14;        // 请求未实现
+  AlreadyExists = 15;         // entity已经存在
+  OperationNotSupported = 16; // 不支持的操作
+  OperationTooFrequent = 17;  // 操作过于频繁
+  TransportFailure = 18;      // 传输错误
+  DataLoss = 19;              // unrecoverable data loss or corruption
+  DatabaseError =  20;        // 数据库异常
+  RuntimeException = 21;      // 运行时错误
+  ServiceMaintenance = 22;    // 服务维护中
+  InternalError =  23;        // 内部错误
+}
