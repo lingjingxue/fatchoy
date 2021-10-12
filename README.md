@@ -2,6 +2,8 @@
 
 Golang Game Server Kit
 
+Gung Hay Fat Choy(恭喜發財)
+
 `go get gopkg.in/qchencc/fatchoy.v1`
 
 ## 各目录说明
