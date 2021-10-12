@@ -94,7 +94,7 @@ func (m *Packet) EncodeBodyToBytes() ([]byte, error) {
 }
 
 // 根据pkt的Flag标志位，对body进行压缩
-func Encode(pkt fatchoy.IMessage, threshold int) error {
+func Encode(pkt fatchoy.IPacket, threshold int) error {
 	payload, err := pkt.EncodeBodyToBytes()
 	if err != nil {
 		return err
@@ -116,7 +116,7 @@ func Encode(pkt fatchoy.IMessage, threshold int) error {
 }
 
 // 根据pkt的Flag标志位，对body进行解压缩
-func Decode(pkt fatchoy.IMessage) error {
+func Decode(pkt fatchoy.IPacket) error {
 	payload := pkt.BodyAsBytes()
 	if payload == nil {
 		return nil
