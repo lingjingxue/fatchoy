@@ -24,11 +24,11 @@ const (
 	PacketTypeJSON   PacketType = 1 << 1
 )
 
-type Handler func(IMessage) error // 消息处理器
-type Filter func(IMessage) bool   // 过滤器
+type Handler func(IPacket) error // 消息处理器
+type Filter func(IPacket) bool   // 过滤器
 
 // 定义应用层消息接口
-type IMessage interface {
+type IPacket interface {
 	Command() int32
 	SetCommand(int32)
 
