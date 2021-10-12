@@ -18,7 +18,7 @@ type MessageEndpoint interface {
 	RemoteAddr() string
 
 	// 发送消息
-	SendPacket(IMessage) error
+	SendPacket(IPacket) error
 
 	// 关闭读/写
 	Close() error

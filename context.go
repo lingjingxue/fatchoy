@@ -12,14 +12,14 @@ import (
 type ServiceContext struct {
 	ctx      context.Context //
 	instance Service         // service对象
-	queue    chan IMessage   // 收取消息队列
+	queue    chan IPacket    // 收取消息队列
 }
 
 func NewServiceContext(ctx context.Context, srv Service, queueSize int) *ServiceContext {
 	return &ServiceContext{
 		ctx:      ctx,
 		instance: srv,
-		queue:    make(chan IMessage, queueSize),
+		queue:    make(chan IPacket, queueSize),
 	}
 }
 
@@ -36,6 +36,6 @@ func (c *ServiceContext) Close() {
 	c.queue = nil
 }
 
-func (c *ServiceContext) MessageQueue() chan IMessage {
+func (c *ServiceContext) MessageQueue() chan IPacket {
 	return c.queue
 }
