@@ -4,11 +4,6 @@
 
 package codes
 
-import (
-	"fmt"
-	"strconv"
-)
-
 // 通用错误码定义(0-100)
 type Code int32
 
@@ -67,7 +62,7 @@ var codeName = map[int32]string{
 }
 
 var (
-	maxCode int32
+	maxCode   int32
 	codeValue = buildCodeValue()
 )
 
@@ -82,30 +77,13 @@ func buildCodeValue() map[string]int32 {
 	return codeValue
 }
 
-// UnmarshalJSON unmarshals b into the Code.
-func (c *Code) UnmarshalJSON(b []byte) error {
-	// From json.Unmarshaler: By convention, to approximate the behavior of
-	// Unmarshal itself, Unmarshalers implement UnmarshalJSON([]byte("null")) as
-	// a no-op.
-	if string(b) == "null" {
-		return nil
-	}
-	if c == nil {
-		return fmt.Errorf("nil receiver passed to UnmarshalJSON")
-	}
+func GetCodeName(code Code) string {
+	return codeName[int32(code)]
+}
 
-	if ci, err := strconv.ParseUint(string(b), 10, 32); err == nil {
-		if ci >= uint64(maxCode) {
-			return fmt.Errorf("invalid code: %q", ci)
-		}
-
-		*c = Code(ci)
-		return nil
+func GetCodeValue(name string) Code {
+	if code, found := codeValue[name]; found {
+		return Code(code)
 	}
-
-	if jc, ok := codeValue[string(b)]; ok {
-		*c = Code(jc)
-		return nil
-	}
-	return fmt.Errorf("invalid code: %q", string(b))
+	return -1
 }
