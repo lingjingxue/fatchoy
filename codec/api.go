@@ -14,13 +14,13 @@ import (
 
 // 消息编解码
 type ICodec interface {
-	Marshal(w io.Writer, pkt fatchoy.IMessage, encrypt cipher.BlockCryptor) (int, error)
-	Unmarshal(r io.Reader, head *Header, pkt fatchoy.IMessage, decrypt cipher.BlockCryptor) (int, error)
+	Marshal(w io.Writer, pkt fatchoy.IPacket, encrypt cipher.BlockCryptor) (int, error)
+	Unmarshal(r io.Reader, head *Header, pkt fatchoy.IPacket, decrypt cipher.BlockCryptor) (int, error)
 }
 
 // 消息编解码，同样一个codec会在多个goroutine执行，需要多线程安全
 // 把pkt按需用encrypt加密后编码到w里，，返回编码长度和err
-func Marshal(w io.Writer, pkt fatchoy.IMessage, encrypt cipher.BlockCryptor, ver int) (int, error) {
+func Marshal(w io.Writer, pkt fatchoy.IPacket, encrypt cipher.BlockCryptor, ver int) (int, error) {
 	switch ver {
 	case VersionV1:
 		return V1.Marshal(w, pkt, encrypt)
@@ -31,7 +31,7 @@ func Marshal(w io.Writer, pkt fatchoy.IMessage, encrypt cipher.BlockCryptor, ver
 }
 
 // 使用从r读取消息到pkt，并按需使用decrypt解密，返回读取长度和错误
-func Unmarshal(r io.Reader, pkt fatchoy.IMessage, decrypt cipher.BlockCryptor) (int, error) {
+func Unmarshal(r io.Reader, pkt fatchoy.IPacket, decrypt cipher.BlockCryptor) (int, error) {
 	var header Header
 	if _, err := io.ReadFull(r, header[:]); err != nil {
 		return 0, err

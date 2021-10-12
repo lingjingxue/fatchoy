@@ -23,10 +23,10 @@ func NewV2() ICodec {
 	}
 }
 
-func (c *v2Codec) Marshal(w io.Writer, pkt fatchoy.IMessage, encryptor cipher.BlockCryptor) (int, error) {
+func (c *v2Codec) Marshal(w io.Writer, pkt fatchoy.IPacket, encryptor cipher.BlockCryptor) (int, error) {
 	return marshalPacket(w, pkt, encryptor, VersionV2, int(c.maxPayloadBytes))
 }
 
-func (c *v2Codec) Unmarshal(r io.Reader, header *Header, pkt fatchoy.IMessage, decrypt cipher.BlockCryptor) (int, error) {
+func (c *v2Codec) Unmarshal(r io.Reader, header *Header, pkt fatchoy.IPacket, decrypt cipher.BlockCryptor) (int, error) {
 	return unmarshalPacket(r, header, pkt, decrypt, int(c.maxPayloadBytes))
 }

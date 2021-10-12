@@ -14,7 +14,7 @@ import (
 	"gopkg.in/qchencc/fatchoy.v1/x/strutil"
 )
 
-func isEqualPacket(t *testing.T, a, b fatchoy.IMessage) bool {
+func isEqualPacket(t *testing.T, a, b fatchoy.IPacket) bool {
 	if a.Command() != b.Command() || (a.Seq() != b.Seq()) {
 		return false
 	}
@@ -31,7 +31,7 @@ func isEqualPacket(t *testing.T, a, b fatchoy.IMessage) bool {
 	return true
 }
 
-func newTestPacket(bodyLen int) fatchoy.IMessage {
+func newTestPacket(bodyLen int) fatchoy.IPacket {
 	var pkt testPacket
 	pkt.flag = 0
 	pkt.command = 1234
@@ -43,7 +43,7 @@ func newTestPacket(bodyLen int) fatchoy.IMessage {
 	return &pkt
 }
 
-func testProtoCodec(t *testing.T, size int, msgSent fatchoy.IMessage) {
+func testProtoCodec(t *testing.T, size int, msgSent fatchoy.IPacket) {
 	var encoded bytes.Buffer
 	encrypt, _ := secure.CreateCryptor("aes-192")
 	decrypt := cipher.NewCrypt("aes-192", encrypt.Key(), encrypt.IV())

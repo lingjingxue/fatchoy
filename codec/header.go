@@ -83,7 +83,7 @@ func (h *Header) SetupChecksum(payload []byte) {
 	binary.LittleEndian.PutUint32(h[12:], crc)
 }
 
-func (h *Header) unmarshalFrom(pkt fatchoy.IMessage, bodySize, ver int) {
+func (h *Header) unmarshalFrom(pkt fatchoy.IPacket, bodySize, ver int) {
 	var n = uint32(bodySize)
 	h[0] = byte(ver)
 	h[1] = byte(n)
