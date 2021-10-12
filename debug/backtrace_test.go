@@ -10,6 +10,7 @@ import (
 )
 
 func TestBacktrace(t *testing.T) {
+	defer CatchPanic()
 	var buf bytes.Buffer
 	Backtrace("", &buf)
 	t.Logf("%s", buf.String())
