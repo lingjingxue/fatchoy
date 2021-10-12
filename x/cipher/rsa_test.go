@@ -23,11 +23,11 @@ func init() {
 // 	openssl rsa -in rsa_prikey.pem -pubout -out rsa_pubkey.pem
 
 func TestRSADecrypt(t *testing.T) {
-	prikey, err := LoadRSAPrivateKey("rsa_prikey.pem")
+	prikey, err := LoadRSAPrivateKey(RSATestPrivateKey)
 	if err != nil {
 		t.Fatalf("load private key: %v", err)
 	}
-	pubkey, err := LoadRSAPublicKey("rsa_pubkey.pem")
+	pubkey, err := LoadRSAPublicKey(RSATestPublicKey)
 	if err != nil {
 		t.Fatalf("load public key: %v", err)
 	}
