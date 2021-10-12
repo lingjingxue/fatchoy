@@ -5,16 +5,19 @@
 package discovery
 
 import (
+	"fmt"
+	"os"
 	"strconv"
+	"strings"
 	"sync"
 )
 
 const (
-	NODE_KEY_ID        = "id"
-	NODE_KEY_TYPE      = "type"
-	NODE_KEY_INTERFACE = "interface"
-	NODE_KEY_PID       = "pid"
-	NODE_KEY_HOST      = "host"
+	NODE_KEY_ID        = "ID"
+	NODE_KEY_TYPE      = "Type"
+	NODE_KEY_INTERFACE = "Interface"
+	NODE_KEY_PID       = "Pid"
+	NODE_KEY_HOST      = "Host"
 )
 
 type NodeEventType int
@@ -43,10 +46,15 @@ type INode interface {
 type Node map[string]string
 
 func NewNode(nodeType string, id uint16) Node {
-	return map[string]string{
+	node := map[string]string{
 		NODE_KEY_TYPE: nodeType,
 		NODE_KEY_ID:   strconv.Itoa(int(id)),
+		NODE_KEY_PID:  strconv.Itoa(os.Getpid()),
 	}
+	if hostname, err := os.Hostname(); err == nil {
+		node[NODE_KEY_HOST] = hostname
+	}
+	return node
 }
 
 // 节点类型
@@ -76,6 +84,16 @@ func (n Node) Get(key string) string {
 
 func (n Node) Set(key, v string) {
 	n[key] = v
+}
+
+func (n Node) String() string {
+	var sb strings.Builder
+	sb.WriteByte('[')
+	for k, v := range n {
+		fmt.Fprintf(&sb, "%s: %v ", k, v)
+	}
+	sb.WriteByte(']')
+	return sb.String()
 }
 
 // 节点列表
@@ -125,17 +143,17 @@ func (m *NodeMap) GetNodes(nodeType string) NodeSet {
 // 添加一个节点
 func (m *NodeMap) InsertNode(node Node) {
 	m.guard.Lock()
+	defer m.guard.Unlock()
+
 	var stype = node.Type()
 	slice := m.nodes[stype]
 	for i, v := range slice {
 		if v.ID() == node.ID() {
 			slice[i] = node
-			m.guard.Unlock()
 			return
 		}
 	}
 	m.nodes[stype] = append(slice, node)
-	m.guard.Unlock()
 }
 
 func (m *NodeMap) Clear() {
@@ -154,6 +172,8 @@ func (m *NodeMap) DeleteNodes(nodeType string) {
 // 删除一个节点
 func (m *NodeMap) DeleteNode(nodeType string, id uint16) {
 	m.guard.Lock()
+	defer m.guard.Unlock()
+
 	slice := m.nodes[nodeType]
 	var idx = -1
 	for i, v := range slice {
@@ -171,5 +191,12 @@ func (m *NodeMap) DeleteNode(nodeType string, id uint16) {
 			delete(m.nodes, nodeType)
 		}
 	}
-	m.guard.Unlock()
+}
+
+func (m *NodeMap) String() string {
+	var sb strings.Builder
+	for name, set := range m.nodes {
+		fmt.Fprintf(&sb, "%s: %v,\n", name, set)
+	}
+	return sb.String()
 }
