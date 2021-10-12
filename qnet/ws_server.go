@@ -13,6 +13,7 @@ import (
 	"github.com/gorilla/websocket"
 	"gopkg.in/qchencc/fatchoy.v1"
 	"gopkg.in/qchencc/fatchoy.v1/log"
+	"gopkg.in/qchencc/fatchoy.v1/x/stats"
 )
 
 // Websocket server
@@ -20,15 +21,15 @@ type WsServer struct {
 	ctx          context.Context
 	cancel       context.CancelFunc
 	server       *http.Server
-	upgrader     *websocket.Upgrader   //
-	pending      chan *WsConn          //
-	errChan      chan error            //
-	inbound      chan fatchoy.IMessage // incoming message queue
-	codecVersion int                   // codec version
-	outsize      int                   // outgoing queue size
+	upgrader     *websocket.Upgrader  //
+	pending      chan *WsConn         //
+	errChan      chan error           //
+	inbound      chan fatchoy.IPacket // incoming message queue
+	codecVersion int                  // codec version
+	outsize      int                  // outgoing queue size
 }
 
-func NewWebsocketServer(parentCtx context.Context, addr, path string, inbound chan fatchoy.IMessage, codecVersion, outsize int) *WsServer {
+func NewWebsocketServer(parentCtx context.Context, addr, path string, inbound chan fatchoy.IPacket, codecVersion, outsize int) *WsServer {
 	ctx, cancel := context.WithCancel(parentCtx)
 	mux := http.NewServeMux()
 	var server = &http.Server{
@@ -65,7 +66,7 @@ func (s *WsServer) onRequest(w http.ResponseWriter, r *http.Request) {
 		log.Errorf("WebSocket upgrade %s, %v", r.RemoteAddr, err)
 		return
 	}
-	wsconn := NewWsConn(r.Context(), 0, s.codecVersion, conn, s.errChan, s.inbound, s.outsize, nil)
+	wsconn := NewWsConn(r.Context(), 0, s.codecVersion, conn, s.errChan, s.inbound, s.outsize, stats.New(NumStat))
 	log.Infof("websocket connection %s established", wsconn.RemoteAddr())
 	defer wsconn.Close()
 	wsconn.Go(true, false)

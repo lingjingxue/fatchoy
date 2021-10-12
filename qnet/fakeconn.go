@@ -28,7 +28,7 @@ func (c *FakeConn) RawConn() net.Conn {
 	return nil
 }
 
-func (c *FakeConn) SendPacket(fatchoy.IMessage) error {
+func (c *FakeConn) SendPacket(fatchoy.IPacket) error {
 	return nil
 }
 

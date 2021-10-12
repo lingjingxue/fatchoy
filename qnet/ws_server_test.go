@@ -61,7 +61,7 @@ func startClient(t *testing.T, addr, path string) {
 func TestWebsocketServer(t *testing.T) {
 	var addr = "localhost:9090"
 	var path = "/example"
-	var incoming = make(chan fatchoy.IMessage, 1000)
+	var incoming = make(chan fatchoy.IPacket, 1000)
 
 	ctx, cancel := context.WithTimeout(context.Background(), time.Minute*5)
 	defer cancel()

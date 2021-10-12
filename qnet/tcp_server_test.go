@@ -56,7 +56,7 @@ func startRawClient(t *testing.T, id int, address string, msgCount int) {
 }
 
 func startMyListener(t *testing.T, address string, sig, done chan struct{}) {
-	var incoming = make(chan fatchoy.IMessage, 100)
+	var incoming = make(chan fatchoy.IPacket, 100)
 	var server = NewTcpServer(context.Background(), incoming, codec.VersionV2, 60)
 	if err := server.Listen(address); err != nil {
 		t.Fatalf("BindTCP: %s %v", address, err)

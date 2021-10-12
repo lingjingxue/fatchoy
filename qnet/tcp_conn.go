@@ -12,7 +12,6 @@ import (
 	"sync/atomic"
 	"time"
 
-	"github.com/pkg/errors"
 	"gopkg.in/qchencc/fatchoy.v1"
 	"gopkg.in/qchencc/fatchoy.v1/codec"
 	"gopkg.in/qchencc/fatchoy.v1/log"
@@ -33,7 +32,7 @@ type TcpConn struct {
 }
 
 func NewTcpConn(parentCtx context.Context, node fatchoy.NodeID, codecVer int, conn net.Conn, errChan chan error,
-	incoming chan<- fatchoy.IMessage, outsize int, stats *stats.Stats) *TcpConn {
+	incoming chan<- fatchoy.IPacket, outsize int, stats *stats.Stats) *TcpConn {
 	tconn := &TcpConn{
 		conn:   conn,
 		reader: bufio.NewReader(conn),
@@ -48,7 +47,7 @@ func (t *TcpConn) RawConn() net.Conn {
 	return t.conn
 }
 
-func (t *TcpConn) OutboundQueue() chan fatchoy.IMessage {
+func (t *TcpConn) OutboundQueue() chan fatchoy.IPacket {
 	return t.outbound
 }
 
@@ -63,7 +62,7 @@ func (t *TcpConn) Go(writer, reader bool) {
 	}
 }
 
-func (t *TcpConn) SendPacket(pkt fatchoy.IMessage) error {
+func (t *TcpConn) SendPacket(pkt fatchoy.IPacket) error {
 	if t.IsClosing() {
 		return ErrConnIsClosing
 	}
@@ -71,8 +70,7 @@ func (t *TcpConn) SendPacket(pkt fatchoy.IMessage) error {
 	case t.outbound <- pkt:
 		return nil
 	default:
-		log.Errorf("TcpConn: message %v ignored due to queue overflow", pkt.Command())
-		return errors.WithStack(ErrConnOutboundOverflow)
+		return ErrConnOutboundOverflow
 	}
 }
 
@@ -127,7 +125,7 @@ func (t *TcpConn) flush() {
 				break
 			}
 			if err := t.writePacket(pkt); err != nil {
-				log.Errorf("write message %v: %v", pkt.Command(), err)
+				log.Errorf("%v flush message %v: %v", t.node, pkt.Command(), err)
 			}
 
 		default:
@@ -136,7 +134,7 @@ func (t *TcpConn) flush() {
 	}
 }
 
-func (t *TcpConn) writePacket(pkt fatchoy.IMessage) error {
+func (t *TcpConn) writePacket(pkt fatchoy.IPacket) error {
 	n, err := codec.Marshal(t.writer, pkt, t.encrypt, t.codecVersion)
 	if err != nil {
 		return err
@@ -165,7 +163,7 @@ func (t *TcpConn) writePump() {
 				return
 			}
 			if err := t.writePacket(pkt); err != nil {
-				log.Errorf("write message %v: %v", pkt.Command, err)
+				log.Errorf("%v write message %v: %v", t.node, pkt.Command(), err)
 			}
 
 		case <-t.ctx.Done():
@@ -174,15 +172,12 @@ func (t *TcpConn) writePump() {
 	}
 }
 
-func (t *TcpConn) readPacket() (fatchoy.IMessage, error) {
+func (t *TcpConn) readPacket() (fatchoy.IPacket, error) {
 	var deadline = time.Now().Add(time.Duration(TConnReadTimeout) * time.Second)
 	t.conn.SetReadDeadline(deadline)
 	var pkt = packet.Make()
 	nbytes, err := codec.Unmarshal(t.reader, pkt, t.decrypt)
 	if err != nil {
-		if err != io.EOF {
-			log.Errorf("read message from node %v: %v", t.node, err)
-		}
 		return pkt, err
 	}
 	t.stats.Add(StatPacketsRecv, 1)
@@ -196,10 +191,14 @@ func (t *TcpConn) readPump() {
 		t.wg.Done()
 		log.Debugf("TcpConn: node %v reader stopped", t.node)
 	}()
+
 	log.Debugf("TcpConn: node %v(%v) reader started", t.node, t.addr)
 	for {
 		pkt, err := t.readPacket()
 		if err != nil {
+			if err != io.EOF {
+				log.Errorf("%v read packet %v", t.node, err)
+			}
 			t.ForceClose(err) // I/O超时或者发生错误，强制关闭连接
 			return
 		}

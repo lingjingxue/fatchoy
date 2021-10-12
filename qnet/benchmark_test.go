@@ -31,7 +31,7 @@ func init() {
 }
 
 func startQPSServer(t *testing.T, address string, ctor, done chan struct{}) {
-	var incoming = make(chan fatchoy.IMessage, totalMessageCount)
+	var incoming = make(chan fatchoy.IPacket, totalMessageCount)
 	var listener = NewTcpServer(context.Background(), incoming, codec.VersionV2, totalMessageCount)
 	if err := listener.Listen(address); err != nil {
 		t.Fatalf("BindTCP: %s %v", address, err)

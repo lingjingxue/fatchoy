@@ -62,7 +62,7 @@ func startMyServer(t *testing.T, ln net.Listener) {
 	}
 }
 
-func tconnReadLoop(errchan chan error, inbound chan fatchoy.IMessage) {
+func tconnReadLoop(errchan chan error, inbound chan fatchoy.IPacket) {
 	for {
 		select {
 		case pkt, ok := <-inbound:
@@ -96,7 +96,7 @@ func TestExampleTcpConn(t *testing.T) {
 		t.Fatalf("Dial: %v", err)
 	}
 	//file, _ := conn.File()
-	inbound := make(chan fatchoy.IMessage, 1000)
+	inbound := make(chan fatchoy.IPacket, 1000)
 	errchan := make(chan error, 4)
 	tconn := NewTcpConn(context.Background(), 0, codec.VersionV2, conn, errchan, inbound, 1000, nil)
 	tconn.SetNodeID(fatchoy.NodeID(0x12345))

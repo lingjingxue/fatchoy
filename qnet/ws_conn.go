@@ -8,12 +8,12 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"fmt"
 	"net"
 	"sync/atomic"
 	"time"
 
 	"github.com/gorilla/websocket"
-	"github.com/pkg/errors"
 	"gopkg.in/qchencc/fatchoy.v1"
 	"gopkg.in/qchencc/fatchoy.v1/codec"
 	"gopkg.in/qchencc/fatchoy.v1/log"
@@ -36,7 +36,7 @@ type WsConn struct {
 }
 
 func NewWsConn(parentCtx context.Context, node fatchoy.NodeID, codecVersion int, conn *websocket.Conn, errChan chan error,
-	incoming chan<- fatchoy.IMessage, outsize int, stat *stats.Stats) *WsConn {
+	incoming chan<- fatchoy.IPacket, outsize int, stat *stats.Stats) *WsConn {
 	wsconn := &WsConn{
 		conn: conn,
 	}
@@ -62,7 +62,7 @@ func (c *WsConn) Go(writer, reader bool) {
 	}
 }
 
-func (c *WsConn) SendPacket(pkt fatchoy.IMessage) error {
+func (c *WsConn) SendPacket(pkt fatchoy.IPacket) error {
 	if c.IsClosing() {
 		return ErrConnIsClosing
 	}
@@ -70,7 +70,6 @@ func (c *WsConn) SendPacket(pkt fatchoy.IMessage) error {
 	case c.outbound <- pkt:
 		return nil
 	default:
-		log.Errorf("message %v ignored due to queue overflow", pkt.Command())
 		return ErrConnOutboundOverflow
 	}
 }
@@ -104,7 +103,7 @@ func (c *WsConn) finally() {
 	c.conn = nil
 }
 
-func (c *WsConn) writePacket(pkt fatchoy.IMessage) error {
+func (c *WsConn) writePacket(pkt fatchoy.IPacket) error {
 	var buf bytes.Buffer
 	var messageType int
 	if (pkt.Type() & fatchoy.PacketTypeJSON) > 0 {
@@ -116,13 +115,11 @@ func (c *WsConn) writePacket(pkt fatchoy.IMessage) error {
 	} else {
 		_, err := codec.Marshal(&buf, pkt, c.encrypt, c.codecVersion)
 		if err != nil {
-			log.Errorf("encode message %v: %v", pkt.Command(), err)
 			return err
 		}
 		messageType = websocket.BinaryMessage
 	}
 	if err := c.conn.WriteMessage(messageType, buf.Bytes()); err != nil {
-		log.Errorf("WsConn: send message %v, %v", pkt.Command(), err)
 		return err
 	}
 	c.stats.Add(StatPacketsSent, 1)
@@ -131,8 +128,11 @@ func (c *WsConn) writePacket(pkt fatchoy.IMessage) error {
 }
 
 func (c *WsConn) writePump() {
-	defer c.wg.Done()
-	defer log.Debugf("node %v writer exit", c.node)
+	defer func() {
+		c.wg.Done()
+		log.Debugf("node %v writer exit", c.node)
+	}()
+
 	log.Debugf("node %v writer started at %v", c.node, c.addr)
 	for {
 		select {
@@ -154,7 +154,7 @@ func (c *WsConn) readLoop() {
 	for {
 		var pkt = packet.Make()
 		if err := c.ReadPacket(pkt); err != nil {
-			log.Errorf("read message: %v", err)
+			log.Errorf("%v read packet: %v", c.node, err)
 			break
 		}
 		pkt.SetEndpoint(c)
@@ -168,7 +168,7 @@ func (c *WsConn) readLoop() {
 }
 
 // Exported API
-func (c *WsConn) ReadPacket(pkt fatchoy.IMessage) error {
+func (c *WsConn) ReadPacket(pkt fatchoy.IPacket) error {
 	c.conn.SetReadDeadline(time.Now().Add(WSConnReadTimeout))
 	msgType, data, err := c.conn.ReadMessage()
 	if err != nil {
@@ -193,12 +193,12 @@ func (c *WsConn) ReadPacket(pkt fatchoy.IMessage) error {
 	case websocket.PingMessage, websocket.PongMessage:
 
 	default:
-		return errors.Errorf("unexpected websock message type %d", msgType)
+		return fmt.Errorf("unexpected websock message type %d", msgType)
 	}
 	return nil
 }
 
 func (c *WsConn) handlePing(data string) error {
-	log.Infof("ping message: %s", data)
+	log.Debugf("ping message: %s", data)
 	return nil
 }
