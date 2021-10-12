@@ -19,7 +19,7 @@ const (
 	EncryptIVLen  = 32
 )
 
-var errInvalidEncrypt = errors.New("invalid encryption param")
+var ErrInvalidEncrypt = errors.New("invalid encryption param")
 
 // 创建加密器
 func CreateCryptor(method string) (cipher.BlockCryptor, error) {
@@ -51,21 +51,21 @@ func DecryptCryptor(method string, encryptedKey, encryptedIV []byte, priKey *rsa
 		return nil, nil
 	}
 	if len(encryptedKey) == 0 || len(encryptedIV) == 0 {
-		return nil, errInvalidEncrypt
+		return nil, ErrInvalidEncrypt
 	}
 	key, err := rsa.DecryptOAEP(sha256.New(), rand.Reader, priKey, encryptedKey, nil)
 	if err != nil {
-		return nil, errors.WithStack(err)
+		return nil, err
 	}
 	iv, err := rsa.DecryptOAEP(sha256.New(), rand.Reader, priKey, encryptedIV, nil)
 	if err != nil {
-		return nil, errors.WithStack(err)
+		return nil, err
 	}
 	decrypt := cipher.NewCrypt(method, key, iv)
 	return decrypt, nil
 }
 
-//
+// 签名
 func SignEncryptSignature(method string, encrypt cipher.BlockCryptor, priKey *rsa.PrivateKey) ([]byte, error) {
 	if method == "" {
 		return nil, nil
@@ -78,7 +78,7 @@ func SignEncryptSignature(method string, encrypt cipher.BlockCryptor, priKey *rs
 	return rsa.SignPSS(rand.Reader, priKey, crypto.SHA256, digest, nil)
 }
 
-//
+// 校验签名
 func VerifyEncryptSignature(method string, signature []byte, encrypt cipher.BlockCryptor, pubKey *rsa.PublicKey) error {
 	if method == "" {
 		return nil
