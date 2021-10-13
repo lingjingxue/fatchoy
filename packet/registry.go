@@ -15,10 +15,6 @@ import (
 	"google.golang.org/protobuf/reflect/protoregistry"
 )
 
-const (
-	PkgName = "pbapi"
-)
-
 var (
 	msgIdNames      = make(map[int32]string)        // 消息ID --> 消息名称
 	msgNameIds      = make(map[string]int32)        // 消息名称 --> 消息ID
@@ -76,8 +72,8 @@ func getMsgIdByExtension(descriptor protoreflect.MessageDescriptor, xtName proto
 }
 
 // 根据消息option指定的ID注册
-func registerByExtension(fd protoreflect.FileDescriptor, xtName protoreflect.FullName) bool {
-	if isWellKnown(fd.Path()) || fd.Package() != PkgName {
+func registerByExtension(fd protoreflect.FileDescriptor, xtName protoreflect.FullName, pkgName string) bool {
+	if isWellKnown(fd.Path()) || string(fd.Package()) != pkgName {
 		return true
 	}
 	log.Printf("register %s %s\n", fd.Package(), fd.Path())
@@ -104,14 +100,16 @@ func registerByExtension(fd protoreflect.FileDescriptor, xtName protoreflect.Ful
 	return true
 }
 
-func RegisterV2(exName string) {
-	fullname := protoreflect.FullName(exName)
+func Register(exName string) {
+	var lastIdx = strings.LastIndexByte(exName, '.')
+	var pkgName = exName[:lastIdx]
+	var fullname = protoreflect.FullName(exName)
 	_, err := protoregistry.GlobalTypes.FindExtensionByName(fullname)
 	if err != nil {
 		log.Panicf("%v", err)
 	}
 	protoregistry.GlobalFiles.RangeFiles(func(fd protoreflect.FileDescriptor) bool {
-		return registerByExtension(fd, fullname)
+		return registerByExtension(fd, fullname, pkgName)
 	})
 	log.Printf("%d messages registered\n", len(msgTypeRegistry))
 }
