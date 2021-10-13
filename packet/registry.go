@@ -25,9 +25,10 @@ var (
 //  1, 请求消息以Req结尾
 //  2, 响应消息以Ack结尾
 //  3, 通知消息以Ntf结尾
+var validNameSuffix = []string{"Req", "Ack", "Ntf"}
+
 func hasValidSuffix(name string) bool {
-	nameSuffix := []string{"Req", "Ack", "Ntf"}
-	for _, suffix := range nameSuffix {
+	for _, suffix := range validNameSuffix {
 		if strings.HasSuffix(name, suffix) {
 			return true
 		}
@@ -35,10 +36,15 @@ func hasValidSuffix(name string) bool {
 	return false
 }
 
+var wellKnownPkg = []string{"google/", "github.com/", "grpc/"}
+
 func isWellKnown(name string) bool {
-	return strings.HasPrefix(name, "google/") ||
-		strings.HasPrefix(name, "github.com/") ||
-		strings.HasPrefix(name, "grpc/")
+	for _, prefix := range wellKnownPkg {
+		if strings.HasPrefix(name, prefix) {
+			return true
+		}
+	}
+	return false
 }
 
 func isNil(c interface{}) bool {
@@ -50,18 +56,18 @@ func isNil(c interface{}) bool {
 
 // 从message的option里获取消息ID
 func getMsgIdByExtension(descriptor protoreflect.MessageDescriptor, xtName protoreflect.FullName) int32 {
-	ovi := descriptor.Options()
+	var ovi = descriptor.Options()
 	if isNil(ovi) {
 		return 0
 	}
-	omi := ovi.ProtoReflect()
+	var omi = ovi.ProtoReflect()
 	var msgId int32
 	omi.Range(func(fd protoreflect.FieldDescriptor, v protoreflect.Value) bool {
 		if !fd.IsExtension() {
 			return true
 		}
 		if fd.FullName() == xtName {
-			ivs := v.String()
+			var ivs = v.String()
 			n, _ := strconv.ParseInt(ivs, 10, 64)
 			msgId = int32(n)
 			return false
@@ -72,44 +78,45 @@ func getMsgIdByExtension(descriptor protoreflect.MessageDescriptor, xtName proto
 }
 
 // 根据消息option指定的ID注册
-func registerByExtension(fd protoreflect.FileDescriptor, xtName protoreflect.FullName, pkgName string) bool {
-	if isWellKnown(fd.Path()) || string(fd.Package()) != pkgName {
+func registerByExtension(fd protoreflect.FileDescriptor, xtName protoreflect.FullName) bool {
+	if isWellKnown(fd.Path()) {
 		return true
 	}
-	log.Printf("register %s %s\n", fd.Package(), fd.Path())
-	msgDescriptors := fd.Messages()
-	for i := 0; i < msgDescriptors.Len(); i++ {
-		descriptor := msgDescriptors.Get(i)
-		fullname := descriptor.FullName()
-		if !hasValidSuffix(string(fullname)) {
+	var descriptors = fd.Messages()
+	for i := 0; i < descriptors.Len(); i++ {
+		var descriptor = descriptors.Get(i)
+		var fullname = string(descriptor.FullName())
+		if !hasValidSuffix(fullname) {
 			continue
 		}
-		name := string(fullname)
-		msgid := getMsgIdByExtension(descriptor, xtName)
-		if msgid == 0 {
+		var msgId = getMsgIdByExtension(descriptor, xtName)
+		if msgId == 0 {
 			continue
 		}
-		rtype := proto.MessageType(string(fullname))
-		if s, found := msgIdNames[msgid]; found {
-			log.Panicf("duplicate message hash %s %s, %d", s, name, msgid)
+		mt, err := protoregistry.GlobalTypes.FindMessageByName(descriptor.FullName())
+		if err != nil {
+			continue
 		}
+		rtype := reflect.TypeOf(proto.MessageV1(mt.Zero().Interface()))
+		if s, found := msgIdNames[msgId]; found {
+			log.Panicf("duplicate message hash %s %s, %d", s, fullname, msgId)
+		}
+		var name = rtype.Elem().String()
 		msgTypeRegistry[name] = rtype.Elem()
-		msgNameIds[name] = msgid
-		msgIdNames[msgid] = name
+		msgNameIds[name] = msgId
+		msgIdNames[msgId] = name
 	}
 	return true
 }
 
-func Register(exName string) {
-	var lastIdx = strings.LastIndexByte(exName, '.')
-	var pkgName = exName[:lastIdx]
+func RegisterMsgID(exName string) {
 	var fullname = protoreflect.FullName(exName)
 	_, err := protoregistry.GlobalTypes.FindExtensionByName(fullname)
 	if err != nil {
 		log.Panicf("%v", err)
 	}
 	protoregistry.GlobalFiles.RangeFiles(func(fd protoreflect.FileDescriptor) bool {
-		return registerByExtension(fd, fullname, pkgName)
+		return registerByExtension(fd, fullname)
 	})
 	log.Printf("%d messages registered\n", len(msgTypeRegistry))
 }
@@ -133,23 +140,35 @@ func CreateMessageByID(msgId int32) proto.Message {
 
 // 根据message获取消息ID
 func GetMessageIDOf(msg proto.Message) int32 {
-	rtype := reflect.TypeOf(msg)
-	fullname := rtype.String()
-	if fullname == "" {
-		return 0
-	}
-	for fullname[0] == '*' {
-		fullname = fullname[1:]
-	}
+	var rtype = reflect.TypeOf(msg).Elem()
+	var fullname = rtype.String()
 	return msgNameIds[fullname]
 }
 
-// 根据Req消息的ID，返回其对应的Ack消息ID
-func GetPairingAckID(reqId int32) int32 {
-	var reqName = msgIdNames[reqId]
-	if !strings.HasSuffix(reqName, "Req") {
-		return 0
+func GetMessageIDByName(msgName string) int32 {
+	return msgNameIds[msgName]
+}
+
+// 根据Req消息的名称，返回其对应的Ack消息名称
+func GetPairingAckName(reqName string) string {
+	if strings.HasSuffix(reqName, "Req") {
+		return reqName[:len(reqName)-3] + "Ack"
 	}
-	var ackName = reqName[:len(reqName)-3] + "Ack"
-	return msgNameIds[ackName]
+	return ""
+}
+
+// 如果消息的名字是XXXReq，则尝试创建与其名称对应的XXXAck消息
+func CreatePairingAckBy(reqName string) proto.Message {
+	var ackName = GetPairingAckName(reqName)
+	if ackName != "" {
+		return CreateMessageByName(ackName)
+	}
+	return nil
+}
+
+// 如果消息的名字是XXXReq，则尝试创建与其名称对应的XXXAck消息
+func CreatePairingAck(req proto.Message) proto.Message {
+	var rtype = reflect.TypeOf(req).Elem()
+	var fullname = rtype.String()
+	return CreatePairingAckBy(fullname)
 }

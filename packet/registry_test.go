@@ -9,5 +9,5 @@ import (
 )
 
 func TestRegister(t *testing.T) {
-	Register("api.constpb.bind_id")
+	RegisterMsgID("api.constpb.bind_id")
 }
