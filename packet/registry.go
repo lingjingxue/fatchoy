@@ -172,3 +172,13 @@ func CreatePairingAck(req proto.Message) proto.Message {
 	var fullname = rtype.String()
 	return CreatePairingAckBy(fullname)
 }
+
+// 根据Req消息的ID，返回其对应的Ack消息ID
+func GetPairingAckID(reqId int32) int32 {
+	var reqName = msgIdNames[reqId]
+	if reqName != "" {
+		var ackName = GetPairingAckName(reqName)
+		return msgNameIds[ackName]
+	}
+	return 0
+}

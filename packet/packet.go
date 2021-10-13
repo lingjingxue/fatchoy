@@ -125,9 +125,6 @@ func (m *Packet) ReplyCommand(command int32, ack proto.Message) error {
 // 响应proto消息内容
 func (m *Packet) Reply(ack proto.Message) error {
 	var mid = GetMessageIDOf(ack)
-	if mid == 0 {
-		return fmt.Errorf("message ID of %T not found", ack)
-	}
 	return m.ReplyCommand(mid, ack)
 }
 
@@ -146,6 +143,9 @@ func (m *Packet) ReplyBytes(command int32, b []byte) error {
 // 返回一个错误码消息
 func (m *Packet) Refuse(errno int32) error {
 	var ackMsgId = GetPairingAckID(m.Cmd)
+	if ackMsgId == 0 {
+		ackMsgId = m.Cmd
+	}
 	return m.RefuseCommand(ackMsgId, errno)
 }
 
