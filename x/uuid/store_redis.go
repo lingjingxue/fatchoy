@@ -23,7 +23,7 @@ type RedisStore struct {
 	key    string          // 使用的key
 	ctx    context.Context // context对象
 	client *redis.Client   //
-	last   int64           // 保存最近一次生成的ID
+	lastId int64           // 保存最近一次生成的ID
 }
 
 func NewRedisStore(ctx context.Context, addr, key string) Storage {
@@ -31,7 +31,7 @@ func NewRedisStore(ctx context.Context, addr, key string) Storage {
 		Addr:         addr,
 		DialTimeout:  5 * time.Second,
 		ReadTimeout:  7 * time.Second,
-		WriteTimeout: 5 * time.Second,
+		WriteTimeout: time.Second * OpTimeout,
 		PoolTimeout:  10 * time.Second,
 		PoolSize:     3,
 		MaxRetries:   3,
@@ -49,8 +49,9 @@ func NewRedisStore(ctx context.Context, addr, key string) Storage {
 
 func (s *RedisStore) Close() error {
 	if s.client != nil {
-		s.client.Close()
+		err := s.client.Close()
 		s.client = nil
+		return err
 	}
 	return nil
 }
@@ -60,17 +61,17 @@ func (s *RedisStore) Incr() (int64, error) {
 	if err != nil {
 		return 0, err
 	}
-	if s.last != 0 && s.last >= cnt {
+	if s.lastId != 0 && s.lastId >= cnt {
 		return 0, ErrIDOutOfRange
 	}
-	s.last = cnt
+	s.lastId = cnt
 	return cnt, nil
 }
 
 func (s *RedisStore) doIncr() (int64, error) {
 	counter, err := s.client.Do(s.ctx, "INCR", s.key).Int64()
-	if err == nil {
-		return counter, nil
+	if err != nil {
+		return 0, err
 	}
-	return 0, err
+	return counter, nil
 }

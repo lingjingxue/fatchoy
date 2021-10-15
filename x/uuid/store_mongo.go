@@ -26,13 +26,13 @@ type Counter struct {
 }
 
 type MongoStore struct {
-	uri   string          // 连接uri
-	db    string          // DB名称
-	label string          // 识别符
-	step  int32           // ID递增步长
-	ctx   context.Context // context对象
-	cli   *mongo.Client   //
-	last  int64           // 保存最近一次生成的ID
+	uri    string          // 连接uri
+	db     string          // DB名称
+	label  string          // 识别符
+	step   int32           // ID递增步长
+	ctx    context.Context // context对象
+	cli    *mongo.Client   //
+	lastId int64           // 保存最近一次生成的ID
 }
 
 func NewMongoDBStore(ctx context.Context, uri, db, label string, step int32) Storage {
@@ -53,7 +53,7 @@ func NewMongoDBStore(ctx context.Context, uri, db, label string, step int32) Sto
 }
 
 func (s *MongoStore) makeClient() error {
-	ctx, cancel := context.WithTimeout(s.ctx, time.Second*5)
+	ctx, cancel := context.WithTimeout(s.ctx, time.Second*OpTimeout)
 	defer cancel()
 
 	clientOpts := options.Client().ApplyURI(s.uri)
@@ -80,17 +80,17 @@ func (s *MongoStore) Incr() (int64, error) {
 	}
 
 	// 最多3秒延迟
-	ctx, cancel := context.WithTimeout(s.ctx, time.Second*300)
+	ctx, cancel := context.WithTimeout(s.ctx, time.Second*OpTimeout)
 	defer cancel()
 
 	// 把counter自增再读取最新的counter
 	if err := s.incrementAndLoad(ctx, ctr); err != nil {
 		return 0, err
 	}
-	if s.last != 0 && s.last >= ctr.Count {
+	if s.lastId != 0 && s.lastId >= ctr.Count {
 		return 0, ErrIDOutOfRange
 	}
-	s.last = ctr.Count
+	s.lastId = ctr.Count
 	return ctr.Count, nil
 }
 

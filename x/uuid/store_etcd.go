@@ -19,10 +19,10 @@ var (
 
 // 使用etcd的key的版本号自增实现
 type EtcdStore struct {
-	key  string           // 使用的key
-	last int64            // 保存最近一次生成的ID
-	ctx  context.Context  // context对象
-	cli  *clientv3.Client //
+	key    string           // 使用的key
+	lastId int64            // 保存最近一次生成的ID
+	ctx    context.Context  // context对象
+	cli    *clientv3.Client //
 }
 
 func NewEtcdStore(ctx context.Context, cli *clientv3.Client, key string) Storage {
@@ -42,10 +42,10 @@ func (s *EtcdStore) Incr() (int64, error) {
 	if err != nil {
 		return 0, err
 	}
-	if s.last != 0 && s.last >= rev {
+	if s.lastId != 0 && s.lastId >= rev {
 		return 0, ErrIDOutOfRange
 	}
-	s.last = rev
+	s.lastId = rev
 	return rev, nil
 }
 
@@ -54,16 +54,18 @@ func (s *EtcdStore) doIncr() (int64, error) {
 	if err != nil {
 		return 0, err
 	}
+	// 没有prevKv表明还没有set过这个key，使用初始版本号1
 	if resp.PrevKv == nil {
 		return 1, nil
 	}
-	rev := resp.PrevKv.Version // version of the key
+	// 否则使用版本号+1
+	rev := resp.PrevKv.Version
 	return rev + 1, nil
 }
 
 func (s *EtcdStore) putKey() (*clientv3.PutResponse, error) {
 	// 最多3秒延迟
-	ctx, cancel := context.WithTimeout(s.ctx, time.Second*3)
+	ctx, cancel := context.WithTimeout(s.ctx, time.Second*OpTimeout)
 	defer cancel()
 
 	// key的value暂时设置为时间戳

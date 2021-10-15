@@ -16,7 +16,7 @@ func createMongoStore(label string) Storage {
 	db := "testdb"
 	username := "admin"
 	password := "cuKpVrfZzUvg"
-	uri := fmt.Sprintf("mongodb://%s:%s@192.168.132.129:27017/?connect=direct", username, password)
+	uri := fmt.Sprintf("mongodb://%s:%s@127.0.0.1:27017/?connect=direct", username, password)
 	return NewMongoDBStore(context.Background(), uri, db, label, DefaultSeqStep)
 }
 
@@ -38,10 +38,10 @@ func TestMongoStoreExample(t *testing.T) {
 		}
 		ids = append(ids, id)
 	}
-	var elapsed = time.Now().Sub(start).Seconds()
+	var elapsed = time.Since(start).Seconds()
 	t.Logf("QPS %.2f/s", float64(count)/elapsed)
 	// Output:
-	//    QPS 5282.06/s
+	//    QPS 4910.91/s
 }
 
 // N个并发worker，每个worker单独连接, 测试生成id的一致性
@@ -49,8 +49,8 @@ func TestMongoStoreDistributed(t *testing.T) {
 	var (
 		wg      sync.WaitGroup
 		guard   sync.Mutex
-		gcnt    = 1
-		eachMax = 1000
+		gcnt    = 10
+		eachMax = 10000
 		m       = make(map[int64]int, 10000)
 	)
 	var start = time.Now()
@@ -64,10 +64,10 @@ func TestMongoStoreDistributed(t *testing.T) {
 		go runIDWorker(i, ctx, t)
 	}
 	wg.Wait()
-	var elapsed = time.Now().Sub(start).Seconds()
+	var elapsed = time.Since(start).Seconds()
 	if !t.Failed() {
 		t.Logf("QPS %.2f/s", float64(gcnt*eachMax)/elapsed)
 	}
 	// Output:
-	//  QPS 4998.85/s
+	//  QPS 16647.61/s
 }

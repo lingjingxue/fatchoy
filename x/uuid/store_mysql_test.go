@@ -1,4 +1,4 @@
-// Copyright © 2020 ichenq@outlook.com All rights reserved.
+// Copyright © 2020-present ichenq@outlook.com All rights reserved.
 // Distributed under the terms and conditions of the BSD License.
 // See accompanying files LICENSE.
 
@@ -6,75 +6,57 @@ package uuid
 
 import (
 	"context"
-	"log"
 	"sync"
 	"testing"
 	"time"
-
-	"go.etcd.io/etcd/clientv3"
 )
 
-var (
-	etcdAddr = "192.168.132.129:2379"
-)
+var mysqlDSN = "root:HuppusoxOzs@tcp(127.0.0.1:3306)/testdb"
 
-func createEtcdClient() *clientv3.Client {
-	client, err := clientv3.New(clientv3.Config{
-		Endpoints:   []string{etcdAddr},
-		DialTimeout: time.Second * TimeoutSec,
-	})
-	if err != nil {
-		log.Panicf("cannot connect etcd: %v", err)
-	}
-	return client
+func createMySQLStore(label string) Storage {
+	return NewMySQLStore(context.Background(), mysqlDSN, "uuid", label, 2000)
 }
 
-func TestEtcdStoreExample(t *testing.T) {
-	cli := createEtcdClient()
-	var store = NewEtcdStore(context.Background(), cli, "/uuid/ctr001")
-
+func TestMySQLStoreExample(t *testing.T) {
+	var store = createMySQLStore("uuid_test1")
+	defer store.Close()
 	var (
 		count = 10000
 		ids   []int64
-		m     = make(map[int64]bool)
+		rkeys = make(map[int64]bool)
 	)
 	var start = time.Now()
 	for i := 0; i < count; i++ {
 		id, err := store.Incr()
 		if err != nil {
-			t.Fatalf("cannot incr %v", err)
+			t.Fatalf("incr failure: %v", err)
 		}
-		if _, found := m[id]; found {
+		if _, found := rkeys[id]; found {
 			t.Fatalf("duplicate id %d", id)
 		}
+		rkeys[id] = true
 		ids = append(ids, id)
 	}
 	var elapsed = time.Since(start).Seconds()
 	t.Logf("QPS %.2f/s", float64(count)/elapsed)
 	// Output:
-	//    QPS 2619.06/s
-}
-
-func createEtcdStore(key string, t *testing.T) Storage {
-	cli := createEtcdClient()
-	var store = NewEtcdStore(context.Background(), cli, key)
-	return store
+	//  QPS 918.53/s
 }
 
 // N个并发worker，每个worker单独连接, 测试生成id的一致性
-func TestEtcdStoreDistributed(t *testing.T) {
+func TestMySQLStoreDistributed(t *testing.T) {
 	var (
 		wg      sync.WaitGroup
 		guard   sync.Mutex
-		gcnt    = 1
-		eachMax = 1000
+		gcnt    = 10
+		eachMax = 10000
 		m       = make(map[int64]int, 10000)
 	)
 	var start = time.Now()
 	for i := 1; i <= gcnt; i++ {
 		ctx := newWorkerContext(&wg, &guard, m, eachMax)
 		ctx.idGenCreator = func() IDGenerator {
-			store := createEtcdStore("uuid:ctr003", t)
+			store := createMySQLStore("distribute_uid2")
 			return NewStorageGen(store)
 		}
 		wg.Add(1)
@@ -86,5 +68,5 @@ func TestEtcdStoreDistributed(t *testing.T) {
 		t.Logf("QPS %.2f/s", float64(gcnt*eachMax)/elapsed)
 	}
 	// Output:
-	//  QPS 2552.59/s
+	//  QPS 1070.08/s
 }

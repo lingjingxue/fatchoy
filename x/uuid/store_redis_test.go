@@ -14,7 +14,7 @@ import (
 )
 
 var (
-	redisAddr = "192.168.132.129:6379"
+	redisAddr = "127.0.0.1:6379"
 )
 
 func createRedisStore(key string, t *testing.T) Storage {
@@ -42,10 +42,10 @@ func TestRedisStoreExample(t *testing.T) {
 		rkeys[id] = true
 		ids = append(ids, id)
 	}
-	var elapsed = time.Now().Sub(start).Seconds()
+	var elapsed = time.Since(start).Seconds()
 	t.Logf("QPS %.2f/s", float64(count)/elapsed)
 	// Output:
-	//  QPS 30526.92/s
+	//  QPS 26100.72/s
 }
 
 // N个并发worker，每个worker单独连接, 测试生成id的一致性
@@ -53,7 +53,7 @@ func TestRedisStoreDistributed(t *testing.T) {
 	var (
 		wg      sync.WaitGroup
 		guard   sync.Mutex
-		gcnt    = 20
+		gcnt    = 10
 		eachMax = 100000
 		m       = make(map[int64]int, 10000)
 	)
@@ -61,17 +61,17 @@ func TestRedisStoreDistributed(t *testing.T) {
 	for i := 0; i <= gcnt; i++ {
 		ctx := newWorkerContext(&wg, &guard, m, eachMax)
 		ctx.idGenCreator = func() IDGenerator {
-			store := createRedisStore("uuid:cnt3", t)
+			store := createRedisStore("/uuid:cnt3", t)
 			return NewStorageGen(store)
 		}
 		wg.Add(1)
 		go runIDWorker(i, ctx, t)
 	}
 	wg.Wait()
-	var elapsed = time.Now().Sub(start).Seconds()
+	var elapsed = time.Since(start).Seconds()
 	if !t.Failed() {
 		t.Logf("QPS %.2f/s", float64(gcnt*eachMax)/elapsed)
 	}
 	// Output:
-	//  QPS 75249.02/s
+	//  QPS 38445.02/s
 }
