@@ -5,11 +5,11 @@
 package uuid
 
 import (
+	"context"
 	"log"
-	"net"
 	"time"
 
-	"github.com/gomodule/redigo/redis"
+	"github.com/go-redis/redis/v8"
 )
 
 const (
@@ -19,81 +19,58 @@ const (
 
 // 使用redis INCR命令实现
 type RedisStore struct {
-	addr string     // redis服务器地址
-	key  string     //
-	conn redis.Conn //
+	addr   string          // redis服务器地址
+	key    string          // 使用的key
+	ctx    context.Context // context对象
+	client *redis.Client   //
+	last   int64           // 保存最近一次生成的ID
 }
 
-func NewRedisStore(addr, key string) Storage {
-	store := &RedisStore{
-		addr: addr,
-		key:  key,
-	}
-	if err := store.createConn(TimeoutSec); err != nil {
+func NewRedisStore(ctx context.Context, addr, key string) Storage {
+	var client = redis.NewClient(&redis.Options{
+		Addr:         addr,
+		DialTimeout:  5 * time.Second,
+		ReadTimeout:  7 * time.Second,
+		WriteTimeout: 5 * time.Second,
+		PoolTimeout:  10 * time.Second,
+		PoolSize:     3,
+		MaxRetries:   3,
+	})
+	if err := client.Ping(ctx).Err(); err != nil {
 		log.Panicf("%v", err)
 	}
-	return store
+	return &RedisStore{
+		ctx:    ctx,
+		addr:   addr,
+		key:    key,
+		client: client,
+	}
 }
 
 func (s *RedisStore) Close() error {
-	if s.conn != nil {
-		s.conn.Close()
-		s.conn = nil
+	if s.client != nil {
+		s.client.Close()
+		s.client = nil
 	}
-	return nil
-}
-
-func (s *RedisStore) createConn(timeout int32) error {
-	conn, err := redis.Dial("tcp", s.addr,
-		redis.DialConnectTimeout(time.Second*time.Duration(timeout)),
-		redis.DialReadTimeout(time.Second*TimeoutSec),
-		redis.DialWriteTimeout(time.Second*TimeoutSec),
-	)
-	if err != nil {
-		return err
-	}
-	pong, err := redis.String(conn.Do("PING"))
-	if err != nil || pong != "PONG" {
-		return err
-	}
-	if s.conn != nil {
-		s.conn.Close()
-		s.conn = nil
-	}
-	s.conn = conn
 	return nil
 }
 
 func (s *RedisStore) Incr() (int64, error) {
-	counter, err := s.doIncr(MaxRetry)
+	cnt, err := s.doIncr()
 	if err != nil {
 		return 0, err
 	}
-	return counter, nil
+	if s.last != 0 && s.last >= cnt {
+		return 0, ErrIDOutOfRange
+	}
+	s.last = cnt
+	return cnt, nil
 }
 
-func (s *RedisStore) doIncr(retry int) (int64, error) {
-	counter, err := redis.Int64(s.conn.Do("INCR", s.key))
+func (s *RedisStore) doIncr() (int64, error) {
+	counter, err := s.client.Do(s.ctx, "INCR", s.key).Int64()
 	if err == nil {
 		return counter, nil
 	}
-	if retry == 0 {
-		return 0, err
-	}
-	if er, ok := err.(*net.OpError); ok {
-		if e := s.tryReconnect(er); e == nil {
-			return s.doIncr(retry - 1)
-		}
-	}
 	return 0, err
-}
-
-func (s *RedisStore) tryReconnect(err *net.OpError) error {
-	if err.Op == "write" || err.Op == "read" {
-		if er := s.createConn(TimeoutSec); er != nil {
-			return er
-		}
-		return nil
-	}
-	return err
 }

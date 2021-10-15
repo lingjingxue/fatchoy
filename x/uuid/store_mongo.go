@@ -6,6 +6,7 @@ package uuid
 
 import (
 	"context"
+	"log"
 	"time"
 
 	"go.mongodb.org/mongo-driver/bson"
@@ -25,45 +26,72 @@ type Counter struct {
 }
 
 type MongoStore struct {
-	cli       *mongo.Client
-	parentCtx context.Context
-	db        string
-	label     string
-	step      int32
+	uri   string          // 连接uri
+	db    string          // DB名称
+	label string          // 识别符
+	step  int32           // ID递增步长
+	ctx   context.Context // context对象
+	cli   *mongo.Client   //
+	last  int64           // 保存最近一次生成的ID
 }
 
-func NewMongoDBStore(cli *mongo.Client, ctx context.Context, db, label string, step int32) Storage {
-	if ctx == nil {
-		ctx = context.TODO()
-	}
+func NewMongoDBStore(ctx context.Context, uri, db, label string, step int32) Storage {
 	if step <= 0 {
 		step = DefaultSeqStep
 	}
-	return &MongoStore{
-		cli:       cli,
-		parentCtx: ctx,
-		db:        db,
-		label:     label,
-		step:      step,
+	store := &MongoStore{
+		ctx:   ctx,
+		uri:   uri,
+		db:    db,
+		label: label,
+		step:  step,
 	}
+	if err := store.makeClient(); err != nil {
+		log.Panicf("%v", err)
+	}
+	return store
+}
+
+func (s *MongoStore) makeClient() error {
+	ctx, cancel := context.WithTimeout(s.ctx, time.Second*5)
+	defer cancel()
+
+	clientOpts := options.Client().ApplyURI(s.uri)
+	client, err := mongo.Connect(ctx, clientOpts)
+	if err != nil {
+		return err
+	}
+	if err = client.Ping(ctx, nil); err != nil {
+		return err
+	}
+	s.cli = client
+	return nil
 }
 
 func (s *MongoStore) Close() error {
+	s.cli = nil
 	return nil
 }
 
 func (s *MongoStore) Incr() (int64, error) {
-	var counter = &Counter{
+	var ctr = &Counter{
 		Label: s.label,
 		Step:  s.step,
 	}
-	ctx, cancel := context.WithTimeout(s.parentCtx, time.Second*2)
+
+	// 最多3秒延迟
+	ctx, cancel := context.WithTimeout(s.ctx, time.Second*300)
 	defer cancel()
+
 	// 把counter自增再读取最新的counter
-	if err := s.incrementAndLoad(ctx, counter); err != nil {
+	if err := s.incrementAndLoad(ctx, ctr); err != nil {
 		return 0, err
 	}
-	return counter.Count, nil
+	if s.last != 0 && s.last >= ctr.Count {
+		return 0, ErrIDOutOfRange
+	}
+	s.last = ctr.Count
+	return ctr.Count, nil
 }
 
 // 把counter自增再读取最新的counter

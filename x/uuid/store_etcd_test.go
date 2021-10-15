@@ -5,6 +5,7 @@
 package uuid
 
 import (
+	"context"
 	"log"
 	"sync"
 	"testing"
@@ -14,7 +15,7 @@ import (
 )
 
 var (
-	etcdAddr = "127.0.0.1:2379"
+	etcdAddr = "192.168.132.129:2379"
 )
 
 func createEtcdClient() *clientv3.Client {
@@ -30,7 +31,7 @@ func createEtcdClient() *clientv3.Client {
 
 func TestEtcdStoreExample(t *testing.T) {
 	cli := createEtcdClient()
-	var store = NewEtcdStore(cli, "/uuid/ctr001")
+	var store = NewEtcdStore(context.Background(), cli, "/uuid/ctr001")
 
 	var (
 		count = 10000
@@ -56,7 +57,7 @@ func TestEtcdStoreExample(t *testing.T) {
 
 func createEtcdStore(key string, t *testing.T) Storage {
 	cli := createEtcdClient()
-	var store = NewEtcdStore(cli, key)
+	var store = NewEtcdStore(context.Background(), cli, key)
 	return store
 }
 

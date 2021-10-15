@@ -5,6 +5,7 @@
 package uuid
 
 import (
+	"context"
 	"sync"
 	"testing"
 	"time"
@@ -12,7 +13,7 @@ import (
 
 func TestSeqIDEtcdSimple(t *testing.T) {
 	cli := createEtcdClient()
-	var store = NewEtcdStore(cli, "/uuid/ctr101")
+	var store = NewEtcdStore(context.Background(), cli, "/uuid/ctr101")
 	var seq = NewSeqID(store, 2000)
 	if err := seq.Init(); err != nil {
 		t.Fatalf("Init: %v", err)
@@ -35,7 +36,7 @@ func TestSeqIDEtcdSimple(t *testing.T) {
 
 func createEtcdIDGen(key string, t *testing.T) IDGenerator {
 	cli := createEtcdClient()
-	var store = NewEtcdStore(cli, key)
+	var store = NewEtcdStore(context.Background(), cli, key)
 	var seq = NewSeqID(store, 2000)
 	if err := seq.Init(); err != nil {
 		t.Fatalf("Init: %v", err)
@@ -105,7 +106,7 @@ func TestSeqIDEtcdDistributed(t *testing.T) {
 }
 
 func TestSeqIDRedis(t *testing.T) {
-	var store = NewRedisStore(redisAddr, "uuid:ctr101")
+	var store = NewRedisStore(context.Background(), redisAddr, "uuid:ctr101")
 	var seq = NewSeqID(store, 2000)
 	if err := seq.Init(); err != nil {
 		t.Fatalf("Init: %v", err)
@@ -127,7 +128,7 @@ func TestSeqIDRedis(t *testing.T) {
 }
 
 func createRedisIDGen(key string, t *testing.T) IDGenerator {
-	var store = NewRedisStore(redisAddr, key)
+	var store = NewRedisStore(context.Background(), redisAddr, key)
 	var seq = NewSeqID(store, 2000)
 	if err := seq.Init(); err != nil {
 		t.Fatalf("Init: %v", err)

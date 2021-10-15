@@ -7,35 +7,17 @@ package uuid
 import (
 	"context"
 	"fmt"
-	"log"
 	"sync"
 	"testing"
 	"time"
-
-	"go.mongodb.org/mongo-driver/mongo"
-	"go.mongodb.org/mongo-driver/mongo/options"
 )
-
-func createTestDBConn() *mongo.Client {
-	username := "admin"
-	password := "cuKpVrfZzUvg"
-	uri := fmt.Sprintf("mongodb://%s:%s@127.0.0.1:27017/?connect=direct", username, password)
-
-	clientOpts := options.Client().ApplyURI(uri)
-	client, err := mongo.Connect(context.TODO(), clientOpts)
-	if err != nil {
-		log.Panicf("%v", err)
-	}
-	if err = client.Ping(context.TODO(), nil); err != nil {
-		log.Panicf("%v", err)
-	}
-	return client
-}
 
 func createMongoStore(label string) Storage {
 	db := "testdb"
-	cli := createTestDBConn()
-	return NewMongoDBStore(cli, context.TODO(), db, label, DefaultSeqStep)
+	username := "admin"
+	password := "cuKpVrfZzUvg"
+	uri := fmt.Sprintf("mongodb://%s:%s@192.168.132.129:27017/?connect=direct", username, password)
+	return NewMongoDBStore(context.Background(), uri, db, label, DefaultSeqStep)
 }
 
 func TestMongoStoreExample(t *testing.T) {

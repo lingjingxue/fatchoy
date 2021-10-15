@@ -6,8 +6,6 @@ package uuid
 
 import (
 	"fmt"
-	"math/rand"
-	"os"
 	"testing"
 )
 
@@ -36,19 +34,4 @@ func TestExampleParseHex(t *testing.T) {
 		return
 	}
 	fmt.Println(u)
-}
-
-func TestExampleUUID(t *testing.T) {
-	rand.Seed(int64(os.Getpid()))
-	var store = NewRedisStore("127.0.0.1:6379", "uuid")
-	Init(1234, store)
-	for i := 0; i < 5; i++ {
-		var uid = NextID()
-		var uuid = NextUUID()
-		t.Logf("uuid short: %v", uid)
-		t.Logf("uuid full: %v", uuid)
-	}
-	for i := 0; i < 2*DefaultSeqStep; i++ {
-		NextID()
-	}
 }

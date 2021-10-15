@@ -7,22 +7,23 @@
 package uuid
 
 import (
+	"context"
 	"sync"
 	"testing"
 	"time"
 )
 
 var (
-	redisAddr = "localhost:6379"
+	redisAddr = "192.168.132.129:6379"
 )
 
 func createRedisStore(key string, t *testing.T) Storage {
-	var store = NewRedisStore(redisAddr, key)
+	var store = NewRedisStore(context.Background(), redisAddr, key)
 	return store
 }
 
 func TestRedisStoreExample(t *testing.T) {
-	var store = NewRedisStore(redisAddr, "uuid/cnt1")
+	var store = NewRedisStore(context.Background(), redisAddr, "/uuid/cnt1")
 	defer store.Close()
 	var (
 		count = 100000
