@@ -51,12 +51,12 @@ func (t *TcpConn) OutboundQueue() chan fatchoy.IPacket {
 	return t.outbound
 }
 
-func (t *TcpConn) Go(writer, reader bool) {
-	if writer {
+func (t *TcpConn) Go(flag fatchoy.EndpointFlag) {
+	if (flag & fatchoy.EndpointWriter) > 0 {
 		t.wg.Add(1)
 		go t.writePump()
 	}
-	if reader {
+	if (flag & fatchoy.EndpointReader) > 0 {
 		t.wg.Add(1)
 		go t.readPump()
 	}

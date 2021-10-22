@@ -28,7 +28,7 @@ func handleConn(conn net.Conn) {
 	var count = 0
 	var ctx = context.Background()
 	tconn := NewTcpConn(ctx, 0, codec.VersionV2, conn, nil, nil, 1000, nil)
-	tconn.Go(true, false)
+	tconn.Go(fatchoy.EndpointWriter)
 	defer tconn.Close()
 	for {
 		conn.SetReadDeadline(time.Now().Add(time.Minute))
@@ -100,7 +100,7 @@ func TestExampleTcpConn(t *testing.T) {
 	errchan := make(chan error, 4)
 	tconn := NewTcpConn(context.Background(), 0, codec.VersionV2, conn, errchan, inbound, 1000, nil)
 	tconn.SetNodeID(fatchoy.NodeID(0x12345))
-	tconn.Go(true, true)
+	tconn.Go(fatchoy.EndpointReadWriter)
 	defer tconn.Close()
 	stats := tconn.Stats()
 	var pkt = packet.Make()

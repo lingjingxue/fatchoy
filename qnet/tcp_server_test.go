@@ -77,7 +77,7 @@ func startMyListener(t *testing.T, address string, sig, done chan struct{}) {
 			// fmt.Printf("endpoint %v connected\n", addr)
 			autoId++
 			endpoint.SetNodeID(fatchoy.NodeID(autoId))
-			endpoint.Go(true, true)
+			endpoint.Go(fatchoy.EndpointReader)
 
 		case err := <-server.ErrorChan():
 			// handle connection error

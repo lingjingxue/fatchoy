@@ -12,6 +12,14 @@ import (
 	"gopkg.in/qchencc/fatchoy.v1/x/stats"
 )
 
+type EndpointFlag uint32
+
+const (
+	EndpointReader     EndpointFlag = 0x01
+	EndpointWriter     EndpointFlag = 0x02
+	EndpointReadWriter EndpointFlag = 0x03
+)
+
 type MessageEndpoint interface {
 	NodeID() NodeID
 	SetNodeID(NodeID)
@@ -36,7 +44,7 @@ type Endpoint interface {
 	RawConn() net.Conn
 	Stats() *stats.Stats
 
-	Go(write, read bool)
+	Go(EndpointFlag)
 
 	// 加密解密
 	SetEncryptPair(cipher.BlockCryptor, cipher.BlockCryptor)

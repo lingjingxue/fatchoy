@@ -12,9 +12,6 @@ import (
 )
 
 const (
-	CHEAP_PREPEND_SIZE = 8
-	INIT_BUFF_SIZE     = 56
-
 	is64Bit = uint64(^uintptr(0)) == ^uint64(0)
 )
 

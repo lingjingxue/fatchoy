@@ -32,7 +32,7 @@ func (c *FakeConn) SendPacket(fatchoy.IPacket) error {
 	return nil
 }
 
-func (c *FakeConn) Go(bool, bool) {
+func (c *FakeConn) Go(flag fatchoy.EndpointFlag) {
 }
 
 func (c *FakeConn) Close() error {

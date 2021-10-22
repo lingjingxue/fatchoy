@@ -44,7 +44,7 @@ func startQPSServer(t *testing.T, address string, ctor, done chan struct{}) {
 		select {
 		case endpoint := <-listener.BacklogChan():
 			endpoint.SetNodeID(fatchoy.NodeID(autoId))
-			endpoint.Go(true, true)
+			endpoint.Go(fatchoy.EndpointReadWriter)
 			autoId++
 
 		case err := <-listener.ErrorChan():

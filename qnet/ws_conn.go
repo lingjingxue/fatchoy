@@ -51,12 +51,12 @@ func (c *WsConn) RawConn() net.Conn {
 	return c.conn.UnderlyingConn()
 }
 
-func (c *WsConn) Go(writer, reader bool) {
-	if writer {
+func (c *WsConn) Go(flag fatchoy.EndpointFlag) {
+	if (flag & fatchoy.EndpointWriter) > 0 {
 		c.wg.Add(1)
 		go c.writePump()
 	}
-	if reader {
+	if (flag & fatchoy.EndpointWriter) > 0 {
 		c.wg.Add(1)
 		go c.readLoop()
 	}

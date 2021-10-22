@@ -69,7 +69,7 @@ func (s *WsServer) onRequest(w http.ResponseWriter, r *http.Request) {
 	wsconn := NewWsConn(r.Context(), 0, s.codecVersion, conn, s.errChan, s.inbound, s.outsize, stats.New(NumStat))
 	log.Infof("websocket connection %s established", wsconn.RemoteAddr())
 	defer wsconn.Close()
-	wsconn.Go(true, false)
+	wsconn.Go(fatchoy.EndpointWriter)
 	wsconn.readLoop()
 }
 
