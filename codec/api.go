@@ -7,6 +7,8 @@ package codec
 import (
 	"fmt"
 	"io"
+	"os"
+	"strconv"
 
 	"gopkg.in/qchencc/fatchoy.v1"
 	"gopkg.in/qchencc/fatchoy.v1/x/cipher"
@@ -44,5 +46,18 @@ func Unmarshal(r io.Reader, pkt fatchoy.IPacket, decrypt cipher.BlockCryptor) (i
 		return V2.Unmarshal(r, &header, pkt, decrypt)
 	default:
 		return 0, fmt.Errorf("codec version %d unrecognized", ver)
+	}
+}
+
+// 从环境变量获取值
+func GetEnvInt(key string, defVal int) int {
+	var s = os.Getenv(key)
+	if s == "" {
+		return defVal
+	}
+	if n, err := strconv.Atoi(key); err != nil {
+		return defVal
+	} else {
+		return n
 	}
 }

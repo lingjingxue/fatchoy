@@ -12,21 +12,31 @@ import (
 )
 
 type v2Codec struct {
-	maxPayloadBytes int32
+	maxUpstreamPacketBytes   int // 上行包最大大小
+	maxDownstreamPacketBytes int // 下行包最大大小
 }
 
 var V2 = NewV2()
 
 func NewV2() ICodec {
+	var upLimit = GetEnvInt("V2_UP_PKT_BYTES", PacketBytesLimit)
+	var downLimit = GetEnvInt("V2_DOWN_PKT_BYTES", PacketBytesLimit)
+	if upLimit <= 0 || upLimit > PacketBytesLimit {
+		upLimit = PacketBytesLimit
+	}
+	if downLimit <= 0 || downLimit > PacketBytesLimit {
+		downLimit = PacketBytesLimit
+	}
 	return &v2Codec{
-		maxPayloadBytes: 1 << 22, // 4M
+		maxUpstreamPacketBytes:   upLimit,
+		maxDownstreamPacketBytes: downLimit,
 	}
 }
 
 func (c *v2Codec) Marshal(w io.Writer, pkt fatchoy.IPacket, encryptor cipher.BlockCryptor) (int, error) {
-	return marshalPacket(w, pkt, encryptor, VersionV2, int(c.maxPayloadBytes))
+	return marshalPacket(w, pkt, encryptor, VersionV2, c.maxDownstreamPacketBytes)
 }
 
 func (c *v2Codec) Unmarshal(r io.Reader, header *Header, pkt fatchoy.IPacket, decrypt cipher.BlockCryptor) (int, error) {
-	return unmarshalPacket(r, header, pkt, decrypt, int(c.maxPayloadBytes))
+	return unmarshalPacket(r, header, pkt, decrypt, c.maxUpstreamPacketBytes)
 }

@@ -17,17 +17,16 @@ const (
 	VersionV1 = 1
 	VersionV2 = 2
 
-	HeaderSize        = 16      // 包头大小
-	PayloadBytesLimit = 1 << 24 // 3字节限制
+	HeaderSize       = 16            // 包头大小
+	PacketBytesLimit = (1 << 24) - 1 // 3字节限制
 )
 
-//  header wire format
+//  协议头，little endian表示，len包含header和body
 //       ---------------------------------------------
 // field | ver | len | flag | type | seq | cmd | crc |
 //       ---------------------------------------------
 // bytes |  1  |  3  |   1  |   1  |  2  |  4  |  4  |
 
-// 协议头，little endian表示
 type Header [HeaderSize]byte
 
 func (h *Header) Version() uint8 {
@@ -83,8 +82,8 @@ func (h *Header) SetupChecksum(payload []byte) {
 	binary.LittleEndian.PutUint32(h[12:], crc)
 }
 
-func (h *Header) unmarshalFrom(pkt fatchoy.IPacket, bodySize, ver int) {
-	var n = uint32(bodySize)
+func (h *Header) Pack(pkt fatchoy.IPacket, bodySize, ver int) {
+	var n = uint32(bodySize) + HeaderSize
 	h[0] = byte(ver)
 	h[1] = byte(n)
 	h[2] = byte(n >> 8)
