@@ -6,6 +6,7 @@ package qnet
 
 import (
 	"bufio"
+	"bytes"
 	"context"
 	"io"
 	"net"
@@ -26,18 +27,12 @@ var (
 // TCP connection
 type TcpConn struct {
 	StreamConn
-	conn   net.Conn      // TCP connection object
-	reader *bufio.Reader // buffered reader
-	writer *bufio.Writer // buffered writer
+	conn net.Conn // TCP connection object
 }
 
 func NewTcpConn(parentCtx context.Context, node fatchoy.NodeID, codecVer int, conn net.Conn, errChan chan error,
 	incoming chan<- fatchoy.IPacket, outsize int, stats *stats.Stats) *TcpConn {
-	tconn := &TcpConn{
-		conn:   conn,
-		reader: bufio.NewReader(conn),
-		writer: bufio.NewWriter(conn),
-	}
+	tconn := &TcpConn{conn: conn}
 	tconn.StreamConn.init(parentCtx, node, codecVer, incoming, outsize, errChan, stats)
 	tconn.addr = conn.RemoteAddr().String()
 	return tconn
@@ -114,17 +109,17 @@ func (t *TcpConn) finally() {
 	t.inbound = nil
 	t.errChan = nil
 	t.conn = nil
-	t.reader = nil
 }
 
 func (t *TcpConn) flush() {
+	var buf bytes.Buffer
 	for i := 0; i < len(t.outbound); i++ {
 		select {
 		case pkt, ok := <-t.outbound:
 			if !ok {
 				break
 			}
-			if err := t.writePacket(pkt); err != nil {
+			if err := t.writeTo(&buf, pkt); err != nil {
 				log.Errorf("%v flush message %v: %v", t.node, pkt.Command(), err)
 			}
 
@@ -134,12 +129,12 @@ func (t *TcpConn) flush() {
 	}
 }
 
-func (t *TcpConn) writePacket(pkt fatchoy.IPacket) error {
-	n, err := codec.Marshal(t.writer, pkt, t.encrypt, t.codecVersion)
+func (t *TcpConn) writeTo(buf *bytes.Buffer, pkt fatchoy.IPacket) error {
+	n, err := codec.Marshal(buf, pkt, t.encrypt, t.codecVersion)
 	if err != nil {
 		return err
 	}
-	if err := t.writer.Flush(); err != nil {
+	if _, err := buf.WriteTo(t.conn); err != nil {
 		return err
 	}
 	t.stats.Add(StatPacketsSent, 1)
@@ -155,14 +150,14 @@ func (t *TcpConn) writePump() {
 	}()
 
 	log.Debugf("TcpConn: node %v(%v) writer started", t.node, t.addr)
-
+	var buf bytes.Buffer
 	for {
 		select {
 		case pkt, ok := <-t.outbound:
 			if !ok {
 				return
 			}
-			if err := t.writePacket(pkt); err != nil {
+			if err := t.writeTo(&buf, pkt); err != nil {
 				log.Errorf("%v write message %v: %v", t.node, pkt.Command(), err)
 			}
 
@@ -172,11 +167,11 @@ func (t *TcpConn) writePump() {
 	}
 }
 
-func (t *TcpConn) readPacket() (fatchoy.IPacket, error) {
+func (t *TcpConn) readFrom(reader io.Reader) (fatchoy.IPacket, error) {
 	var deadline = time.Now().Add(time.Duration(TConnReadTimeout) * time.Second)
 	t.conn.SetReadDeadline(deadline)
 	var pkt = packet.Make()
-	nbytes, err := codec.Unmarshal(t.reader, pkt, t.decrypt)
+	nbytes, err := codec.Unmarshal(reader, pkt, t.decrypt)
 	if err != nil {
 		return pkt, err
 	}
@@ -193,8 +188,9 @@ func (t *TcpConn) readPump() {
 	}()
 
 	log.Debugf("TcpConn: node %v(%v) reader started", t.node, t.addr)
+	var reader = bufio.NewReader(t.conn)
 	for {
-		pkt, err := t.readPacket()
+		pkt, err := t.readFrom(reader)
 		if err != nil {
 			if err != io.EOF {
 				log.Errorf("%v read packet %v", t.node, err)
