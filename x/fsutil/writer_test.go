@@ -26,7 +26,7 @@ func randBytes(length int) []byte {
 
 func TestFileWriter(t *testing.T) {
 	filename := fmt.Sprintf("tmp-%s.log", hex.EncodeToString(randBytes(4)))
-	var writer = NewFileWriter(filename, 0, true)
+	var writer = NewFileWriter(filename, 0, WriterAsync)
 	defer os.Remove(filename)
 	for i := 0; i < 10000; i++ {
 		fmt.Fprintf(writer, "%s-%d\n", "a quick brown fox jumps over the lazy dog", i+1)
