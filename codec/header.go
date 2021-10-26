@@ -13,10 +13,14 @@ import (
 	"gopkg.in/qchencc/fatchoy.v1"
 )
 
-const (
-	VersionV1 = 1
-	VersionV2 = 2
+type Version uint8
 
+const (
+	VersionV1 Version = 1
+	VersionV2 Version = 2
+)
+
+const (
 	HeaderSize       = 16            // 包头大小
 	PacketBytesLimit = (1 << 24) - 1 // 3字节限制
 )
@@ -29,8 +33,8 @@ const (
 
 type Header [HeaderSize]byte
 
-func (h *Header) Version() uint8 {
-	return h[0]
+func (h *Header) Version() Version {
+	return Version(h[0])
 }
 
 func (h *Header) SetVersion(v uint8) {
@@ -82,9 +86,9 @@ func (h *Header) SetupChecksum(payload []byte) {
 	binary.LittleEndian.PutUint32(h[12:], crc)
 }
 
-func (h *Header) Pack(pkt fatchoy.IPacket, bodySize, ver int) {
+func (h *Header) Pack(version Version, bodySize int, pkt fatchoy.IPacket) {
 	var n = uint32(bodySize) + HeaderSize
-	h[0] = byte(ver)
+	h[0] = byte(version)
 	h[1] = byte(n)
 	h[2] = byte(n >> 8)
 	h[3] = byte(n >> 16)

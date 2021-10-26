@@ -14,22 +14,16 @@ import (
 	"gopkg.in/qchencc/fatchoy.v1/x/cipher"
 )
 
-// 消息编解码
-type ICodec interface {
-	Marshal(w io.Writer, pkt fatchoy.IPacket, encrypt cipher.BlockCryptor) (int, error)
-	Unmarshal(r io.Reader, head *Header, pkt fatchoy.IPacket, decrypt cipher.BlockCryptor) (int, error)
-}
-
 // 消息编解码，同样一个codec会在多个goroutine执行，需要多线程安全
 // 把pkt按需用encrypt加密后编码到w里，，返回编码长度和err
-func Marshal(w io.Writer, pkt fatchoy.IPacket, encrypt cipher.BlockCryptor, ver int) (int, error) {
-	switch ver {
+func Marshal(version Version, w io.Writer, pkt fatchoy.IPacket, encrypt cipher.BlockCryptor) (int, error) {
+	switch version {
 	case VersionV1:
 		return V1.Marshal(w, pkt, encrypt)
 	case VersionV2:
 		return V2.Marshal(w, pkt, encrypt)
 	}
-	return 0, fmt.Errorf("codec version %d unrecognized", ver)
+	return 0, fmt.Errorf("codec version %d unrecognized", version)
 }
 
 // 使用从r读取消息到pkt，并按需使用decrypt解密，返回读取长度和错误

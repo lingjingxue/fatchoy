@@ -49,7 +49,7 @@ func testProtoCodec(t *testing.T, size int, msgSent fatchoy.IPacket) {
 	decrypt := cipher.NewCrypt("aes-192", encrypt.Key(), encrypt.IV())
 	// 如果加密方式是原地加密，会导致packet的body是加密后的内容
 	clone := append([]byte(nil), msgSent.BodyAsBytes()...)
-	if _, err := Marshal(&encoded, msgSent, encrypt, VersionV1); err != nil {
+	if _, err := Marshal(VersionV1, &encoded, msgSent, encrypt); err != nil {
 		t.Fatalf("Encode with size %d: %v", size, err)
 	}
 	msgSent.SetBodyBytes(nil)
@@ -79,11 +79,11 @@ func BenchmarkCodecMarshal(b *testing.B) {
 	b.StartTimer()
 
 	var buf bytes.Buffer
-	if _, err := Marshal(&buf, msg, nil, VersionV1); err != nil {
+	if _, err := Marshal(VersionV1, &buf, msg, nil); err != nil {
 		b.Logf("Encode: %v", err)
 	}
 	var msg2 testPacket
-	if _, err := Marshal(&buf, &msg2, nil, VersionV1); err != nil {
+	if _, err := Marshal(VersionV1, &buf, &msg2, nil); err != nil {
 		b.Logf("Decode: %v", err)
 	}
 }

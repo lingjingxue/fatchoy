@@ -13,14 +13,14 @@ import (
 )
 
 // 编码器
-type v1Codec struct {
+type V1Codec struct {
 	maxUpstreamPacketBytes   int // 上行包最大大小
 	maxDownstreamPacketBytes int // 下行包最大大小
 }
 
 var V1 = NewV1()
 
-func NewV1() ICodec {
+func NewV1() *V1Codec {
 	var upLimit = GetEnvInt("V1_UP_PKT_BYTES", 60*1024)       // 60K
 	var downLimit = GetEnvInt("V1_DOWN_PKT_BYTES", 1024*1024) // 1M
 	if upLimit <= 0 || upLimit > PacketBytesLimit {
@@ -29,22 +29,22 @@ func NewV1() ICodec {
 	if downLimit <= 0 || downLimit > PacketBytesLimit {
 		downLimit = PacketBytesLimit
 	}
-	return &v1Codec{
+	return &V1Codec{
 		maxUpstreamPacketBytes:   upLimit,
 		maxDownstreamPacketBytes: downLimit,
 	}
 }
 
 // 内部不应该修改pkt的body
-func (c *v1Codec) Marshal(w io.Writer, pkt fatchoy.IPacket, encryptor cipher.BlockCryptor) (int, error) {
-	return marshalPacket(w, pkt, encryptor, VersionV1, c.maxDownstreamPacketBytes)
+func (c *V1Codec) Marshal(w io.Writer, pkt fatchoy.IPacket, encryptor cipher.BlockCryptor) (int, error) {
+	return marshalPacket(VersionV1, w, pkt, encryptor, c.maxDownstreamPacketBytes)
 }
 
-func (c *v1Codec) Unmarshal(r io.Reader, header *Header, pkt fatchoy.IPacket, decrypt cipher.BlockCryptor) (int, error) {
-	return unmarshalPacket(r, header, pkt, decrypt, c.maxUpstreamPacketBytes)
+func (c *V1Codec) Unmarshal(r io.Reader, head *Header, pkt fatchoy.IPacket, decrypt cipher.BlockCryptor) (int, error) {
+	return unmarshalPacket(r, head, pkt, decrypt, c.maxUpstreamPacketBytes)
 }
 
-func marshalPacket(w io.Writer, pkt fatchoy.IPacket, encryptor cipher.BlockCryptor, version, maxPacketBytes int) (int, error) {
+func marshalPacket(version Version, w io.Writer, pkt fatchoy.IPacket, encryptor cipher.BlockCryptor, maxPacketBytes int) (int, error) {
 	payload, err := pkt.EncodeBodyToBytes()
 	if err != nil {
 		return 0, err
@@ -61,7 +61,7 @@ func marshalPacket(w io.Writer, pkt fatchoy.IPacket, encryptor cipher.BlockCrypt
 
 	var bodyLen = len(payload)
 	var head Header
-	head.Pack(pkt, bodyLen, version)
+	head.Pack(version, bodyLen, pkt)
 	head.SetupChecksum(payload)
 
 	nbytes, err := w.Write(head[:])
