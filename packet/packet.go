@@ -17,7 +17,7 @@ type Packet struct {
 	Sequence int16                   `json:"seq"`            // 序列号
 	Typ      fatchoy.PacketType      `json:"typ,omitempty"`  // 类型
 	Flg      fatchoy.PacketFlag      `json:"flg,omitempty"`  // 标志位
-	Body     interface{}             `json:"body,omitempty"` // 消息内容，number/string/bytes/pb.Packet
+	Body     interface{}             `json:"body,omitempty"` // 消息内容，number/string/bytes/proto.Message
 	endpoint fatchoy.MessageEndpoint // 关联的endpoint
 }
 
