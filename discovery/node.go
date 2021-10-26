@@ -16,7 +16,7 @@ const (
 	NODE_KEY_ID        = "ID"
 	NODE_KEY_TYPE      = "Type"
 	NODE_KEY_INTERFACE = "Interface"
-	NODE_KEY_PID       = "Pid"
+	NODE_KEY_PID       = "PID"
 	NODE_KEY_HOST      = "Host"
 )
 
