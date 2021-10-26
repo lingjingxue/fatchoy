@@ -14,6 +14,7 @@ import (
 	"go.uber.org/zap"
 	"go.uber.org/zap/zapcore"
 	"golang.org/x/crypto/ssh/terminal"
+	"gopkg.in/qchencc/fatchoy.v1/x/fsutil"
 )
 
 var (
@@ -31,7 +32,7 @@ func isTerminal(w io.Writer) bool {
 }
 
 // 创建一个logger
-func createLoggerBy(conf *zap.Config, opts []zap.Option, asyncWrite bool) *zap.Logger {
+func createLoggerBy(conf *zap.Config, opts []zap.Option) *zap.Logger {
 	var encoder zapcore.Encoder
 	switch conf.Encoding {
 	case "console":
@@ -42,8 +43,8 @@ func createLoggerBy(conf *zap.Config, opts []zap.Option, asyncWrite bool) *zap.L
 		panic("unrecognized encoding: " + conf.Encoding)
 	}
 
-	writer := openLogSink(conf.OutputPaths, asyncWrite)
-	writeErr := openLogSink(conf.ErrorOutputPaths, asyncWrite)
+	writer := openLoggerSink(conf.OutputPaths)
+	writeErr := openLoggerSink(conf.ErrorOutputPaths)
 
 	logger := zap.New(
 		zapcore.NewCore(encoder, writer, conf.Level),
@@ -54,13 +55,13 @@ func createLoggerBy(conf *zap.Config, opts []zap.Option, asyncWrite bool) *zap.L
 }
 
 // 创建自定义的FileSync（以支持log rotation）
-func openLogSink(paths []string, asyncWrite bool) zapcore.WriteSyncer {
+func openLoggerSink(paths []string) zapcore.WriteSyncer {
 	if len(paths) == 0 {
 		return zapcore.AddSync(ioutil.Discard)
 	}
 	var writers = make([]zapcore.WriteSyncer, 0, len(paths))
 	for _, path := range paths {
-		var w = NewFileSync(path, asyncWrite)
+		var w = NewFileSync(path, fsutil.WriterSync)
 		writers = append(writers, w)
 	}
 	return zap.CombineWriteSyncers(writers...)

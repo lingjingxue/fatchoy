@@ -21,7 +21,6 @@ type Config struct {
 	Level           string // 等级
 	Filepath        string // 日志文件
 	ErrFilepath     string // err文件
-	FileAsyncWrite  bool   // 异步写文件
 	IsProduction    bool   // 是否product模式
 
 	Conf *zap.Config
@@ -71,6 +70,5 @@ func (c *Config) Build() *zap.Logger {
 	} else {
 		c.Conf.Level = zap.NewAtomicLevelAt(zap.DebugLevel)
 	}
-	var opts = c.makeOptions()
-	return createLoggerBy(c.Conf, opts, c.FileAsyncWrite)
+	return createLoggerBy(c.Conf, c.makeOptions())
 }

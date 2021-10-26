@@ -53,44 +53,12 @@ func ServerErrorLog(format string, a ...interface{}) {
 	}
 }
 
-// 记录日志到文件
-type FileSync struct {
-	asyncWrite bool
-	w          *fsutil.FileWriter
-}
-
-func NewFileSync(filename string, asyncWrite bool) zapcore.WriteSyncer {
+func NewFileSync(filename string, mode fsutil.WriterMode) zapcore.WriteSyncer {
 	switch filename {
 	case "stdout":
 		return os.Stdout
 	case "stderr":
 		return os.Stderr
 	}
-	w := fsutil.NewFileWriter(filename, 100, asyncWrite)
-	return &FileSync{
-		asyncWrite: asyncWrite,
-		w:          w,
-	}
-}
-
-func (s *FileSync) Write(data []byte) (int, error) {
-	if len(data) == 0 {
-		return 0, nil
-	}
-	//  data在zap里使用buffer pool管理，如果异步write需要自己做copy
-	if s.asyncWrite {
-		var b = make([]byte, len(data))
-		copy(b, data)
-		data = b
-	}
-	return s.w.Write(data)
-}
-
-// zap.WriteSyncer interface
-func (s *FileSync) Sync() error {
-	return nil
-}
-
-func (s *FileSync) Close() error {
-	return s.w.Close()
+	return fsutil.NewFileWriter(filename, 100, mode)
 }
