@@ -33,7 +33,7 @@ func startRawClient(t *testing.T, id int, address string, msgCount int) {
 		pkt.SetSeq(int16(i))
 		pkt.SetBodyString("ping")
 		var buf bytes.Buffer
-		if _, err := codec.Marshal(&buf, pkt, nil, codec.VersionV2); err != nil {
+		if _, err := codec.Marshal(codec.VersionV2, &buf, pkt, nil); err != nil {
 			t.Fatalf("Encode: %v", err)
 		}
 		if _, err := conn.Write(buf.Bytes()); err != nil {
@@ -57,7 +57,7 @@ func startRawClient(t *testing.T, id int, address string, msgCount int) {
 
 func startMyListener(t *testing.T, address string, sig, done chan struct{}) {
 	var incoming = make(chan fatchoy.IPacket, 100)
-	var server = NewTcpServer(context.Background(), incoming, codec.VersionV2, 60)
+	var server = NewTcpServer(context.Background(), codec.VersionV2, incoming, 60)
 	if err := server.Listen(address); err != nil {
 		t.Fatalf("BindTCP: %s %v", address, err)
 	}

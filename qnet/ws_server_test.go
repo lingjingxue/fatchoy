@@ -65,7 +65,7 @@ func TestWebsocketServer(t *testing.T) {
 
 	ctx, cancel := context.WithTimeout(context.Background(), time.Minute*5)
 	defer cancel()
-	server := NewWebsocketServer(ctx, addr, path, incoming, codec.VersionV2, 600)
+	server := NewWebsocketServer(ctx, addr, path, codec.VersionV2, incoming, 600)
 	server.Go()
 
 	go startClient(t, addr, path)

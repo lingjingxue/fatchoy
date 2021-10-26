@@ -32,7 +32,7 @@ func init() {
 
 func startQPSServer(t *testing.T, address string, ctor, done chan struct{}) {
 	var incoming = make(chan fatchoy.IPacket, totalMessageCount)
-	var listener = NewTcpServer(context.Background(), incoming, codec.VersionV2, totalMessageCount)
+	var listener = NewTcpServer(context.Background(), codec.VersionV2, incoming, totalMessageCount)
 	if err := listener.Listen(address); err != nil {
 		t.Fatalf("BindTCP: %s %v", address, err)
 	}
@@ -76,7 +76,7 @@ func startQPSClient(t *testing.T, address string, msgCount int, respChan chan in
 	for i := 0; i < msgCount; i++ {
 		var pkt = packet.New(int32(i), 0, 0, 0, "ping")
 		buf.Reset()
-		if _, err := codec.Marshal(&buf, pkt, nil, codec.VersionV2); err != nil {
+		if _, err := codec.Marshal(codec.VersionV2, &buf, pkt, nil); err != nil {
 			t.Fatalf("Encode: %v", err)
 		}
 		if _, err := w.Write(buf.Bytes()); err != nil {

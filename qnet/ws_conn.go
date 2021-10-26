@@ -35,12 +35,12 @@ type WsConn struct {
 	conn *websocket.Conn // websocket conn
 }
 
-func NewWsConn(parentCtx context.Context, node fatchoy.NodeID, codecVersion int, conn *websocket.Conn, errChan chan error,
+func NewWsConn(parentCtx context.Context, node fatchoy.NodeID, version codec.Version, conn *websocket.Conn, errChan chan error,
 	incoming chan<- fatchoy.IPacket, outsize int, stat *stats.Stats) *WsConn {
 	wsconn := &WsConn{
 		conn: conn,
 	}
-	wsconn.StreamConn.init(parentCtx, node, codecVersion, incoming, outsize, errChan, stat)
+	wsconn.StreamConn.init(parentCtx, node, version, incoming, outsize, errChan, stat)
 	wsconn.addr = conn.RemoteAddr().String()
 	conn.SetReadLimit(WSCONN_MAX_PAYLOAD)
 	conn.SetPingHandler(wsconn.handlePing)
@@ -113,7 +113,7 @@ func (c *WsConn) writePacket(pkt fatchoy.IPacket) error {
 		}
 		messageType = websocket.TextMessage
 	} else {
-		_, err := codec.Marshal(&buf, pkt, c.encrypt, c.codecVersion)
+		_, err := codec.Marshal(c.version, &buf, pkt, c.encrypt)
 		if err != nil {
 			return err
 		}

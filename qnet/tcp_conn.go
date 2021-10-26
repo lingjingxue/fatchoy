@@ -30,10 +30,10 @@ type TcpConn struct {
 	conn net.Conn // TCP connection object
 }
 
-func NewTcpConn(parentCtx context.Context, node fatchoy.NodeID, codecVer int, conn net.Conn, errChan chan error,
+func NewTcpConn(parentCtx context.Context, node fatchoy.NodeID, version codec.Version, conn net.Conn, errChan chan error,
 	incoming chan<- fatchoy.IPacket, outsize int, stats *stats.Stats) *TcpConn {
 	tconn := &TcpConn{conn: conn}
-	tconn.StreamConn.init(parentCtx, node, codecVer, incoming, outsize, errChan, stats)
+	tconn.StreamConn.init(parentCtx, node, version, incoming, outsize, errChan, stats)
 	tconn.addr = conn.RemoteAddr().String()
 	return tconn
 }
@@ -130,7 +130,7 @@ func (t *TcpConn) flush() {
 }
 
 func (t *TcpConn) writeTo(buf *bytes.Buffer, pkt fatchoy.IPacket) error {
-	n, err := codec.Marshal(buf, pkt, t.encrypt, t.codecVersion)
+	n, err := codec.Marshal(t.version, buf, pkt, t.encrypt)
 	if err != nil {
 		return err
 	}
