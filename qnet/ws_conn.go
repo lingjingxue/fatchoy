@@ -186,7 +186,7 @@ func (c *WsConn) ReadPacket(pkt fatchoy.IPacket) error {
 		pkt.SetType(pkt.Type() | fatchoy.PacketTypeJSON)
 
 	case websocket.BinaryMessage:
-		_, err = codec.Unmarshal(bytes.NewReader(data), pkt, c.decrypt)
+		_, err = codec.Unmarshal(c.version, bytes.NewReader(data), pkt, c.decrypt)
 		pkt.SetType(pkt.Type() | fatchoy.PacketTypeBinary)
 		return err
 

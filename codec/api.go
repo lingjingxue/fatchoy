@@ -27,12 +27,15 @@ func Marshal(version Version, w io.Writer, pkt fatchoy.IPacket, encrypt cipher.B
 }
 
 // 使用从r读取消息到pkt，并按需使用decrypt解密，返回读取长度和错误
-func Unmarshal(r io.Reader, pkt fatchoy.IPacket, decrypt cipher.BlockCryptor) (int, error) {
+func Unmarshal(version Version, r io.Reader, pkt fatchoy.IPacket, decrypt cipher.BlockCryptor) (int, error) {
 	var header Header
 	if _, err := io.ReadFull(r, header[:]); err != nil {
 		return 0, err
 	}
 	var ver = header.Version()
+	if ver != version {
+		return 0, fmt.Errorf("codec version mismatch %d != %d", ver, version)
+	}
 	switch ver {
 	case VersionV1:
 		return V1.Unmarshal(r, &header, pkt, decrypt)

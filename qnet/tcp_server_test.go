@@ -40,7 +40,7 @@ func startRawClient(t *testing.T, id int, address string, msgCount int) {
 			t.Fatalf("Write: %v", err)
 		}
 		var resp = packet.Make()
-		if _, err := codec.Unmarshal(conn, resp, nil); err != nil {
+		if _, err := codec.Unmarshal(codec.VersionV2, conn, resp, nil); err != nil {
 			t.Fatalf("Decode: %v", err)
 		}
 		if resp.Seq() != pkt.Seq() {

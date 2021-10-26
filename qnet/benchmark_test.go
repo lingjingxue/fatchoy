@@ -88,7 +88,7 @@ func startQPSClient(t *testing.T, address string, msgCount int, respChan chan in
 	}
 	for i := 0; i < msgCount; i++ {
 		var resp = packet.Make()
-		if _, err := codec.Unmarshal(conn, resp, nil); err != nil {
+		if _, err := codec.Unmarshal(codec.VersionV2, conn, resp, nil); err != nil {
 			t.Fatalf("Decode: %v", err)
 		}
 		respChan <- 1

@@ -6,10 +6,10 @@ package codec
 
 import (
 	"bytes"
+	"crypto/rand"
 	"testing"
 
 	"gopkg.in/qchencc/fatchoy.v1"
-	"gopkg.in/qchencc/fatchoy.v1/secure"
 	"gopkg.in/qchencc/fatchoy.v1/x/cipher"
 	"gopkg.in/qchencc/fatchoy.v1/x/strutil"
 )
@@ -43,9 +43,22 @@ func newTestPacket(bodyLen int) fatchoy.IPacket {
 	return &pkt
 }
 
+func createCryptor(method string) (cipher.BlockCryptor, error) {
+	var key = make([]byte, 32)
+	if _, err := rand.Read(key); err != nil {
+		return nil, err
+	}
+	var iv = make([]byte, 32)
+	if _, err := rand.Read(iv); err != nil {
+		return nil, err
+	}
+	encrypt := cipher.NewCrypt(method, key, iv)
+	return encrypt, nil
+}
+
 func testProtoCodec(t *testing.T, size int, msgSent fatchoy.IPacket) {
 	var encoded bytes.Buffer
-	encrypt, _ := secure.CreateCryptor("aes-192")
+	encrypt, _ := createCryptor("aes-192")
 	decrypt := cipher.NewCrypt("aes-192", encrypt.Key(), encrypt.IV())
 	// 如果加密方式是原地加密，会导致packet的body是加密后的内容
 	clone := append([]byte(nil), msgSent.BodyAsBytes()...)
@@ -54,7 +67,7 @@ func testProtoCodec(t *testing.T, size int, msgSent fatchoy.IPacket) {
 	}
 	msgSent.SetBodyBytes(nil)
 	var msgRecv testPacket
-	if _, err := Unmarshal(&encoded, &msgRecv, decrypt); err != nil {
+	if _, err := Unmarshal(VersionV1, &encoded, &msgRecv, decrypt); err != nil {
 		t.Fatalf("Decode with size %d: %v", size, err)
 	}
 	msgSent.SetBodyBytes(clone)

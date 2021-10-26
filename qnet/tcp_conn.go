@@ -171,7 +171,7 @@ func (t *TcpConn) readFrom(reader io.Reader) (fatchoy.IPacket, error) {
 	var deadline = time.Now().Add(time.Duration(TConnReadTimeout) * time.Second)
 	t.conn.SetReadDeadline(deadline)
 	var pkt = packet.Make()
-	nbytes, err := codec.Unmarshal(reader, pkt, t.decrypt)
+	nbytes, err := codec.Unmarshal(t.version, reader, pkt, t.decrypt)
 	if err != nil {
 		return pkt, err
 	}
