@@ -21,6 +21,14 @@ func IsInteger(kind reflect.Kind) bool {
 	return false
 }
 
+func IsUnsigned(kind reflect.Kind) bool {
+	switch kind {
+	case reflect.Uint8, reflect.Uint16, reflect.Uint32, reflect.Uint, reflect.Uint64:
+		return true
+	}
+	return false
+}
+
 // 浮点数
 func IsFloat(kind reflect.Kind) bool {
 	switch kind {

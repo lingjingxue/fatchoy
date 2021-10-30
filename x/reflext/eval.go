@@ -16,6 +16,7 @@ import (
 var (
 	ErrNilViewContext = errors.New("nil view context")
 	ErrNilExprNode    = errors.New("nil expr node")
+	ErrNotValid       = errors.New("value not valid")
 
 	zeroRValue reflect.Value
 )
@@ -50,11 +51,32 @@ func EvalSet(this interface{}, expr string, v interface{}) error {
 		}
 		return nil
 	}
-	//node, err := parser.ParseExpr(expr)
-	//if err != nil {
-	//	return err
-	//}
-	return nil
+	var lhv = reflect.ValueOf(this)
+	if lhv.Kind() == reflect.Ptr {
+		lhv = lhv.Elem()
+	}
+	if !lhv.CanAddr() || !lhv.IsValid() {
+		return ErrNotValid
+	}
+	var rhv = reflect.ValueOf(v)
+	if !rhv.IsValid() {
+		return ErrNotValid
+	}
+
+	node, err := parser.ParseExpr(expr)
+	if err != nil {
+		return err
+	}
+	switch n := node.(type) {
+	case *ast.Ident:
+		return setIdent(lhv, rhv, n)
+	case *ast.SelectorExpr:
+		return setSelectorExpr(lhv, rhv, n)
+	case *ast.IndexExpr:
+		return setIndexExpr(lhv, rhv, n)
+	default:
+		return fmt.Errorf("unexpected expr node %T", node)
+	}
 }
 
 // 在`this`上， 删除对应`expr`的节点，只有map和slice可以有删除操作
@@ -70,6 +92,9 @@ func EvalRemove(this interface{}, expr string) error {
 	if rv.Kind() == reflect.Ptr {
 		rv = rv.Elem()
 	}
+	if !rv.CanAddr() || !rv.IsValid() {
+		return ErrNotValid
+	}
 	switch n := node.(type) {
 	case *ast.IndexExpr:
 		return removeIndexExpr(rv, n)
@@ -81,6 +106,9 @@ func EvalRemove(this interface{}, expr string) error {
 func walkExpr(rv reflect.Value, node ast.Expr) (reflect.Value, error) {
 	if rv.Kind() == reflect.Ptr {
 		rv = rv.Elem()
+	}
+	if !rv.IsValid() {
+		return zeroRValue, ErrNotValid
 	}
 	if node == nil {
 		return zeroRValue, ErrNilExprNode
@@ -155,6 +183,77 @@ func evalSelectorExpr(val reflect.Value, expr *ast.SelectorExpr) (reflect.Value,
 	return rv, nil
 }
 
+func setIdent(lhv, rhv reflect.Value, ident *ast.Ident) error {
+	switch lhv.Kind() {
+	case reflect.Struct:
+		var field = lhv.FieldByName(ident.Name)
+		if !field.IsValid() || !field.CanAddr() {
+			return ErrNotValid
+		}
+		setEValue(field, rhv)
+	case reflect.Map:
+		if key, err := createMapKey(lhv, ident.Name); err != nil {
+			return fmt.Errorf("cannot index map key %s: %w", ident.Name, err)
+		} else {
+			lhv.SetMapIndex(key, rhv)
+		}
+	default:
+		return fmt.Errorf("unexpected kind %v with ident %s", lhv.Kind(), ident.Name)
+	}
+	return nil
+}
+
+func setSelectorExpr(lhv, rhv reflect.Value, expr *ast.SelectorExpr) error {
+	if lhv.Kind() != reflect.Struct {
+		return fmt.Errorf("unexpected kind %v with ident %s", lhv.Kind(), expr.Sel.Name)
+	}
+	rv, err := walkExpr(lhv, expr.X)
+	if err != nil {
+		return err
+	}
+	if !rv.CanAddr() {
+		return ErrNotValid
+	}
+	var field = lhv.FieldByName(expr.Sel.Name)
+	if !field.IsValid() || !field.CanAddr() {
+		return ErrNotValid
+	}
+	setEValue(field, rhv)
+	return nil
+}
+
+func setIndexExpr(lhv, rhv reflect.Value, expr *ast.IndexExpr) error {
+	index, ok := expr.Index.(*ast.BasicLit)
+	if !ok {
+		return fmt.Errorf("index is not literal")
+	}
+	rv, err := walkExpr(lhv, expr.X)
+	if err != nil {
+		return err
+	}
+	if !rv.CanAddr() {
+		return ErrNotValid
+	}
+	switch rv.Kind() {
+	case reflect.Slice:
+		idx, err := strconv.Atoi(index.Value)
+		if err != nil {
+			return fmt.Errorf("cannot index by key %s: %w", index.Value, err)
+		}
+		setEValue(rv.Index(idx), rhv)
+
+	case reflect.Map:
+		if key, err := createMapKey(rv, index.Value); err != nil {
+			return fmt.Errorf("cannot index map key %s: %w", index.Value, err)
+		} else {
+			rv.SetMapIndex(key, rhv)
+		}
+	default:
+		return fmt.Errorf("unexpected kind %v with ident %s", lhv.Kind(), expr.Index)
+	}
+	return nil
+}
+
 func removeIndexExpr(val reflect.Value, expr *ast.IndexExpr) error {
 	index, ok := expr.Index.(*ast.BasicLit)
 	if !ok {
@@ -163,6 +262,9 @@ func removeIndexExpr(val reflect.Value, expr *ast.IndexExpr) error {
 	rv, err := walkExpr(val, expr.X)
 	if err != nil {
 		return err
+	}
+	if !rv.CanAddr() {
+		return ErrNotValid
 	}
 	switch rv.Kind() {
 	case reflect.Slice:
@@ -186,11 +288,7 @@ func removeIndexExpr(val reflect.Value, expr *ast.IndexExpr) error {
 		rv.Set(newSlice)
 
 	case reflect.Map:
-		var keyType = rv.Type().Key()
-		if !IsPrimitive(keyType.Kind()) {
-			return fmt.Errorf("cannot address map key %s %s", expr.Index, keyType.Name())
-		}
-		if key, err := CreatePrimitiveValue(keyType, index.Value); err != nil {
+		if key, err := createMapKey(rv, index.Value); err != nil {
 			return fmt.Errorf("cannot index map key %s: %w", index.Value, err)
 		} else {
 			rv.SetMapIndex(key, reflect.Value{})
@@ -199,4 +297,30 @@ func removeIndexExpr(val reflect.Value, expr *ast.IndexExpr) error {
 		return fmt.Errorf("unexpected kind %v with ident %s", val.Kind(), expr.Index)
 	}
 	return nil
+}
+
+func createMapKey(rv reflect.Value, value string) (reflect.Value, error) {
+	var keyType = rv.Type().Key()
+	if !IsPrimitive(keyType.Kind()) {
+		return zeroRValue, fmt.Errorf("cannot address map key %s %s", value, keyType.Name())
+	}
+	return CreatePrimitiveValue(keyType, value)
+}
+
+func setEValue(lhv, rhv reflect.Value) {
+	var tryConvert = func () (b bool) {
+		defer func() {
+			b = false
+		}()
+		v := rhv.Convert(lhv.Type())
+		lhv.Set(v)
+		b = true
+		return
+	}
+
+	// go 1.17 reflect.CanConvert()
+	if tryConvert() {
+		return
+	}
+	lhv.Set(rhv) // raw set, may panic if type mismatch
 }

@@ -13,27 +13,27 @@ import (
 type TB struct {
 	A string
 	C image.Rectangle
-	D []int
+	D []int16
 	E map[int]string
 }
 
 type TA struct {
-	A int
+	A int32
 	B TB
 	C []image.Point
 	D map[float64]string
 }
 
-func createTA() *TA{
+func createTA() *TA {
 	return &TA{
 		B: TB{
 			A: "hello",
-			C: image.Rect(12,34,56,78),
-			D: []int{12,34,56},
+			C: image.Rect(12, 34, 56, 78),
+			D: []int16{12, 34, 56},
 			E: map[int]string{12: "hello", 34: "world"},
 		},
 		A: 1234,
-		C: []image.Point{image.Pt(12,34)},
+		C: []image.Point{image.Pt(12, 34)},
 		D: map[float64]string{3.14: "PI"},
 	}
 }
@@ -75,13 +75,34 @@ func TestEvalView(t *testing.T) {
 	}
 }
 
+func TestEvalSet(t *testing.T) {
+	var obj = createTA()
+	tests := []struct {
+		expr   string
+		val    interface{}
+		hasErr bool
+	}{
+		//{"A", 5678, false},
+		{"B.A", "world", false},
+	}
+	for _, tc := range tests {
+		err := EvalSet(obj, tc.expr, tc.val)
+		t.Logf("%s: %v", tc.expr, err)
+		if tc.hasErr {
+			if err == nil {
+				t.Fatalf("%v", err)
+			}
+		}
+	}
+}
+
 func TestEvalRemove(t *testing.T) {
 	var obj = createTA()
 	tests := []struct {
 		expr   string
 		hasErr bool
 	}{
-		{"D[3.14]", false},
+		{"A", false},
 		{"B.D[2]", false},
 	}
 	for _, tc := range tests {
