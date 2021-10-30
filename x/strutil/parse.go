@@ -10,7 +10,6 @@ import (
 	"fmt"
 	"log"
 	"math"
-	"reflect"
 	"strconv"
 	"strings"
 )
@@ -268,107 +267,4 @@ func ParseKeyValuePairs(text string, sep, equal byte) map[string]string {
 		result[key] = unquote(s)
 	}
 	return result
-}
-
-// 解析字符串的值到value
-func ParseStringToValue(s string, v reflect.Value) (bool, error) {
-	switch v.Kind() {
-	case reflect.Int8:
-		n, err := ParseI8(s)
-		if err != nil {
-			return true, err
-		} else {
-			v.SetInt(int64(n))
-		}
-
-	case reflect.Int16:
-		n, err := ParseI16(s)
-		if err != nil {
-			return true, err
-		} else {
-			v.SetInt(int64(n))
-		}
-
-	case reflect.Int32:
-		n, err := ParseI32(s)
-		if err != nil {
-			return true, err
-		} else {
-			v.SetInt(int64(n))
-		}
-
-	case reflect.Int, reflect.Int64:
-		n, err := ParseI64(s)
-		if err != nil {
-			return true, err
-		} else {
-			v.SetInt(n)
-		}
-
-	case reflect.Uint8:
-		n, err := ParseU8(s)
-		if err != nil {
-			return true, err
-		} else {
-			v.SetUint(uint64(n))
-		}
-
-	case reflect.Uint16:
-		n, err := ParseU16(s)
-		if err != nil {
-			return true, err
-		} else {
-			v.SetUint(uint64(n))
-		}
-
-	case reflect.Uint32:
-		n, err := ParseU32(s)
-		if err != nil {
-			return true, err
-		} else {
-			v.SetUint(uint64(n))
-		}
-
-	case reflect.Uint, reflect.Uint64:
-		n, err := ParseU64(s)
-		if err != nil {
-			return true, err
-		} else {
-			v.SetUint(n)
-		}
-
-	case reflect.Float32:
-		f, err := ParseF32(s)
-		if err != nil {
-			return true, err
-		} else {
-			v.SetFloat(float64(f))
-		}
-
-	case reflect.Float64:
-		f, err := ParseF64(s)
-		if err != nil {
-			return true, err
-		} else {
-			v.SetFloat(f)
-		}
-
-	case reflect.Bool:
-		v.SetBool(ParseBool(s))
-
-	case reflect.String:
-		v.SetString(s)
-
-	default:
-		return false, nil
-	}
-	return true, nil
-}
-
-func MustParseStringToValue(s string, v reflect.Value) bool {
-	isDone, err := ParseStringToValue(s, v)
-	if err != nil {
-		panic(err)
-	}
-	return isDone
 }
