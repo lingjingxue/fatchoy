@@ -20,7 +20,7 @@ type TT struct {
 	G map[float64]int
 }
 
-func TestView(t *testing.T) {
+func TestEvalView(t *testing.T) {
 	var obj = TT{
 		A: "hello",
 		B: 1024,
@@ -48,7 +48,7 @@ func TestView(t *testing.T) {
 		{`F["KKK"]`, false, nil},
 	}
 	for _, tc := range tests {
-		v, err := View(obj, tc.expr)
+		v, err := EvalView(obj, tc.expr)
 		if tc.hasErr {
 			if err == nil {
 				t.Fatalf("%v", err)

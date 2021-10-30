@@ -21,8 +21,8 @@ var (
 	zeroRValue reflect.Value
 )
 
-// 把`expr`挂在`this`上，显示值，如: expr=
-func View(this interface{}, expr string) (result interface{}, err error) {
+// 把`expr`挂在`this`上，返回其对应的值
+func EvalView(this interface{}, expr string) (result interface{}, err error) {
 	defer func() {
 		if v := recover(); v != nil {
 			err = fmt.Errorf("%v\n%s", v, debug.Stack())
