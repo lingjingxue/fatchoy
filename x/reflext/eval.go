@@ -10,7 +10,6 @@ import (
 	"go/ast"
 	"go/parser"
 	"reflect"
-	"runtime/debug"
 	"strconv"
 )
 
@@ -21,14 +20,8 @@ var (
 	zeroRValue reflect.Value
 )
 
-// 把`expr`挂在`this`上，返回其对应的值
+// 在`this`上，返回其`expr`对应的值
 func EvalView(this interface{}, expr string) (result interface{}, err error) {
-	defer func() {
-		if v := recover(); v != nil {
-			err = fmt.Errorf("%v\n%s", v, debug.Stack())
-		}
-	}()
-
 	if this == nil {
 		if expr != "" {
 			err = ErrNilViewContext
@@ -39,7 +32,6 @@ func EvalView(this interface{}, expr string) (result interface{}, err error) {
 	if node, err = parser.ParseExpr(expr); err != nil {
 		return
 	}
-	fmt.Printf("expr: %s\n", expr)
 	var rv = reflect.ValueOf(this)
 	rv, err = walkExpr(rv, node)
 	if err == nil && rv.IsValid() {
@@ -48,6 +40,42 @@ func EvalView(this interface{}, expr string) (result interface{}, err error) {
 		result = nil
 	}
 	return
+}
+
+// 在`this`上，设置v到对应`expr`
+func EvalSet(this interface{}, expr string, v interface{}) error {
+	if this == nil {
+		if expr != "" {
+			return ErrNilViewContext
+		}
+		return nil
+	}
+	//node, err := parser.ParseExpr(expr)
+	//if err != nil {
+	//	return err
+	//}
+	return nil
+}
+
+// 在`this`上， 删除对应`expr`的节点，只有map和slice可以有删除操作
+func EvalRemove(this interface{}, expr string) error {
+	node, err := parser.ParseExpr(expr)
+	if err != nil {
+		return err
+	}
+	if node == nil {
+		return ErrNilExprNode
+	}
+	var rv = reflect.ValueOf(this)
+	if rv.Kind() == reflect.Ptr {
+		rv = rv.Elem()
+	}
+	switch n := node.(type) {
+	case *ast.IndexExpr:
+		return removeIndexExpr(rv, n)
+	default:
+		return fmt.Errorf("unexpected expr node %T", node)
+	}
 }
 
 func walkExpr(rv reflect.Value, node ast.Expr) (reflect.Value, error) {
@@ -92,9 +120,11 @@ func evalIndexExpr(val reflect.Value, expr *ast.IndexExpr) (reflect.Value, error
 	}
 	switch rv.Kind() {
 	case reflect.Array, reflect.Slice, reflect.String:
-		if i, err := strconv.Atoi(index.Value); err != nil {
+		i, err := strconv.Atoi(index.Value)
+		if err != nil {
 			return zeroRValue, fmt.Errorf("cannot index by key %s: %w", index.Value, err)
-		} else if i < rv.Len() {
+		}
+		if i >= 0 && i < rv.Len() {
 			return rv.Index(i), nil
 		}
 	case reflect.Map:
@@ -123,4 +153,50 @@ func evalSelectorExpr(val reflect.Value, expr *ast.SelectorExpr) (reflect.Value,
 	}
 	rv = rv.FieldByName(expr.Sel.Name)
 	return rv, nil
+}
+
+func removeIndexExpr(val reflect.Value, expr *ast.IndexExpr) error {
+	index, ok := expr.Index.(*ast.BasicLit)
+	if !ok {
+		return fmt.Errorf("index is not literal")
+	}
+	rv, err := walkExpr(val, expr.X)
+	if err != nil {
+		return err
+	}
+	switch rv.Kind() {
+	case reflect.Slice:
+		idx, err := strconv.Atoi(index.Value)
+		if err != nil {
+			return fmt.Errorf("cannot index by key %s: %w", index.Value, err)
+		}
+		var sliceLen = rv.Len()
+		if idx < 0 || idx >= sliceLen {
+			return fmt.Errorf("slice index %s out of range", index.Value)
+		}
+		// 删除slice是通过先new一个新slice，然后把老的值赋到新slice里
+		var newSlice = reflect.MakeSlice(rv.Type(), sliceLen-1, rv.Cap())
+		var j = 0
+		for i := 0; i < sliceLen; i++ {
+			if i != idx {
+				newSlice.Index(j).Set(rv.Index(i))
+				j++
+			}
+		}
+		rv.Set(newSlice)
+
+	case reflect.Map:
+		var keyType = rv.Type().Key()
+		if !IsPrimitive(keyType.Kind()) {
+			return fmt.Errorf("cannot address map key %s %s", expr.Index, keyType.Name())
+		}
+		if key, err := CreatePrimitiveValue(keyType, index.Value); err != nil {
+			return fmt.Errorf("cannot index map key %s: %w", index.Value, err)
+		} else {
+			rv.SetMapIndex(key, reflect.Value{})
+		}
+	default:
+		return fmt.Errorf("unexpected kind %v with ident %s", val.Kind(), expr.Index)
+	}
+	return nil
 }
