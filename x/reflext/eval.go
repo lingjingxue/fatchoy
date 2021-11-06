@@ -214,7 +214,7 @@ func setSelectorExpr(lhv, rhv reflect.Value, expr *ast.SelectorExpr) error {
 	if !rv.CanAddr() {
 		return ErrNotValid
 	}
-	var field = lhv.FieldByName(expr.Sel.Name)
+	var field = rv.FieldByName(expr.Sel.Name)
 	if !field.IsValid() || !field.CanAddr() {
 		return ErrNotValid
 	}
@@ -308,19 +308,11 @@ func createMapKey(rv reflect.Value, value string) (reflect.Value, error) {
 }
 
 func setEValue(lhv, rhv reflect.Value) {
-	var tryConvert = func () (b bool) {
-		defer func() {
-			b = false
-		}()
-		v := rhv.Convert(lhv.Type())
+	ltype, rtype := lhv.Type(), rhv.Type()
+	if rtype.ConvertibleTo(ltype) {
+		v := rhv.Convert(ltype)
 		lhv.Set(v)
-		b = true
-		return
+	} else {
+		lhv.Set(rhv) // raw set, may panic if type mismatch
 	}
-
-	// go 1.17 reflect.CanConvert()
-	if tryConvert() {
-		return
-	}
-	lhv.Set(rhv) // raw set, may panic if type mismatch
 }

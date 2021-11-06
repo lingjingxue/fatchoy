@@ -41,9 +41,9 @@ func createTA() *TA {
 func TestEvalView(t *testing.T) {
 	var obj = createTA()
 	tests := []struct {
-		expr   string
-		hasErr bool
-		result interface{}
+		expr         string
+		shouldHasErr bool
+		result       interface{}
 	}{
 		{"B.A", false, obj.B.A},
 		{"C", false, obj.C},
@@ -60,17 +60,17 @@ func TestEvalView(t *testing.T) {
 	}
 	for _, tc := range tests {
 		v, err := EvalView(obj, tc.expr)
-		if tc.hasErr {
+		if tc.shouldHasErr {
 			if err == nil {
-				t.Fatalf("%v", err)
+				t.Fatalf("%s: %v", tc.expr, err)
 			}
 			continue
 		}
 		t.Logf("%s: %v", tc.expr, err)
 		if tc.result == nil && !IsInterfaceNil(v) {
-			t.Fatalf("%v", err)
+			t.Fatalf("%s: %v", tc.expr, err)
 		} else if !reflect.DeepEqual(v, tc.result) {
-			t.Fatalf("%v", err)
+			t.Fatalf("%s: %v", tc.expr, err)
 		}
 	}
 }
@@ -78,20 +78,33 @@ func TestEvalView(t *testing.T) {
 func TestEvalSet(t *testing.T) {
 	var obj = createTA()
 	tests := []struct {
-		expr   string
-		val    interface{}
-		hasErr bool
+		expr         string
+		val          interface{}
+		shouldHasErr bool
 	}{
-		//{"A", 5678, false},
-		{"B.A", "world", false},
+		//{"A", 5678, obj.A, false},
+		//{"B.A", "hi", obj.B.A, false},
+		//{"B.C.Max.X", 100, false},
+		//{"C[0].X", 54321, false},
+		//{"D[3.14]", "pi", false},
+		{"D[1.68]", "ratio", false},
+		{"D.B.E[100]", "100", false},
 	}
 	for _, tc := range tests {
 		err := EvalSet(obj, tc.expr, tc.val)
 		t.Logf("%s: %v", tc.expr, err)
-		if tc.hasErr {
+		if tc.shouldHasErr {
 			if err == nil {
-				t.Fatalf("%v", err)
+				t.Fatalf("%s: %v", tc.expr, err)
 			}
+			continue
+		}
+		v, err := EvalView(obj, tc.expr)
+		if err != nil {
+			t.Fatalf("%s: %v", tc.expr, err)
+		}
+		if !reflect.DeepEqual(v, tc.val) {
+			t.Fatalf("%s: %v", tc.expr, err)
 		}
 	}
 }
@@ -110,7 +123,7 @@ func TestEvalRemove(t *testing.T) {
 		t.Logf("%s: %v", tc.expr, err)
 		if tc.hasErr {
 			if err == nil {
-				t.Fatalf("%v", err)
+				t.Fatalf("%s: %v", tc.expr, err)
 			}
 		}
 	}
