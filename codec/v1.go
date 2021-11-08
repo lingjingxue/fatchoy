@@ -45,17 +45,14 @@ func (c *V1Codec) Unmarshal(r io.Reader, head *Header, pkt fatchoy.IPacket, decr
 }
 
 func marshalPacket(version Version, w io.Writer, pkt fatchoy.IPacket, encryptor cipher.BlockCryptor, maxPacketBytes int) (int, error) {
-	payload, err := pkt.EncodeBodyToBytes()
-	if err != nil {
-		return 0, err
-	}
+	payload := pkt.BodyToBytes()
 	if len(payload) > 0 && encryptor != nil {
 		payload = encryptor.Encrypt(payload)
 		pkt.SetFlag(pkt.Flag() | fatchoy.PacketFlagEncrypted)
 	}
 
 	if n := len(payload); n >= maxPacketBytes {
-		err = errors.Errorf("message %v too large payload %d/%d", pkt.Command(), n, maxPacketBytes)
+		err := errors.Errorf("message %v too large payload %d/%d", pkt.Command(), n, maxPacketBytes)
 		return 0, err
 	}
 
