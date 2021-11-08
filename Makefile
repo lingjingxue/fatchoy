@@ -9,7 +9,9 @@ GO ?= go
 GO_PKG_LIST := $(shell go list ./...)
 
 test:
+	docker-compose up -d
 	$(GO) test -v ./...
+	docker-compose down
 
 clean:
 	$(GO) clean
