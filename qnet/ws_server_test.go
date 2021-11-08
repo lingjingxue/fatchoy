@@ -20,8 +20,12 @@ import (
 	"gopkg.in/qchencc/fatchoy.v1/packet"
 )
 
-func startClient(t *testing.T, addr, path string) {
-	time.Sleep(500 * time.Millisecond)
+func startWsClient(t *testing.T, addr, path string, msgCount int, ready chan struct{}) {
+	// wait until ready
+	select {
+	case <-ready:
+	}
+
 	wurl := url.URL{Scheme: "ws", Host: addr, Path: path}
 	c, _, err := websocket.DefaultDialer.Dial(wurl.String(), nil)
 	if err != nil {
@@ -42,62 +46,68 @@ func startClient(t *testing.T, addr, path string) {
 		t.Fatalf("write: %v", err)
 	}
 
-	var nbytes, msgcnt int
-	for i := 0; i < 10; i++ {
+	for i := 0; i < msgCount; i++ {
 		_, msg, err := c.ReadMessage()
 		if err != nil {
 			t.Fatalf("read %v", err)
 		}
-		msgcnt += 1
-		nbytes += len(msg)
-		// fmt.Printf("recv server msg: %s\n", string(msg))
+		var resp = packet.Make()
+		if err := json.Unmarshal(msg, resp); err != nil {
+			t.Fatalf("unmarshal resp: %v", err)
+		}
+		if s := resp.BodyToString(); s != "pong" {
+			t.Fatalf("unexpected response %s", s)
+		}
+		//fmt.Printf("recv server msg: %s\n", string(msg))
 		if err := c.WriteMessage(websocket.TextMessage, data); err != nil {
 			t.Fatalf("write: %v", err)
 		}
 	}
-	t.Logf("client recv %d messages, #%d bytes\n", msgcnt, nbytes)
 }
 
-func TestWebsocketServer(t *testing.T) {
-	var addr = "localhost:9090"
-	var path = "/example"
-	var incoming = make(chan fatchoy.IPacket, 1000)
-
-	ctx, cancel := context.WithTimeout(context.Background(), time.Minute*5)
-	defer cancel()
-	server := NewWebsocketServer(ctx, addr, path, codec.VersionV2, incoming, 600)
-	server.Go()
-
-	go startClient(t, addr, path)
-
-	var nbytes, msgcnt int
+func serveWs(incoming chan fatchoy.IPacket, server *WsServer) {
+	var msgcnt int
+	const totalMsgNum = maxPingPong * maxConnection
+	var timer = time.NewTimer(time.Second * 10)
 	for {
 		select {
-		case conn, ok := <-server.BacklogChan():
-			if !ok {
-				return
-			}
-			fmt.Printf("connection %s connected\n", conn.RemoteAddr())
+		case endpoint := <-server.BacklogChan():
+			fmt.Printf("connection %s connected\n", endpoint.RemoteAddr())
+			endpoint.Go(fatchoy.EndpointReadWriter)
 
 		case err := <-server.ErrChan():
 			var ne = err.(*Error)
 			var endpoint = ne.Endpoint
-			fmt.Printf("endpoint[%v] %v closed\n", endpoint.NodeID(), endpoint.RemoteAddr())
-			return
+			fmt.Printf("endpoint[%v] %v closed %v\n", endpoint.NodeID(), endpoint.RemoteAddr(), ne)
 
-		case pkt, ok := <-incoming:
-			if !ok {
+		case pkt := <-incoming:
+			msgcnt++
+			pkt.ReplyString(pkt.Command(), "pong")
+			//fmt.Printf("recv client message: %v\n", text)
+			if msgcnt == totalMsgNum {
 				return
 			}
-			msgcnt++
-			text := pkt.BodyAsString()
-			nbytes += len(text)
-			pkt.ReplyString(pkt.Command(), "pong")
-			// fmt.Printf("recv client message: %v\n", text))
 
-		case <-ctx.Done():
+		case <-timer.C:
 			return
 		}
 	}
-	t.Logf("server recv %d messages, #%d bytes\n", msgcnt, nbytes)
+}
+
+func TestWebsocketServer(t *testing.T) {
+	var addr = "localhost:10009"
+	var path = "/ws-test"
+	var incoming = make(chan fatchoy.IPacket, 1000)
+
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	server := NewWebsocketServer(ctx, addr, path, codec.VersionV2, incoming, 600)
+	server.Go()
+	var ready = make(chan struct{})
+	for i := 0; i < maxConnection; i++ {
+		go startWsClient(t, addr, path, maxPingPong, ready)
+	}
+	ready <- struct{}{}
+
+	serveWs(incoming, server)
 }

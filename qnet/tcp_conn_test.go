@@ -21,7 +21,7 @@ import (
 
 const (
 	maxConnection = 100
-	maxPingpong   = 1000
+	maxPingPong   = 1000
 )
 
 func handleConn(conn net.Conn) {
@@ -43,7 +43,7 @@ func handleConn(conn net.Conn) {
 		tconn.SendPacket(pkt)
 		//fmt.Printf("message %d OK\n", count)
 		count++
-		if count == maxPingpong {
+		if count == maxPingPong {
 			break
 		}
 	}
@@ -95,7 +95,7 @@ func TestExampleTcpConn(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Dial: %v", err)
 	}
-	//file, _ := conn.File()
+
 	inbound := make(chan fatchoy.IPacket, 1000)
 	errchan := make(chan error, 4)
 	tconn := NewTcpConn(context.Background(), 0, codec.VersionV2, conn, errchan, inbound, 1000, nil)
