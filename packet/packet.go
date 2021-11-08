@@ -99,16 +99,6 @@ func (m *Packet) Clone() Packet {
 	}
 }
 
-func (m *Packet) CloneBody() ([]byte, error) {
-	data, err := m.EncodeBodyToBytes()
-	if err != nil {
-		return nil, err
-	}
-	var clone = make([]byte, len(data))
-	copy(clone, data)
-	return clone, nil
-}
-
 func (m *Packet) Errno() int32 {
 	if (m.Flg & fatchoy.PacketFlagError) != 0 {
 		return m.Cmd
@@ -117,7 +107,7 @@ func (m *Packet) Errno() int32 {
 }
 
 // 返回响应
-func (m *Packet) ReplyCommand(command int32, ack proto.Message) error {
+func (m *Packet) ReplyWith(command int32, ack proto.Message) error {
 	var pkt = New(command, m.Sequence, m.Typ, m.Flg, ack)
 	return m.endpoint.SendPacket(pkt)
 }
@@ -125,18 +115,12 @@ func (m *Packet) ReplyCommand(command int32, ack proto.Message) error {
 // 响应proto消息内容
 func (m *Packet) Reply(ack proto.Message) error {
 	var mid = GetMessageIDOf(ack)
-	return m.ReplyCommand(mid, ack)
+	return m.ReplyWith(mid, ack)
 }
 
 // 响应string内容
 func (m *Packet) ReplyString(command int32, s string) error {
 	var pkt = New(command, m.Sequence, m.Typ, m.Flg, s)
-	return m.endpoint.SendPacket(pkt)
-}
-
-// 响应字节内容
-func (m *Packet) ReplyBytes(command int32, b []byte) error {
-	var pkt = New(command, m.Sequence, m.Typ, m.Flg, b)
 	return m.endpoint.SendPacket(pkt)
 }
 
@@ -146,10 +130,10 @@ func (m *Packet) Refuse(errno int32) error {
 	if ackMsgId == 0 {
 		ackMsgId = m.Cmd
 	}
-	return m.RefuseCommand(ackMsgId, errno)
+	return m.RefuseWith(ackMsgId, errno)
 }
 
-func (m *Packet) RefuseCommand(command, errno int32) error {
+func (m *Packet) RefuseWith(command, errno int32) error {
 	var pkt = New(command, m.Sequence, m.Typ, m.Flg|fatchoy.PacketFlagError, nil)
 	pkt.SetErrno(errno)
 	return m.endpoint.SendPacket(pkt)
