@@ -29,6 +29,18 @@ const (
 	EventDelete  NodeEventType = 3
 )
 
+func (e NodeEventType) String() string {
+	switch e {
+	case EventCreate:
+		return "create"
+	case EventUpdate:
+		return "update"
+	case EventDelete:
+		return "delete"
+	}
+	return "???"
+}
+
 // 节点事件
 type NodeEvent struct {
 	Type NodeEventType

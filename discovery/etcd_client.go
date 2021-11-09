@@ -27,6 +27,7 @@ var (
 
 const (
 	EventChanCapacity = 1000
+	OpTimeout         = 3
 )
 
 // 基于etcd的服务发现
@@ -178,30 +179,28 @@ func (c *Client) GetLeaseTTL(ctx context.Context, leaseId int64) (int, error) {
 
 // 撤销一个lease
 func (c *Client) RevokeLease(ctx context.Context, leaseId int64) error {
-	ctx, cancel := context.WithTimeout(ctx, time.Second*3)
-	defer cancel()
 	_, err := c.client.Revoke(ctx, clientv3.LeaseID(leaseId))
 	return err
 }
 
 // 注册一个节点信息，并返回一个ttl秒的lease
 func (c *Client) RegisterNode(rootCtx context.Context, name string, value interface{}, ttl int) (int64, error) {
-	exist, err := c.IsNodeExist(rootCtx, name)
+	ctx, cancel := context.WithTimeout(rootCtx, time.Second*OpTimeout)
+	defer cancel()
+
+	exist, err := c.IsNodeExist(ctx, name)
 	if err != nil {
 		return 0, err
 	}
 	if exist {
 		return 0, ErrNodeKeyAlreadyExist
 	}
-
-	ctx, cancel := context.WithTimeout(rootCtx, time.Second*3)
-	defer cancel()
-
 	var leaseId int64
-	if ttl > 0 {
-		if leaseId, err = c.GrantLease(ctx, ttl); err != nil {
-			return 0, err
-		}
+	if ttl <= 0 {
+		ttl = 5
+	}
+	if leaseId, err = c.GrantLease(ctx, ttl); err != nil {
+		return 0, err
 	}
 	if err = c.PutNode(ctx, name, value, leaseId); err != nil {
 		return 0, err
@@ -209,11 +208,11 @@ func (c *Client) RegisterNode(rootCtx context.Context, name string, value interf
 	return leaseId, nil
 }
 
-func doRevoke(c *Client, ctx context.Context, leaseId int64) {
-	log.Debugf("context canceled, try revoke lease %d", leaseId)
-	revokeCtx, cancel := context.WithTimeout(ctx, time.Second*2)
+func revokeLeaseWithTimeout(c *Client, leaseId int64) {
+	log.Debugf("try revoke lease %d", leaseId)
+	ctx, cancel := context.WithTimeout(context.Background(), time.Second*OpTimeout)
 	defer cancel()
-	if err := c.RevokeLease(revokeCtx, leaseId); err != nil {
+	if err := c.RevokeLease(ctx, leaseId); err != nil {
 		log.Debugf("revoke lease %x: %v", leaseId, err)
 	} else {
 		log.Debugf("revoke lease %x done", leaseId)
@@ -227,44 +226,46 @@ func (c *Client) KeepAlive(ctx context.Context, leaseId int64) (chan struct{}, e
 		return nil, err
 	}
 	var signal = make(chan struct{})
-	var doKeepAlive = func() {
+	var aliveKeeper = func() {
 		defer func() {
 			signal <- struct{}{} // notify signal
+			revokeLeaseWithTimeout(c, leaseId)
 		}()
 		for {
 			select {
 			case ka, ok := <-kaChan:
 				if !ok || ka == nil {
-					log.Debugf("lease %x is not alive", leaseId)
+					log.Warnf("lease %x is not alive", leaseId)
 					return
 				}
-				// log.Debugf("lease %d respond alive, ttl %d", ka.ID, ka.TTL)
+				log.Debugf("lease %d respond alive, ttl %d", ka.ID, ka.TTL)
 
 			case <-ctx.Done():
-				doRevoke(c, context.Background(), leaseId)
 				return
 			}
 		}
 	}
-	go doKeepAlive()
+	go aliveKeeper()
 	return signal, nil
 }
 
 // 注册一个节点，并永久保活
-func (c *Client) RegisterAndKeepAliveForever(rootCtx context.Context, name string, value interface{}, ttl int) error {
+func (c *Client) RegisterAndKeepAliveForever(ctx context.Context, name string, value interface{}, ttl int) error {
 	var leaseId int64
-	var signal chan struct{}
+	var done chan struct{}
 	var leaseAlive bool
 
 	var doRegister = func() error {
 		var err error
-		log.Debugf("try to register key: %s", name)
+		log.Debugf("try register key: %s", name)
 		leaseAlive = false
-		leaseId, err = c.RegisterNode(rootCtx, name, value, ttl)
+		leaseId = 0
+
+		leaseId, err = c.RegisterNode(ctx, name, value, ttl)
 		if err != nil {
 			return err
 		}
-		signal, err = c.KeepAlive(rootCtx, leaseId)
+		done, err = c.KeepAlive(ctx, leaseId)
 		if err != nil {
 			return err
 		}
@@ -277,54 +278,58 @@ func (c *Client) RegisterAndKeepAliveForever(rootCtx context.Context, name strin
 		return err
 	}
 
-	var keepRegister = func() {
-		var ticker = time.NewTicker(time.Second * 3)
+	var aliveKeeper = func() {
+		var ticker = time.NewTicker(time.Second)
 		defer ticker.Stop()
 		for {
 			select {
-			case <-rootCtx.Done():
-				return
-
 			case <-ticker.C:
 				if !leaseAlive {
 					if err := doRegister(); err != nil {
-						log.Warnf("register and keepalive %s: %v", name, err)
+						log.Warnf("register or keepalive %s failed: %v", name, err)
 					}
 				}
 
-			case <-signal:
+			case <-done:
+				log.Debugf("node %s lease(%d) is not alive, try register later", name, leaseId)
 				leaseAlive = false
-				log.Debugf("lease %x of node %s is not alive, try register later", leaseId, name)
+				leaseId = 0
+
+			case <-ctx.Done():
+				return
 			}
 		}
 	}
-	go keepRegister()
+	go aliveKeeper()
 	return nil
 }
 
-func propagateWatchEvent(eventChan chan<- *NodeEvent, resp *clientv3.WatchResponse) {
-	for _, ev := range resp.Events {
-		var event = &NodeEvent{
-			Type: EventUnknown,
-			Key:  string(ev.Kv.Key),
+func propagateWatchEvent(eventChan chan<- *NodeEvent, ev *clientv3.Event) {
+	var event = &NodeEvent{
+		Type: EventUnknown,
+		Key:  string(ev.Kv.Key),
+	}
+	switch ev.Type {
+	case 0: // PUT
+		if ev.IsCreate() {
+			event.Type = EventCreate
+		} else {
+			event.Type = EventUpdate
 		}
-		switch ev.Type {
-		case 0: // PUT
-			if ev.IsCreate() {
-				event.Type = EventCreate
-			} else {
-				event.Type = EventUpdate
-			}
-		case 1: // DELETE
-			event.Type = EventDelete
+	case 1: // DELETE
+		event.Type = EventDelete
+	}
+	if len(ev.Kv.Value) > 0 {
+		if err := json.Unmarshal(ev.Kv.Value, &event.Node); err != nil {
+			log.Errorf("unmarshal node %s: %v", event.Key, err)
+			return
 		}
-		if ev.Kv.Value != nil {
-			if err := json.Unmarshal(ev.Kv.Value, &event.Node); err != nil {
-				log.Debugf("unmarshal node %s: %v", event.Key, err)
-				continue
-			}
-		}
-		eventChan <- event
+	}
+
+	select {
+	case eventChan <- event:
+	default:
+		log.Warnf("watch event channel is full, new event lost: %v", event)
 	}
 }
 
@@ -333,7 +338,7 @@ func (c *Client) WatchDir(ctx context.Context, dir string) <-chan *NodeEvent {
 	var key = c.formatKey(dir)
 	watchCh := c.client.Watch(clientv3.WithRequireLeader(ctx), key, clientv3.WithPrefix())
 	eventChan := make(chan *NodeEvent, EventChanCapacity)
-	go func() {
+	var watcher = func() {
 		defer close(eventChan)
 		for {
 			select {
@@ -342,10 +347,12 @@ func (c *Client) WatchDir(ctx context.Context, dir string) <-chan *NodeEvent {
 					return
 				}
 				if resp.Err() != nil {
-					log.Warnf("watch of key %s canceled: %v", key, resp.Err())
+					log.Warnf("watch key %s canceled: %v", key, resp.Err())
 					return
 				}
-				propagateWatchEvent(eventChan, &resp)
+				for _, ev := range resp.Events {
+					propagateWatchEvent(eventChan, ev)
+				}
 
 			case <-ctx.Done():
 				if err := c.client.Watcher.Close(); err != nil {
@@ -354,7 +361,8 @@ func (c *Client) WatchDir(ctx context.Context, dir string) <-chan *NodeEvent {
 				return
 			}
 		}
-	}()
+	}
+	go watcher()
 	return eventChan
 }
 
@@ -362,7 +370,7 @@ func (c *Client) WatchDir(ctx context.Context, dir string) <-chan *NodeEvent {
 func (c *Client) WatchDirTo(ctx context.Context, dir string, nodeMap *NodeMap) {
 	var evChan = c.WatchDir(ctx, dir)
 	var prefix = c.formatKey(dir)
-	go func() {
+	var watcher = func() {
 		for {
 			select {
 			case ev, ok := <-evChan:
@@ -372,7 +380,8 @@ func (c *Client) WatchDirTo(ctx context.Context, dir string, nodeMap *NodeMap) {
 				updateNodeEvent(nodeMap, prefix, ev)
 			}
 		}
-	}()
+	}
+	go watcher()
 }
 
 func updateNodeEvent(nodeMap *NodeMap, rootDir string, ev *NodeEvent) {
