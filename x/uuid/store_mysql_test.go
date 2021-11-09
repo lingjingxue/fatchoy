@@ -6,15 +6,15 @@ package uuid
 
 import (
 	"context"
-	"sync"
 	"testing"
 	"time"
 )
 
-var mysqlDSN = "root:HuppusoxOzs@tcp(127.0.0.1:3306)/testdb"
+var mysqlDSN = "root:LGrk4IaS0Wflxw@tcp(localhost:3306)/testdb"
 
 func createMySQLStore(label string) Storage {
-	return NewMySQLStore(context.Background(), mysqlDSN, "uuid", label, 2000)
+	ctx, _ := context.WithTimeout(context.Background(), time.Second*60)
+	return NewMySQLStore(ctx, mysqlDSN, "uuid", label, 2000)
 }
 
 func TestMySQLStoreExample(t *testing.T) {
@@ -43,27 +43,37 @@ func TestMySQLStoreExample(t *testing.T) {
 	//  QPS 918.53/s
 }
 
+func TestMySQLStoreConcurrent(t *testing.T) {
+	var gcnt = 10
+	var eachMax = 100000
+	var store = createMySQLStore("uuid_test2")
+	var idGen = NewPersistIDGen(store)
+	var workerCtx = NewWorkerContext(eachMax, func() IDGenerator { return idGen })
+	for i := 0; i < gcnt; i++ {
+		workerCtx.Go(t, i)
+	}
+	workerCtx.Wait()
+
+	var elapsed = workerCtx.Duration().Seconds()
+	if !t.Failed() {
+		t.Logf("QPS %.2f/s", float64(gcnt*eachMax)/elapsed)
+	}
+	// Output:
+	//  QPS 1070.08/s
+}
+
 // N个并发worker，每个worker单独连接, 测试生成id的一致性
 func TestMySQLStoreDistributed(t *testing.T) {
-	var (
-		wg      sync.WaitGroup
-		guard   sync.Mutex
-		gcnt    = 10
-		eachMax = 10000
-		m       = make(map[int64]int, 10000)
-	)
-	var start = time.Now()
-	for i := 1; i <= gcnt; i++ {
-		ctx := newWorkerContext(&wg, &guard, m, eachMax)
-		ctx.idGenCreator = func() IDGenerator {
-			store := createMySQLStore("distribute_uid2")
-			return NewStorageGen(store)
-		}
-		wg.Add(1)
-		go runIDWorker(i, ctx, t)
+	var gcnt = 10
+	var eachMax = 100000
+	var store = createMySQLStore("uuid_test3")
+	var workerCtx = NewWorkerContext(eachMax, func() IDGenerator { return NewPersistIDGen(store) })
+	for i := 0; i < gcnt; i++ {
+		workerCtx.Go(t, i)
 	}
-	wg.Wait()
-	var elapsed = time.Since(start).Seconds()
+	workerCtx.Wait()
+
+	var elapsed = workerCtx.Duration().Seconds()
 	if !t.Failed() {
 		t.Logf("QPS %.2f/s", float64(gcnt*eachMax)/elapsed)
 	}

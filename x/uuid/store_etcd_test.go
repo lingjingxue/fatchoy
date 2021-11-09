@@ -7,7 +7,6 @@ package uuid
 import (
 	"context"
 	"log"
-	"sync"
 	"testing"
 	"time"
 
@@ -15,7 +14,7 @@ import (
 )
 
 var (
-	etcdAddr = "192.168.132.129:2379"
+	etcdAddr = "localhost:2379"
 )
 
 func createEtcdClient() *clientv3.Client {
@@ -29,12 +28,18 @@ func createEtcdClient() *clientv3.Client {
 	return client
 }
 
-func TestEtcdStoreExample(t *testing.T) {
+func createEtcdStore(t *testing.T, key string) Storage {
 	cli := createEtcdClient()
-	var store = NewEtcdStore(context.Background(), cli, "/uuid/ctr001")
+	ctx, _ := context.WithTimeout(context.Background(), time.Second*30)
+	var store = NewEtcdStore(ctx, cli, key)
+	return store
+}
+
+func TestEtcdStoreExample(t *testing.T) {
+	var store = createEtcdStore(t, "/uuid/ctr101")
 
 	var (
-		count = 10000
+		count = 100000
 		ids   []int64
 		m     = make(map[int64]bool)
 	)
@@ -42,7 +47,7 @@ func TestEtcdStoreExample(t *testing.T) {
 	for i := 0; i < count; i++ {
 		id, err := store.Incr()
 		if err != nil {
-			t.Fatalf("cannot incr %v", err)
+			t.Fatalf("cannot incr at %d: %v", i, err)
 		}
 		if _, found := m[id]; found {
 			t.Fatalf("duplicate id %d", id)
@@ -52,39 +57,42 @@ func TestEtcdStoreExample(t *testing.T) {
 	var elapsed = time.Since(start).Seconds()
 	t.Logf("QPS %.2f/s", float64(count)/elapsed)
 	// Output:
-	//    QPS 2619.06/s
+	//    QPS 2475.96/s
 }
 
-func createEtcdStore(key string, t *testing.T) Storage {
-	cli := createEtcdClient()
-	var store = NewEtcdStore(context.Background(), cli, key)
-	return store
+func TestEtcdStoreConcurrent(t *testing.T) {
+	var gcnt = 10
+	var eachMax = 100000
+	var store = createEtcdStore(t, "/uuid/ctr102")
+	var idGen = NewPersistIDGen(store)
+	var workerCtx = NewWorkerContext(eachMax, func() IDGenerator { return idGen })
+	for i := 0; i < gcnt; i++ {
+		workerCtx.Go(t, i)
+	}
+	workerCtx.Wait()
+
+	var elapsed = workerCtx.Duration().Seconds()
+	if !t.Failed() {
+		t.Logf("QPS %.2f/s", float64(gcnt*eachMax)/elapsed)
+	}
 }
 
 // N个并发worker，每个worker单独连接, 测试生成id的一致性
 func TestEtcdStoreDistributed(t *testing.T) {
-	var (
-		wg      sync.WaitGroup
-		guard   sync.Mutex
-		gcnt    = 1
-		eachMax = 1000
-		m       = make(map[int64]int, 10000)
-	)
-	var start = time.Now()
-	for i := 1; i <= gcnt; i++ {
-		ctx := newWorkerContext(&wg, &guard, m, eachMax)
-		ctx.idGenCreator = func() IDGenerator {
-			store := createEtcdStore("uuid:ctr003", t)
-			return NewStorageGen(store)
-		}
-		wg.Add(1)
-		go runIDWorker(i, ctx, t)
+	var gcnt = 10
+	var eachMax = 100000
+	var store = createEtcdStore(t, "/uuid/ctr103")
+	var workerCtx = NewWorkerContext(eachMax, func() IDGenerator { return NewPersistIDGen(store) })
+	for i := 0; i < gcnt; i++ {
+		workerCtx.Go(t, i)
 	}
-	wg.Wait()
-	var elapsed = time.Since(start).Seconds()
+	workerCtx.Wait()
+
+	var elapsed = workerCtx.Duration().Seconds()
 	if !t.Failed() {
 		t.Logf("QPS %.2f/s", float64(gcnt*eachMax)/elapsed)
 	}
+
 	// Output:
-	//  QPS 2552.59/s
+	//  QPS 18234.02/s
 }

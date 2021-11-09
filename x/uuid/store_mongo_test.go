@@ -7,7 +7,6 @@ package uuid
 import (
 	"context"
 	"fmt"
-	"sync"
 	"testing"
 	"time"
 )
@@ -17,11 +16,12 @@ func createMongoStore(label string) Storage {
 	username := "admin"
 	password := "cuKpVrfZzUvg"
 	uri := fmt.Sprintf("mongodb://%s:%s@127.0.0.1:27017/?connect=direct", username, password)
-	return NewMongoDBStore(context.Background(), uri, db, label, DefaultSeqStep)
+	ctx, _ := context.WithTimeout(context.Background(), time.Second*60)
+	return NewMongoDBStore(ctx, uri, db, label, DefaultSeqStep)
 }
 
 func TestMongoStoreExample(t *testing.T) {
-	var store = createMongoStore("ctr001")
+	var store = createMongoStore("ctr101")
 	var (
 		count = 10000
 		ids   []int64
@@ -44,27 +44,35 @@ func TestMongoStoreExample(t *testing.T) {
 	//    QPS 4910.91/s
 }
 
+func TestMongoStoreConcurrent(t *testing.T) {
+	var gcnt = 10
+	var eachMax = 100000
+	var store = createMongoStore("ctr102")
+	var idGen = NewPersistIDGen(store)
+	var workerCtx = NewWorkerContext(eachMax, func() IDGenerator { return idGen })
+	for i := 0; i < gcnt; i++ {
+		workerCtx.Go(t, i)
+	}
+	workerCtx.Wait()
+	var elapsed = workerCtx.Duration().Seconds()
+	if !t.Failed() {
+		t.Logf("QPS %.2f/s", float64(gcnt*eachMax)/elapsed)
+	}
+	// Output:
+	//  QPS 16647.61/s
+}
+
 // N个并发worker，每个worker单独连接, 测试生成id的一致性
 func TestMongoStoreDistributed(t *testing.T) {
-	var (
-		wg      sync.WaitGroup
-		guard   sync.Mutex
-		gcnt    = 10
-		eachMax = 10000
-		m       = make(map[int64]int, 10000)
-	)
-	var start = time.Now()
-	for i := 1; i <= gcnt; i++ {
-		ctx := newWorkerContext(&wg, &guard, m, eachMax)
-		ctx.idGenCreator = func() IDGenerator {
-			store := createMongoStore("ctr003")
-			return NewStorageGen(store)
-		}
-		wg.Add(1)
-		go runIDWorker(i, ctx, t)
+	var gcnt = 10
+	var eachMax = 100000
+	var store = createMongoStore("ctr103")
+	var workerCtx = NewWorkerContext(eachMax, func() IDGenerator { return NewPersistIDGen(store) })
+	for i := 0; i < gcnt; i++ {
+		workerCtx.Go(t, i)
 	}
-	wg.Wait()
-	var elapsed = time.Since(start).Seconds()
+	workerCtx.Wait()
+	var elapsed = workerCtx.Duration().Seconds()
 	if !t.Failed() {
 		t.Logf("QPS %.2f/s", float64(gcnt*eachMax)/elapsed)
 	}

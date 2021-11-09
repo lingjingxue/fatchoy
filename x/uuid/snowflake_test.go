@@ -10,16 +10,16 @@ import (
 	"time"
 )
 
-func putIfAbsent(dict map[int64]bool, id int64) bool {
-	if _, found := dict[id]; !found {
-		dict[id] = true
+func putIfAbsent(uuids map[int64]bool, id int64) bool {
+	if _, found := uuids[id]; !found {
+		uuids[id] = true
 		return true
 	}
 	return false
 }
 
 func TestSnowflakeNext(t *testing.T) {
-	const count = 2000000
+	const count = 1000000
 	var dict = make(map[int64]bool)
 	var sf = NewSnowFlake(1234)
 	var start = time.Now()
@@ -54,35 +54,35 @@ var (
 	uuidGuard sync.Mutex
 )
 
-func newSnowflakeIDWorker(gid int, done chan int, count int, sf *SnowFlake, t *testing.T) {
+func newSnowflakeIDWorker(t *testing.T, sf *SnowFlake, wg *sync.WaitGroup, gid int, count int) {
 	defer func() {
-		done <- gid
+		wg.Done()
 	}()
+	//t.Logf("snowflake worker %d started", gid)
 	for i := 0; i < count; i++ {
 		id := sf.Next()
 		uuidGuard.Lock()
 		if !putIfAbsent(uuidMap, id) {
 			uuidGuard.Unlock()
-			t.Logf("duplicate id %d after %d", id, i)
+			t.Fatalf("duplicate id %d after %d", id, i)
 		} else {
 			uuidGuard.Unlock()
 		}
 	}
-	//t.Logf("worker %d completed\n", gid)
+	//t.Logf("snowflake worker %d done", gid)
 }
 
 // 开启N个goroutine，测试NewID的并发性
 func TestSnowflakeConcurrent(t *testing.T) {
-	var gcount = 100
-	var eachCnt = 150000
+	var gcount = 20
+	var eachCnt = 100000
 	var sf = NewSnowFlake(1234)
-	var done = make(chan int, gcount)
+	var wg sync.WaitGroup
+	wg.Add(gcount)
 	for i := 0; i < gcount; i++ {
-		go newSnowflakeIDWorker(i, done, eachCnt, sf, t)
+		go newSnowflakeIDWorker(t, sf, &wg, i, eachCnt)
 	}
-	for i := 0; i < gcount; i++ {
-		<-done
-	}
+	wg.Wait()
 	if len(uuidMap) != gcount*eachCnt {
 		t.Fatalf("duplicate id found")
 	}
@@ -90,7 +90,7 @@ func TestSnowflakeConcurrent(t *testing.T) {
 
 func BenchmarkSnowflakeGen(b *testing.B) {
 	var sf = NewSnowFlake(1234)
-	for i := 0; i < b.N; i++ {
+	for i := 0; i < 10000; i++ {
 		sf.Next()
 	}
 }
