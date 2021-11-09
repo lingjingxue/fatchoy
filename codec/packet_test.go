@@ -83,7 +83,7 @@ func (m *testPacket) SetBodyNumber(n int64) {
 	m.body = buf
 }
 
-func (m *testPacket) BodyAsNumber() int64 {
+func (m *testPacket) BodyToNumber() int64 {
 	return int64(binary.LittleEndian.Uint64(m.body))
 }
 
@@ -91,7 +91,7 @@ func (m *testPacket) SetBodyString(s string) {
 	m.body = []byte(s)
 }
 
-func (m *testPacket) BodyAsString() string {
+func (m *testPacket) BodyToString() string {
 	return string(m.body)
 }
 
@@ -99,7 +99,7 @@ func (m *testPacket) SetBodyBytes(b []byte) {
 	m.body = b
 }
 
-func (m *testPacket) BodyAsBytes() []byte {
+func (m *testPacket) BodyToBytes() []byte {
 	return m.body
 }
 
@@ -109,10 +109,6 @@ func (m *testPacket) SetBodyMsg(msg proto.Message) {
 		panic(err)
 	}
 	m.body = data
-}
-
-func (m *testPacket) BodyAsMsg() proto.Message {
-	return nil
 }
 
 func (m *testPacket) EncodeBodyToBytes() ([]byte, error) {
@@ -128,7 +124,7 @@ func (m testPacket) String() string {
 	return fmt.Sprintf("c:%d seq:%d 0x%x %s", m.Command(), m.Seq(), m.Flag(), checksum)
 }
 
-func (m *testPacket) ReplyCommand(command int32, ack proto.Message) error {
+func (m *testPacket) ReplyWith(command int32, ack proto.Message) error {
 	panic("not implemented")
 	return nil
 }
@@ -153,7 +149,7 @@ func (m *testPacket) Refuse(errno int32) error {
 	return nil
 }
 
-func (m *testPacket) RefuseCommand(command int32, errno int32) error {
+func (m *testPacket) RefuseWith(command int32, errno int32) error {
 	panic("not implemented")
 	return nil
 }

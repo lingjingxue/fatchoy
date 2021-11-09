@@ -18,8 +18,8 @@ func isEqualPacket(t *testing.T, a, b fatchoy.IPacket) bool {
 	if a.Command() != b.Command() || (a.Seq() != b.Seq()) {
 		return false
 	}
-	data1, _ := a.EncodeBodyToBytes()
-	data2, _ := b.EncodeBodyToBytes()
+	data1 := a.BodyToBytes()
+	data2 := b.BodyToBytes()
 	if len(data1) > 0 && len(data2) > 0 {
 		if !bytes.Equal(data1, data2) {
 			println("msg a md5sum", Md5Sum(data1))
@@ -61,7 +61,7 @@ func testProtoCodec(t *testing.T, size int, msgSent fatchoy.IPacket) {
 	encrypt, _ := createCryptor("aes-192")
 	decrypt := cipher.NewCrypt("aes-192", encrypt.Key(), encrypt.IV())
 	// 如果加密方式是原地加密，会导致packet的body是加密后的内容
-	clone := append([]byte(nil), msgSent.BodyAsBytes()...)
+	clone := append([]byte(nil), msgSent.BodyToBytes()...)
 	if _, err := Marshal(VersionV1, &encoded, msgSent, encrypt); err != nil {
 		t.Fatalf("Encode with size %d: %v", size, err)
 	}
