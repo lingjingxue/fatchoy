@@ -22,7 +22,7 @@ services:
             - "3306:3306"
         environment:
             MYSQL_ROOT_PASSWORD: LGrk4IaS0Wflxw
-            MYSQL_DATABASE: choyd
+            MYSQL_DATABASE: testdb
 
     mongodb:
       environment:
