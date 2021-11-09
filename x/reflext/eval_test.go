@@ -82,13 +82,13 @@ func TestEvalSet(t *testing.T) {
 		val          interface{}
 		shouldHasErr bool
 	}{
-		//{"A", 5678, obj.A, false},
-		//{"B.A", "hi", obj.B.A, false},
-		//{"B.C.Max.X", 100, false},
-		//{"C[0].X", 54321, false},
-		//{"D[3.14]", "pi", false},
+		{"A", 5678, false},
+		{"B.A", "hi", false},
+		{"B.C.Max.X", 100, false},
+		{"C[0].X", 54321, false},
+		{"D[3.14]", "pi", false},
 		{"D[1.68]", "ratio", false},
-		{"D.B.E[100]", "100", false},
+		{"B.E[100]", "100", false},
 	}
 	for _, tc := range tests {
 		err := EvalSet(obj, tc.expr, tc.val)
