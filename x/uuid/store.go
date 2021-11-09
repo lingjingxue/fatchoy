@@ -18,3 +18,21 @@ type Storage interface {
 	Incr() (int64, error)
 	Close() error
 }
+
+type IDGenerator interface {
+	Next() (int64, error)
+}
+
+type PersistIDGen struct {
+	store Storage
+}
+
+func NewPersistIDGenAdapter(store Storage) IDGenerator {
+	return &PersistIDGen{
+		store: store,
+	}
+}
+
+func (g *PersistIDGen) Next() (int64, error) {
+	return g.store.Incr()
+}

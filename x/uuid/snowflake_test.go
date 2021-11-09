@@ -10,22 +10,15 @@ import (
 	"time"
 )
 
-func putIfAbsent(uuids map[int64]bool, id int64) bool {
-	if _, found := uuids[id]; !found {
-		uuids[id] = true
-		return true
-	}
-	return false
-}
-
 func TestSnowflakeNext(t *testing.T) {
 	const count = 1000000
 	var dict = make(map[int64]bool)
 	var sf = NewSnowFlake(1234)
 	var start = time.Now()
+	var l NoLock
 	for i := 0; i < count; i++ {
 		id := sf.Next()
-		if !putIfAbsent(dict, id) {
+		if !putIfAbsent(&l, dict, id) {
 			t.Fatalf("duplicate id %d after %d", id, i)
 			return
 		}
@@ -55,18 +48,12 @@ var (
 )
 
 func newSnowflakeIDWorker(t *testing.T, sf *SnowFlake, wg *sync.WaitGroup, gid int, count int) {
-	defer func() {
-		wg.Done()
-	}()
+	defer wg.Done()
 	//t.Logf("snowflake worker %d started", gid)
 	for i := 0; i < count; i++ {
 		id := sf.Next()
-		uuidGuard.Lock()
-		if !putIfAbsent(uuidMap, id) {
-			uuidGuard.Unlock()
+		if !putIfAbsent(&uuidGuard, uuidMap, id) {
 			t.Fatalf("duplicate id %d after %d", id, i)
-		} else {
-			uuidGuard.Unlock()
 		}
 	}
 	//t.Logf("snowflake worker %d done", gid)

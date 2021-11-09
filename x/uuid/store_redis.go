@@ -7,14 +7,10 @@ package uuid
 import (
 	"context"
 	"log"
+	"sync"
 	"time"
 
 	"github.com/go-redis/redis/v8"
-)
-
-const (
-	TimeoutSec = 3
-	MaxRetry   = 2
 )
 
 // 使用redis INCR命令实现
@@ -23,6 +19,7 @@ type RedisStore struct {
 	key    string          // 使用的key
 	ctx    context.Context // context对象
 	client *redis.Client   //
+	guard  sync.Mutex      //
 	lastId int64           // 保存最近一次生成的ID
 }
 
@@ -30,10 +27,10 @@ func NewRedisStore(ctx context.Context, addr, key string) Storage {
 	var client = redis.NewClient(&redis.Options{
 		Addr:         addr,
 		DialTimeout:  5 * time.Second,
-		ReadTimeout:  7 * time.Second,
+		ReadTimeout:  15 * time.Second,
 		WriteTimeout: time.Second * OpTimeout,
 		PoolTimeout:  10 * time.Second,
-		PoolSize:     3,
+		PoolSize:     5,
 		MaxRetries:   3,
 	})
 	if err := client.Ping(ctx).Err(); err != nil {
@@ -48,6 +45,9 @@ func NewRedisStore(ctx context.Context, addr, key string) Storage {
 }
 
 func (s *RedisStore) Close() error {
+	s.guard.Lock()
+	defer s.guard.Unlock()
+
 	if s.client != nil {
 		err := s.client.Close()
 		s.client = nil
@@ -57,6 +57,9 @@ func (s *RedisStore) Close() error {
 }
 
 func (s *RedisStore) Incr() (int64, error) {
+	s.guard.Lock()
+	defer s.guard.Unlock()
+
 	cnt, err := s.doIncr()
 	if err != nil {
 		return 0, err

@@ -45,11 +45,12 @@ func TestMongoStoreExample(t *testing.T) {
 }
 
 func TestMongoStoreConcurrent(t *testing.T) {
-	var gcnt = 10
+	var gcnt = 2
 	var eachMax = 100000
 	var store = createMongoStore("ctr102")
-	var idGen = NewPersistIDGen(store)
-	var workerCtx = NewWorkerContext(eachMax, func() IDGenerator { return idGen })
+	defer store.Close()
+	var generator = func() IDGenerator { return NewPersistIDGenAdapter(store) }
+	var workerCtx = NewWorkerContext(eachMax, generator)
 	for i := 0; i < gcnt; i++ {
 		workerCtx.Go(t, i)
 	}
@@ -66,8 +67,11 @@ func TestMongoStoreConcurrent(t *testing.T) {
 func TestMongoStoreDistributed(t *testing.T) {
 	var gcnt = 10
 	var eachMax = 100000
-	var store = createMongoStore("ctr103")
-	var workerCtx = NewWorkerContext(eachMax, func() IDGenerator { return NewPersistIDGen(store) })
+	var generator = func() IDGenerator {
+		var store = createMongoStore("ctr103")
+		return NewPersistIDGenAdapter(store)
+	}
+	var workerCtx = NewWorkerContext(eachMax, generator)
 	for i := 0; i < gcnt; i++ {
 		workerCtx.Go(t, i)
 	}

@@ -10,6 +10,7 @@ import (
 	"errors"
 	"fmt"
 	"log"
+	"sync"
 	"time"
 
 	_ "github.com/go-sql-driver/mysql"
@@ -24,6 +25,7 @@ type MySQLStore struct {
 	step   int32           // 步长
 	db     *sql.DB         //
 	ctx    context.Context // context对象
+	guard  sync.Mutex      //
 	lastId int64           // 保存最近一次生成的ID
 }
 
@@ -42,6 +44,9 @@ func NewMySQLStore(ctx context.Context, dsn, table, label string, step int) Stor
 }
 
 func (s *MySQLStore) setupInit() error {
+	s.guard.Lock()
+	defer s.guard.Unlock()
+
 	ctx, cancel := context.WithTimeout(s.ctx, time.Second*OpTimeout)
 	defer cancel()
 
@@ -119,6 +124,9 @@ func (s *MySQLStore) insertRecord(ctx context.Context, tx *sql.Tx) error {
 }
 
 func (s *MySQLStore) Incr() (int64, error) {
+	s.guard.Lock()
+	defer s.guard.Unlock()
+
 	ctx, cancel := context.WithTimeout(s.ctx, time.Second*OpTimeout)
 	defer cancel()
 

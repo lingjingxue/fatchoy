@@ -47,8 +47,9 @@ func TestMySQLStoreConcurrent(t *testing.T) {
 	var gcnt = 10
 	var eachMax = 100000
 	var store = createMySQLStore("uuid_test2")
-	var idGen = NewPersistIDGen(store)
-	var workerCtx = NewWorkerContext(eachMax, func() IDGenerator { return idGen })
+	defer store.Close()
+	var generator = func() IDGenerator { return NewPersistIDGenAdapter(store) }
+	var workerCtx = NewWorkerContext(eachMax, generator)
 	for i := 0; i < gcnt; i++ {
 		workerCtx.Go(t, i)
 	}
@@ -66,8 +67,12 @@ func TestMySQLStoreConcurrent(t *testing.T) {
 func TestMySQLStoreDistributed(t *testing.T) {
 	var gcnt = 10
 	var eachMax = 100000
-	var store = createMySQLStore("uuid_test3")
-	var workerCtx = NewWorkerContext(eachMax, func() IDGenerator { return NewPersistIDGen(store) })
+
+	var generator = func() IDGenerator {
+		var store = createMySQLStore("uuid_test3")
+		return NewPersistIDGenAdapter(store)
+	}
+	var workerCtx = NewWorkerContext(eachMax, generator)
 	for i := 0; i < gcnt; i++ {
 		workerCtx.Go(t, i)
 	}

@@ -13,14 +13,12 @@ import (
 	"go.etcd.io/etcd/clientv3"
 )
 
-var (
-	etcdAddr = "localhost:2379"
-)
+var etcdAddr = "localhost:2379"
 
 func createEtcdClient() *clientv3.Client {
 	client, err := clientv3.New(clientv3.Config{
 		Endpoints:   []string{etcdAddr},
-		DialTimeout: time.Second * TimeoutSec,
+		DialTimeout: time.Second * OpTimeout,
 	})
 	if err != nil {
 		log.Panicf("cannot connect etcd: %v", err)
@@ -28,7 +26,7 @@ func createEtcdClient() *clientv3.Client {
 	return client
 }
 
-func createEtcdStore(t *testing.T, key string) Storage {
+func createEtcdStore(key string) Storage {
 	cli := createEtcdClient()
 	ctx, _ := context.WithTimeout(context.Background(), time.Second*30)
 	var store = NewEtcdStore(ctx, cli, key)
@@ -36,7 +34,7 @@ func createEtcdStore(t *testing.T, key string) Storage {
 }
 
 func TestEtcdStoreExample(t *testing.T) {
-	var store = createEtcdStore(t, "/uuid/ctr101")
+	var store = createEtcdStore("/uuid/ctr101")
 
 	var (
 		count = 100000
@@ -63,9 +61,10 @@ func TestEtcdStoreExample(t *testing.T) {
 func TestEtcdStoreConcurrent(t *testing.T) {
 	var gcnt = 10
 	var eachMax = 100000
-	var store = createEtcdStore(t, "/uuid/ctr102")
-	var idGen = NewPersistIDGen(store)
-	var workerCtx = NewWorkerContext(eachMax, func() IDGenerator { return idGen })
+	var store = createEtcdStore("/uuid/ctr102")
+	defer store.Close()
+	var generator = func() IDGenerator { return NewPersistIDGenAdapter(store) }
+	var workerCtx = NewWorkerContext(eachMax, generator)
 	for i := 0; i < gcnt; i++ {
 		workerCtx.Go(t, i)
 	}
@@ -81,8 +80,11 @@ func TestEtcdStoreConcurrent(t *testing.T) {
 func TestEtcdStoreDistributed(t *testing.T) {
 	var gcnt = 10
 	var eachMax = 100000
-	var store = createEtcdStore(t, "/uuid/ctr103")
-	var workerCtx = NewWorkerContext(eachMax, func() IDGenerator { return NewPersistIDGen(store) })
+	var generator = func() IDGenerator {
+		var store = createEtcdStore("/uuid/ctr103")
+		return NewPersistIDGenAdapter(store)
+	}
+	var workerCtx = NewWorkerContext(eachMax, generator)
 	for i := 0; i < gcnt; i++ {
 		workerCtx.Go(t, i)
 	}

@@ -53,9 +53,8 @@ func TestRedisStoreConcurrent(t *testing.T) {
 	var eachMax = 20000
 	var store = createRedisStore("/uuid/cnt2")
 	defer store.Close()
-
-	var idGen = NewPersistIDGen(store)
-	var workerCtx = NewWorkerContext(eachMax, func() IDGenerator { return idGen })
+	var generator = func() IDGenerator { return NewPersistIDGenAdapter(store) }
+	var workerCtx = NewWorkerContext(eachMax, generator)
 	for i := 0; i < gcnt; i++ {
 		workerCtx.Go(t, i)
 	}
@@ -73,10 +72,12 @@ func TestRedisStoreConcurrent(t *testing.T) {
 func TestRedisStoreDistributed(t *testing.T) {
 	var gcnt = 10
 	var eachMax = 100000
-	var store = createRedisStore("/uuid/cnt3")
-	defer store.Close()
 
-	var workerCtx = NewWorkerContext(eachMax, func() IDGenerator { return NewPersistIDGen(store) })
+	var generator = func() IDGenerator {
+		var store = createRedisStore("/uuid/cnt3")
+		return NewPersistIDGenAdapter(store)
+	}
+	var workerCtx = NewWorkerContext(eachMax, generator)
 	for i := 0; i < gcnt; i++ {
 		workerCtx.Go(t, i)
 	}
@@ -87,5 +88,5 @@ func TestRedisStoreDistributed(t *testing.T) {
 		t.Logf("QPS %.2f/s", float64(gcnt*eachMax)/elapsed)
 	}
 	// Output:
-	//  QPS 19106.58/s
+	//  QPS 36711.85/s
 }

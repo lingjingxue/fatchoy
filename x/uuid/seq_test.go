@@ -5,65 +5,12 @@
 package uuid
 
 import (
-	"sync"
 	"testing"
 	"time"
 )
 
-type IDGenWorkerContext struct {
-	wg           sync.WaitGroup
-	guard        sync.Mutex
-	uuids        map[int64]bool
-	eachMaxCount int
-	newGen       func() IDGenerator
-	startAt      time.Time
-	stopAt       time.Time
-}
-
-func NewWorkerContext(eachMaxCount int, f func() IDGenerator) *IDGenWorkerContext {
-	return &IDGenWorkerContext{
-		newGen:       f,
-		eachMaxCount: eachMaxCount,
-		uuids:        make(map[int64]bool, 10000),
-		startAt:      time.Now(),
-	}
-}
-
-func (ctx *IDGenWorkerContext) serve(t *testing.T, gid int) {
-	defer ctx.wg.Done()
-	var idGen = ctx.newGen()
-	for i := 0; i < ctx.eachMaxCount; i++ {
-		id, err := idGen.Next()
-		if err != nil {
-			t.Fatalf("worker %d generate error: %v", gid, err)
-		}
-		// fmt.Printf("worker %d generate id %d\n", worker, id)
-		ctx.guard.Lock()
-		if !putIfAbsent(ctx.uuids, id) {
-			ctx.guard.Unlock()
-			t.Fatalf("worker %d: tick %d, id %d is already produced by worker", gid, i, id)
-		} else {
-			ctx.guard.Unlock()
-		}
-	}
-}
-
-func (ctx *IDGenWorkerContext) Go(t *testing.T, gid int) {
-	ctx.wg.Add(1)
-	go ctx.serve(t, gid)
-}
-
-func (ctx *IDGenWorkerContext) Wait() {
-	ctx.wg.Wait()
-	ctx.stopAt = time.Now()
-}
-
-func (ctx *IDGenWorkerContext) Duration() time.Duration {
-	return ctx.stopAt.Sub(ctx.startAt)
-}
-
 func TestSeqIDEtcdSimple(t *testing.T) {
-	var store = createEtcdStore(t, "/uuid/ctr101")
+	var store = createEtcdStore("/uuid/ctr101")
 	var seq = NewSeqID(store, 2000)
 	if err := seq.Init(); err != nil {
 		t.Fatalf("Init: %v", err)
@@ -88,7 +35,7 @@ func TestSeqIDEtcdSimple(t *testing.T) {
 func TestSeqIDEtcdConcurrent(t *testing.T) {
 	var gcnt = 10
 	var eachMax = 100000
-	var store = createEtcdStore(t, "/uuid/ctr103")
+	var store = createEtcdStore("/uuid/ctr103")
 	var seq = NewSeqID(store, 2000)
 	var workerCtx = NewWorkerContext(eachMax, func() IDGenerator { return seq })
 	for i := 0; i < gcnt; i++ {
@@ -108,7 +55,7 @@ func TestSeqIDEtcdConcurrent(t *testing.T) {
 func TestSeqIDEtcdDistributed(t *testing.T) {
 	var gcnt = 10
 	var eachMax = 100000
-	var store = createEtcdStore(t, "/uuid/ctr103")
+	var store = createEtcdStore("/uuid/ctr103")
 	var workerCtx = NewWorkerContext(eachMax, func() IDGenerator { return NewSeqID(store, 2000) })
 	for i := 0; i < gcnt; i++ {
 		workerCtx.Go(t, i)

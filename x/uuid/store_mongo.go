@@ -7,6 +7,7 @@ package uuid
 import (
 	"context"
 	"log"
+	"sync"
 	"time"
 
 	"go.mongodb.org/mongo-driver/bson"
@@ -32,6 +33,7 @@ type MongoStore struct {
 	step   int32           // ID递增步长
 	ctx    context.Context // context对象
 	cli    *mongo.Client   //
+	guard  sync.Mutex      //
 	lastId int64           // 保存最近一次生成的ID
 }
 
@@ -69,11 +71,16 @@ func (s *MongoStore) makeClient() error {
 }
 
 func (s *MongoStore) Close() error {
+	s.guard.Lock()
 	s.cli = nil
+	s.guard.Unlock()
 	return nil
 }
 
 func (s *MongoStore) Incr() (int64, error) {
+	s.guard.Lock()
+	defer s.guard.Unlock()
+
 	var ctr = &Counter{
 		Label: s.label,
 		Step:  s.step,
