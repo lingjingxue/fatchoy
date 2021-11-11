@@ -5,7 +5,6 @@
 package reflext
 
 import (
-	"encoding/json"
 	"fmt"
 	"image"
 	"io"
@@ -82,7 +81,7 @@ func (c *Cot) TF33(pt image.Point, rect *image.Rectangle) {
 func TestInvokeCallable(t *testing.T) {
 	tests := []struct {
 		method       string
-		args         []interface{}
+		args         []string
 		shouldHasErr bool
 		result       string
 	}{
@@ -96,20 +95,15 @@ func TestInvokeCallable(t *testing.T) {
 		{"TF23", nil, false, `{"X":12,"Y":34}`},
 		{"TF24", nil, false, `{"X":12,"Y":34}`},
 		{"TF25", nil, false, `{"X":12,"Y":34}`},
-		{"TF31", []interface{}{1234, false, 3.14, "hello"}, false, ``},
-		{"TF32", []interface{}{[]int{12, 34}, map[string]int{"X": 12, "Y": 34}}, false, ``},
-		{"TF33", []interface{}{image.Point{X: 12, Y: 34}, image.Rect(12, 34, 56, 78)}, false, ``},
+		{"TF31", []string{"1234", "false", "3.14", "\"hello\""}, false, ``},
+		{"TF32", []string{"[12,34]", "{\"X\": 12, \"Y\": 34}"}, false, ``},
+		{"TF33", []string{"{\"X\": 12, \"Y\": 34}", "{\"Min\":{\"X\":12,\"Y\":34}, \"Max\":{\"X\":56,\"Y\":78}}"}, false, ``},
 	}
 
 	var cot Cot
 	var callables = EnumerateCallable(&cot)
 	for _, tc := range tests {
-		var args string
-		if len(tc.args) > 0 {
-			data, _ := json.Marshal(tc.args)
-			args = string(data)
-		}
-		outResult, outErr, err := InvokeCallable(callables[tc.method], args)
+		outResult, outErr, err := InvokeCallable(callables[tc.method], tc.args)
 		if err != nil {
 			t.Fatalf("%s: %v", tc.method, err)
 		}
@@ -135,6 +129,36 @@ func TestInvokeCallable(t *testing.T) {
 			s := FormatToString(outResult)
 			if s != tc.result {
 				t.Fatalf("%s: %s != %s", tc.method, s, tc.result)
+			}
+		}
+	}
+}
+
+func TestParseCallExpr(t *testing.T) {
+	tests := []struct {
+		expr string
+		fn   string
+		args []string
+	}{
+		{"FFF()", "FFF", nil},
+		{"AAA(-123, 'a', `hello `)", "AAA", []string{"-123", "a", "hello"}},
+		{`BBB("hello", "kitty", "{\"101\":2,\"102\":3}")`, "BBB", []string{"hello", "kitty", `{"101":2,"102":3}`}},
+	}
+
+	for _, tc := range tests {
+		fnName, args, err := ParseCallExpr(tc.expr)
+		if err != nil {
+			t.Fatalf("%s: %v", tc.expr, err)
+		}
+		if len(args) != len(tc.args) {
+			t.Fatalf("%s: output mismatch", tc.expr)
+		}
+		if fnName != tc.fn {
+			t.Fatalf("%s: func name mismatch", tc.expr)
+		}
+		for i := 0; i < len(tc.args); i++ {
+			if tc.args[i] != args[i] {
+				t.Fatalf("%s: argument %d not equal", tc.expr, i)
 			}
 		}
 	}
