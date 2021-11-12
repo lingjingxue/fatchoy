@@ -12,7 +12,8 @@ type Service interface {
 	NodeID() NodeID
 	SetNodeID(id NodeID)
 
-	// 初始化、启动和关闭
+	ServiceContext() *ServiceContext
+
 	Init(*ServiceContext) error
 	Startup() error
 }

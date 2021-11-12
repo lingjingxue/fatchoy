@@ -26,7 +26,7 @@ const (
 	PTypeMulticast PacketType = 2 // 多播
 )
 
-type Handler func(IPacket) error // 消息处理器
+type PacketHandler func(IPacket) error // 消息处理器
 
 // 定义应用层消息接口
 type IPacket interface {
