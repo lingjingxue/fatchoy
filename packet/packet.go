@@ -100,7 +100,7 @@ func (m *Packet) Clone() Packet {
 }
 
 func (m *Packet) Errno() int32 {
-	if (m.Flg & fatchoy.PacketFlagError) != 0 {
+	if (m.Flg & fatchoy.PFlagError) != 0 {
 		return m.Cmd
 	}
 	return 0
@@ -134,7 +134,7 @@ func (m *Packet) Refuse(errno int32) error {
 }
 
 func (m *Packet) RefuseWith(command, errno int32) error {
-	var pkt = New(command, m.Sequence, m.Typ, m.Flg|fatchoy.PacketFlagError, nil)
+	var pkt = New(command, m.Sequence, m.Typ, m.Flg|fatchoy.PFlagError, nil)
 	pkt.SetErrno(errno)
 	return m.endpoint.SendPacket(pkt)
 }

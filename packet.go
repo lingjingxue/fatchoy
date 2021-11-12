@@ -11,17 +11,18 @@ import (
 type PacketFlag uint8
 
 const (
-	PacketFlagError      PacketFlag = 1 << 0
-	PacketFlagCompressed PacketFlag = 1 << 1
-	PacketFlagEncrypted  PacketFlag = 1 << 2
+	PFlagCompressed PacketFlag = 0x01
+	PFlagEncrypted  PacketFlag = 0x02
+	PFlagError      PacketFlag = 0x10
 )
 
 // message type
 type PacketType int8
 
 const (
-	PacketTypeBinary PacketType = 1 << 0
-	PacketTypeJSON   PacketType = 1 << 1
+	PTypeMessage   PacketType = 0
+	PTypeRoute     PacketType = 1
+	PTypeMulticast PacketType = 2
 )
 
 type Handler func(IPacket) error // 消息处理器
