@@ -15,7 +15,6 @@ import (
 
 	"github.com/gorilla/websocket"
 	"gopkg.in/qchencc/fatchoy.v1"
-	"gopkg.in/qchencc/fatchoy.v1/codec"
 	"gopkg.in/qchencc/fatchoy.v1/log"
 	"gopkg.in/qchencc/fatchoy.v1/packet"
 	"gopkg.in/qchencc/fatchoy.v1/x/stats"
@@ -35,12 +34,12 @@ type WsConn struct {
 	conn *websocket.Conn // websocket conn
 }
 
-func NewWsConn(parentCtx context.Context, node fatchoy.NodeID, version codec.Version, conn *websocket.Conn, errChan chan error,
+func NewWsConn(parentCtx context.Context, node fatchoy.NodeID,  conn *websocket.Conn, errChan chan error,
 	incoming chan<- fatchoy.IPacket, outsize int, stat *stats.Stats) *WsConn {
 	wsconn := &WsConn{
 		conn: conn,
 	}
-	wsconn.StreamConn.init(parentCtx, node, version, incoming, outsize, errChan, stat)
+	wsconn.StreamConn.init(parentCtx, node, incoming, outsize, errChan, stat)
 	wsconn.addr = conn.RemoteAddr().String()
 	conn.SetReadLimit(WSCONN_MAX_PAYLOAD)
 	conn.SetPingHandler(wsconn.handlePing)
@@ -105,21 +104,11 @@ func (c *WsConn) finally() {
 
 func (c *WsConn) writePacket(pkt fatchoy.IPacket) error {
 	var buf bytes.Buffer
-	var messageType int
-	if (pkt.Type() & fatchoy.PacketTypeJSON) > 0 {
-		var enc = json.NewEncoder(&buf)
-		if err := enc.Encode(pkt); err != nil {
-			return err
-		}
-		messageType = websocket.TextMessage
-	} else {
-		_, err := codec.Marshal(c.version, &buf, pkt, c.encrypt)
-		if err != nil {
-			return err
-		}
-		messageType = websocket.BinaryMessage
+	var enc = json.NewEncoder(&buf)
+	if err := enc.Encode(pkt); err != nil {
+		return err
 	}
-	if err := c.conn.WriteMessage(messageType, buf.Bytes()); err != nil {
+	if err := c.conn.WriteMessage(websocket.TextMessage, buf.Bytes()); err != nil {
 		return err
 	}
 	c.stats.Add(StatPacketsSent, 1)
@@ -183,14 +172,9 @@ func (c *WsConn) ReadPacket(pkt fatchoy.IPacket) error {
 		if err := json.Unmarshal(data, pkt); err != nil {
 			return err
 		}
-		pkt.SetType(pkt.Type() | fatchoy.PacketTypeJSON)
 
-	case websocket.BinaryMessage:
-		_, err = codec.Unmarshal(c.version, bytes.NewReader(data), pkt, c.decrypt)
-		pkt.SetType(pkt.Type() | fatchoy.PacketTypeBinary)
-		return err
-
-	case websocket.PingMessage, websocket.PongMessage:
+	case websocket.BinaryMessage, websocket.PingMessage, websocket.PongMessage:
+		log.Debugf("recv %v: %v", msgType, data)
 
 	default:
 		return fmt.Errorf("unexpected websock message type %d", msgType)

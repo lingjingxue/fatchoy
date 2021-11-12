@@ -2,8 +2,6 @@
 // Distributed under the terms and conditions of the BSD License.
 // See accompanying files LICENSE.
 
-// +build !ignore
-
 package qnet
 
 import (
@@ -27,7 +25,7 @@ const (
 
 func serveBench(t *testing.T, ctx context.Context, addr string, ready chan struct{}) {
 	var incoming = make(chan fatchoy.IPacket, totalBenchMsgCount)
-	var listener = NewTcpServer(context.Background(), codec.VersionV2, incoming, totalBenchMsgCount)
+	var listener = NewTcpServer(context.Background(), incoming, totalBenchMsgCount)
 	if err := listener.Listen(addr); err != nil {
 		t.Fatalf("Listen: %s %v", addr, err)
 	}
@@ -72,9 +70,9 @@ func startBenchClient(t *testing.T, address string, msgCount int, ready chan str
 	}
 
 	for i := 0; i < msgCount; i++ {
-		var pkt = packet.New(int32(i), 0, 0, 0, "ping")
+		var pkt = packet.New(int32(i), 0, 0, "ping")
 		var buf bytes.Buffer
-		if _, err := codec.Marshal(codec.VersionV2, &buf, pkt, nil); err != nil {
+		if _, err := codec.MarshalV1(&buf, pkt, nil); err != nil {
 			t.Fatalf("Encode: %v", err)
 		}
 		if _, err := conn.Write(buf.Bytes()); err != nil {
@@ -83,7 +81,7 @@ func startBenchClient(t *testing.T, address string, msgCount int, ready chan str
 	}
 	for i := 0; i < msgCount; i++ {
 		var resp = packet.Make()
-		if _, err := codec.Unmarshal(codec.VersionV2, conn, resp, nil); err != nil {
+		if err := codec.ReadPacket(conn, nil, resp); err != nil {
 			t.Fatalf("Decode: %v", err)
 		}
 		respChan <- 1
@@ -134,4 +132,7 @@ LabelDone:
 	fmt.Printf("Send %d message with %d clients cost %v, QPS: %f\n", totalBenchMsgCount, benchConnCount, elapsed, qps)
 
 	fmt.Printf("Benchmark finished\n")
+
+	// Output:
+	// 	QPS: 100206.900193
 }

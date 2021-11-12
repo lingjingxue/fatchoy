@@ -10,7 +10,6 @@ import (
 	"sync/atomic"
 
 	"gopkg.in/qchencc/fatchoy.v1"
-	"gopkg.in/qchencc/fatchoy.v1/codec"
 	"gopkg.in/qchencc/fatchoy.v1/x/cipher"
 	"gopkg.in/qchencc/fatchoy.v1/x/stats"
 )
@@ -24,7 +23,6 @@ type StreamConn struct {
 	node     fatchoy.NodeID         // node id
 	addr     string                 // remote address
 	userdata interface{}            // user data
-	version  codec.Version          // codec version
 	encrypt  cipher.BlockCryptor    // message encryption
 	decrypt  cipher.BlockCryptor    // message decryption
 	inbound  chan<- fatchoy.IPacket // inbound message queue
@@ -33,14 +31,13 @@ type StreamConn struct {
 	errChan  chan error             // error signal
 }
 
-func (c *StreamConn) init(parentCtx context.Context, node fatchoy.NodeID, ver codec.Version, inbound chan<- fatchoy.IPacket,
+func (c *StreamConn) init(parentCtx context.Context, node fatchoy.NodeID, inbound chan<- fatchoy.IPacket,
 	outsize int, errChan chan error, stat *stats.Stats) {
 	if stat == nil {
 		stat = stats.New(NumStat)
 	}
 	c.node = node
 	c.stats = stat
-	c.version = ver
 	c.inbound = inbound
 	c.errChan = errChan
 	c.outbound = make(chan fatchoy.IPacket, outsize)

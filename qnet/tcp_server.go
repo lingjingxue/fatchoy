@@ -10,7 +10,6 @@ import (
 	"sync"
 
 	"gopkg.in/qchencc/fatchoy.v1"
-	"gopkg.in/qchencc/fatchoy.v1/codec"
 	"gopkg.in/qchencc/fatchoy.v1/log"
 	"gopkg.in/qchencc/fatchoy.v1/x/stats"
 )
@@ -23,15 +22,13 @@ type TcpServer struct {
 	errors  chan error            // error queue
 	lns     []net.Listener        // listener list
 	inbound chan fatchoy.IPacket  // incoming message buffer queue
-	version codec.Version         // codec version
 	outsize int                   // size of outbound message queue
 }
 
-func NewTcpServer(parentCtx context.Context, version codec.Version, inbound chan fatchoy.IPacket, outsize int) *TcpServer {
+func NewTcpServer(parentCtx context.Context,  inbound chan fatchoy.IPacket, outsize int) *TcpServer {
 	ctx, cancel := context.WithCancel(parentCtx)
 	return &TcpServer{
 		inbound: inbound,
-		version: version,
 		outsize: outsize,
 		ctx:     ctx,
 		cancel:  cancel,
@@ -91,7 +88,7 @@ func (s *TcpServer) serve(ln net.Listener) {
 }
 
 func (s *TcpServer) accept(conn net.Conn) {
-	var endpoint = NewTcpConn(s.ctx, 0, s.version, conn, s.errors, s.inbound, s.outsize, stats.New(NumStat))
+	var endpoint = NewTcpConn(s.ctx, 0,  conn, s.errors, s.inbound, s.outsize, stats.New(NumStat))
 	s.backlog <- endpoint // this may block current goroutine
 }
 

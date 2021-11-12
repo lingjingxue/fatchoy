@@ -2,8 +2,6 @@
 // Distributed under the terms and conditions of the BSD License.
 // See accompanying files LICENSE.
 
-// +build !ignore
-
 package qnet
 
 import (
@@ -27,13 +25,13 @@ const (
 func handleConn(conn net.Conn) {
 	var count = 0
 	var ctx = context.Background()
-	tconn := NewTcpConn(ctx, 0, codec.VersionV2, conn, nil, nil, 1000, nil)
+	tconn := NewTcpConn(ctx, 0, conn, nil, nil, 1000, nil)
 	tconn.Go(fatchoy.EndpointWriter)
 	defer tconn.Close()
 	for {
 		conn.SetReadDeadline(time.Now().Add(time.Minute))
 		var pkt = packet.Make()
-		if _, err := codec.Unmarshal(codec.VersionV2, conn, pkt, nil); err != nil {
+		if err := codec.ReadPacket(conn, nil, pkt); err != nil {
 			fmt.Printf("Decode: %v\n", err)
 			break
 		}
@@ -98,7 +96,7 @@ func TestExampleTcpConn(t *testing.T) {
 
 	inbound := make(chan fatchoy.IPacket, 1000)
 	errchan := make(chan error, 4)
-	tconn := NewTcpConn(context.Background(), 0, codec.VersionV2, conn, errchan, inbound, 1000, nil)
+	tconn := NewTcpConn(context.Background(), 0, conn, errchan, inbound, 1000, nil)
 	tconn.SetNodeID(fatchoy.NodeID(0x12345))
 	tconn.Go(fatchoy.EndpointReadWriter)
 	defer tconn.Close()

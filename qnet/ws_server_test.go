@@ -2,8 +2,6 @@
 // Distributed under the terms and conditions of the BSD License.
 // See accompanying files LICENSE.
 
-// +build !ignore
-
 package qnet
 
 import (
@@ -16,7 +14,6 @@ import (
 
 	"github.com/gorilla/websocket"
 	"gopkg.in/qchencc/fatchoy.v1"
-	"gopkg.in/qchencc/fatchoy.v1/codec"
 	"gopkg.in/qchencc/fatchoy.v1/packet"
 )
 
@@ -101,7 +98,7 @@ func TestWebsocketServer(t *testing.T) {
 
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
-	server := NewWebsocketServer(ctx, addr, path, codec.VersionV2, incoming, 600)
+	server := NewWebsocketServer(ctx, addr, path, incoming, 600)
 	server.Go()
 	var ready = make(chan struct{})
 	for i := 0; i < maxConnection; i++ {

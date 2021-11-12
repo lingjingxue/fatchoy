@@ -2,8 +2,6 @@
 // Distributed under the terms and conditions of the BSD License.
 // See accompanying files LICENSE.
 
-// +build !ignore
-
 package qnet
 
 import (
@@ -34,14 +32,14 @@ func startRawClient(t *testing.T, id int, address string, msgCount int) {
 		pkt.SetSeq(int16(i))
 		pkt.SetBodyString("ping")
 		var buf bytes.Buffer
-		if _, err := codec.Marshal(codec.VersionV2, &buf, pkt, nil); err != nil {
+		if _, err := codec.MarshalV1(&buf, pkt, nil); err != nil {
 			t.Fatalf("Encode: %v", err)
 		}
 		if _, err := conn.Write(buf.Bytes()); err != nil {
 			t.Fatalf("Write: %v", err)
 		}
 		var resp = packet.Make()
-		if _, err := codec.Unmarshal(codec.VersionV2, conn, resp, nil); err != nil {
+		if err := codec.ReadPacket(conn, nil, resp); err != nil {
 			t.Fatalf("Decode: %v", err)
 		}
 		if resp.Seq() != pkt.Seq() {
@@ -57,7 +55,7 @@ func startRawClient(t *testing.T, id int, address string, msgCount int) {
 
 func startServeRawClient(t *testing.T, ctx context.Context, cancel context.CancelFunc, address string, ready chan struct{}) {
 	var incoming = make(chan fatchoy.IPacket, 1000)
-	var server = NewTcpServer(context.Background(), codec.VersionV2, incoming, 100)
+	var server = NewTcpServer(context.Background(), incoming, 100)
 	if err := server.Listen(address); err != nil {
 		t.Fatalf("Listen: %s %v", address, err)
 	}
