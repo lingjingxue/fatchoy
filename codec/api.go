@@ -38,7 +38,7 @@ func WriteLenData(w io.Writer, data []byte) (int, error) {
 		return 0, fmt.Errorf("payload size %d overflow", length)
 	}
 	var tmp [4]byte
-	binary.BigEndian.PutUint32(tmp[:], length)
+	binary.BigEndian.PutUint32(tmp[:], length+4)
 	if _, err := w.Write(tmp[:]); err != nil {
 		return 0, err
 	}
