@@ -54,14 +54,14 @@ func (m *testPacket) SetFlag(v fatchoy.PacketFlag) {
 }
 
 func (m *testPacket) Errno() int32 {
-	if (m.flag & fatchoy.PacketFlagError) != 0 {
+	if (m.flag & fatchoy.PFlagError) != 0 {
 		return m.command
 	}
 	return 0
 }
 
 func (m *testPacket) SetErrno(ec int32) {
-	m.flag |= fatchoy.PacketFlagError
+	m.flag |= fatchoy.PFlagError
 	m.SetBodyNumber(int64(ec))
 }
 
@@ -120,7 +120,7 @@ func (m *testPacket) DecodeTo(msg proto.Message) error {
 }
 
 func (m testPacket) String() string {
-	var checksum = Md5Sum(m.body)
+	var checksum = md5Sum(m.body)
 	return fmt.Sprintf("c:%d seq:%d 0x%x %s", m.Command(), m.Seq(), m.Flag(), checksum)
 }
 

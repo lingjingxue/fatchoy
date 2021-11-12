@@ -35,17 +35,17 @@ func MarshalV1(w io.Writer, pkt fatchoy.IPacket, encryptor cipher.BlockCryptor) 
 		flag |= fatchoy.PFlagEncrypted
 	}
 
+	var nbytes = HeaderSize + len(payload)
+	if nbytes > MaxPayloadBytes {
+		return 0, fmt.Errorf("payload size %d overflow", nbytes)
+	}
+
 	pkt.SetFlag(flag)
+
 	var head = NewHeader()
-	head.Pack(pkt)
+	head.Pack(pkt, uint32(nbytes))
 	head.SetChecksum(head.CalcChecksum(payload))
 
-	var nbytes = HeaderSize + len(payload)
-	var tmp [4]byte
-	binary.LittleEndian.PutUint32(tmp[:], uint32(nbytes))
-	if _, err := w.Write(tmp[:]); err != nil {
-		return 0, err
-	}
 	if _, err := w.Write(head); err != nil {
 		return 0, err
 	}

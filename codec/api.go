@@ -20,7 +20,7 @@ func ReadLenData(r io.Reader) ([]byte, error) {
 	if _, err := io.ReadFull(r, tmp[:]); err != nil {
 		return nil, err
 	}
-	var length = binary.LittleEndian.Uint32(tmp[:])
+	var length = binary.BigEndian.Uint32(tmp[:])
 	if length > MaxPayloadBytes {
 		return nil, fmt.Errorf("payload size %d overflow", length)
 	}
@@ -33,8 +33,12 @@ func ReadLenData(r io.Reader) ([]byte, error) {
 
 // write length-prefixed data
 func WriteLenData(w io.Writer, data []byte) (int, error) {
+	var length = uint32(len(data))
+	if length > MaxPayloadBytes {
+		return 0, fmt.Errorf("payload size %d overflow", length)
+	}
 	var tmp [4]byte
-	binary.LittleEndian.PutUint32(tmp[:], uint32(len(data)))
+	binary.BigEndian.PutUint32(tmp[:], length)
 	if _, err := w.Write(tmp[:]); err != nil {
 		return 0, err
 	}
@@ -47,16 +51,19 @@ func WriteLenData(w io.Writer, data []byte) (int, error) {
 
 // 使用从r读取消息到pkt，并按需使用decrypt解密，返回读取长度和错误
 func ReadV1(r io.Reader) (Header, []byte, error) {
-	data, err := ReadLenData(r)
-	if err != nil {
+	var head = NewHeader()
+	if _, err := io.ReadFull(r, head); err != nil {
 		return nil, nil, err
 	}
-	if n := len(data); n < HeaderSize-4 {
-		return nil, nil, fmt.Errorf("packet size %d too small", n)
+	var length = head.Len()
+	if length > MaxPayloadBytes {
+		return nil, nil, fmt.Errorf("payload size %d overflow", length)
 	}
-	var header = Header(data[:HeaderSize-4])
-	var body = data[HeaderSize-4:]
-	return header, body, nil
+	var buf = make([]byte, length-HeaderSize)
+	if _, err := io.ReadFull(r, buf); err != nil {
+		return nil, nil, err
+	}
+	return head, buf, nil
 }
 
 // 读取一个packet

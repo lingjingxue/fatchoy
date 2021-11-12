@@ -22,8 +22,8 @@ func isEqualPacket(t *testing.T, a, b fatchoy.IPacket) bool {
 	data2 := b.BodyToBytes()
 	if len(data1) > 0 && len(data2) > 0 {
 		if !bytes.Equal(data1, data2) {
-			println("msg a md5sum", Md5Sum(data1))
-			println("msg b md5sum", Md5Sum(data2))
+			println("msg a md5sum", md5Sum(data1))
+			println("msg b md5sum", md5Sum(data2))
 			t.Fatalf("packet not equal, %v != %v", a, b)
 			return false
 		}
@@ -33,9 +33,10 @@ func isEqualPacket(t *testing.T, a, b fatchoy.IPacket) bool {
 
 func newTestPacket(bodyLen int) fatchoy.IPacket {
 	var pkt testPacket
+	pkt.type_ = fatchoy.PTypePacket
 	pkt.flag = 0
-	pkt.command = 1234
-	pkt.seq = 2012
+	pkt.command = 0x1234
+	pkt.seq = 0x5678
 	if bodyLen > 0 {
 		s := strutil.RandString(bodyLen)
 		pkt.SetBodyBytes([]byte(s))
