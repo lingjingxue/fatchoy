@@ -8,25 +8,25 @@ import (
 	"github.com/golang/protobuf/proto"
 )
 
+// 消息标志位
 type PacketFlag uint8
 
 const (
-	PFlagCompressed PacketFlag = 0x01
-	PFlagEncrypted  PacketFlag = 0x02
-	PFlagError      PacketFlag = 0x10
+	PFlagCompressed PacketFlag = 0x01 // 压缩
+	PFlagEncrypted  PacketFlag = 0x02 // 加密
+	PFlagError      PacketFlag = 0x10 // 错误标记
 )
 
-// message type
+// 消息编码类型
 type PacketType int8
 
 const (
-	PTypeMessage   PacketType = 0
-	PTypeRoute     PacketType = 1
-	PTypeMulticast PacketType = 2
+	PTypeMessage   PacketType = 0 // 4字节长度前缀的消息
+	PTypePacket    PacketType = 1 // 以header前缀的消息
+	PTypeMulticast PacketType = 2 // 多播
 )
 
 type Handler func(IPacket) error // 消息处理器
-type Filter func(IPacket) bool   // 过滤器
 
 // 定义应用层消息接口
 type IPacket interface {

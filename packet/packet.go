@@ -25,11 +25,11 @@ func Make() *Packet {
 	return &Packet{}
 }
 
-func New(command int32, seq int16, typ fatchoy.PacketType, flag fatchoy.PacketFlag, body interface{}) *Packet {
+func New(command int32, seq int16, flag fatchoy.PacketFlag, body interface{}) *Packet {
 	return &Packet{
+		Typ:      fatchoy.PTypePacket,
 		Cmd:      command,
 		Flg:      flag,
-		Typ:      typ,
 		Sequence: seq,
 		Body:     body,
 	}
@@ -108,7 +108,7 @@ func (m *Packet) Errno() int32 {
 
 // 返回响应
 func (m *Packet) ReplyWith(command int32, ack proto.Message) error {
-	var pkt = New(command, m.Sequence, m.Typ, m.Flg, ack)
+	var pkt = New(command, m.Sequence, m.Flg, ack)
 	return m.endpoint.SendPacket(pkt)
 }
 
@@ -120,7 +120,7 @@ func (m *Packet) Reply(ack proto.Message) error {
 
 // 响应string内容
 func (m *Packet) ReplyString(command int32, s string) error {
-	var pkt = New(command, m.Sequence, m.Typ, m.Flg, s)
+	var pkt = New(command, m.Sequence, m.Flg, s)
 	return m.endpoint.SendPacket(pkt)
 }
 
@@ -134,7 +134,7 @@ func (m *Packet) Refuse(errno int32) error {
 }
 
 func (m *Packet) RefuseWith(command, errno int32) error {
-	var pkt = New(command, m.Sequence, m.Typ, m.Flg|fatchoy.PFlagError, nil)
+	var pkt = New(command, m.Sequence, m.Flg|fatchoy.PFlagError, nil)
 	pkt.SetErrno(errno)
 	return m.endpoint.SendPacket(pkt)
 }
