@@ -55,13 +55,13 @@ type INode interface {
 }
 
 // 一个节点信息
-type Node map[string]string
+type Node map[string]interface{}
 
 func NewNode(nodeType string, id uint16) Node {
-	node := map[string]string{
+	node := map[string]interface{}{
 		NODE_KEY_TYPE: nodeType,
-		NODE_KEY_ID:   strconv.Itoa(int(id)),
-		NODE_KEY_PID:  strconv.Itoa(os.Getpid()),
+		NODE_KEY_ID:   int(id),
+		NODE_KEY_PID:  os.Getpid(),
 	}
 	if hostname, err := os.Hostname(); err == nil {
 		node[NODE_KEY_HOST] = hostname
@@ -71,7 +71,7 @@ func NewNode(nodeType string, id uint16) Node {
 
 // 节点类型
 func (n Node) Type() string {
-	return n.Get(NODE_KEY_TYPE)
+	return n.GetStr(NODE_KEY_TYPE)
 }
 
 // 节点ID
@@ -81,21 +81,37 @@ func (n Node) ID() uint16 {
 
 // 节点接口地址
 func (n Node) Interface() string {
-	return n.Get(NODE_KEY_INTERFACE)
+	return n.GetStr(NODE_KEY_INTERFACE)
 }
 
 func (n Node) GetInt(key string) int {
-	s := n.Get(key)
+	val := n[key]
+	switch v := val.(type) {
+	case int:
+		return v
+	}
+	s := fmt.Sprintf("%v", val)
 	i, _ := strconv.Atoi(s)
 	return i
 }
 
-func (n Node) Get(key string) string {
+func (n Node) Get(key string) interface{} {
 	return n[key]
 }
 
-func (n Node) Set(key, v string) {
-	n[key] = v
+func (n Node) GetStr(key string) string {
+	val := n[key]
+	switch v := val.(type) {
+	case string:
+		return v
+	case []byte:
+		return string(v)
+	}
+	return fmt.Sprintf("%v", val)
+}
+
+func (n Node) Set(key string, val interface{}) {
+	n[key] = val
 }
 
 func (n Node) String() string {
