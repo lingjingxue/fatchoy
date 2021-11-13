@@ -13,14 +13,11 @@ import (
 	"gopkg.in/qchencc/fatchoy.v1"
 )
 
-type Version uint8
+
 
 const (
-	VersionV1 Version = 1
-)
-
-const (
-	HeaderSize       = 16               // 包头大小(包含长度）
+	VersionV2  = 2
+	V2HeaderSize       = 16               // 包头大小(包含长度）
 	PacketBytesLimit = (1 << 24) - 1    // 3字节限制
 	MaxPayloadBytes  = 16 * 1024 * 1024 // 16M
 )
@@ -31,44 +28,44 @@ const (
 //       ------------------------------------------------
 // bytes |  3  |   1  |   1  |   1    |  2  |  4  |  4  |
 
-// 不包含length
-type Header []byte
 
-func (h Header) Len() uint32 {
-	return uint32(h[2]) | uint32(h[1])<<8 | uint32(h[0])<<16
+type V2Header []byte
+
+func (h V2Header) Len() uint32 {
+	return uint32(h[2]) | uint32(h[1])<<8 | uint32(h[0])<<16 // big endian
 }
 
 // 标记位
-func (h Header) Type() uint8 {
+func (h V2Header) Type() uint8 {
 	return h[3]
 }
 
 // 标记位
-func (h Header) Flag() uint8 {
+func (h V2Header) Flag() uint8 {
 	return h[4]
 }
 
 // 标记位
-func (h Header) RefCount() uint8 {
+func (h V2Header) RefCount() uint8 {
 	return h[5]
 }
 
 // session内的唯一序号
-func (h Header) Seq() int16 {
+func (h V2Header) Seq() int16 {
 	return int16(binary.BigEndian.Uint16(h[6:]))
 }
 
-func (h Header) Command() int32 {
+func (h V2Header) Command() int32 {
 	return int32(binary.BigEndian.Uint32(h[8:]))
 }
 
 // CRC校验码
-func (h Header) Checksum() uint32 {
+func (h V2Header) Checksum() uint32 {
 	return binary.BigEndian.Uint32(h[12:])
 }
 
 // 校验码包含head和body，不包含refer
-func (h Header) CalcChecksum(payload []byte) uint32 {
+func (h V2Header) CalcChecksum(payload []byte) uint32 {
 	var hasher = crc32.NewIEEE()
 	hasher.Write(h[:12])
 	if len(payload) > 0 {
@@ -77,11 +74,11 @@ func (h Header) CalcChecksum(payload []byte) uint32 {
 	return hasher.Sum32()
 }
 
-func (h Header) SetChecksum(crc uint32) {
+func (h V2Header) SetChecksum(crc uint32) {
 	binary.BigEndian.PutUint32(h[12:], crc)
 }
 
-func (h Header) Pack(pkt fatchoy.IPacket, refcnt uint8, size uint32) {
+func (h V2Header) Pack(pkt fatchoy.IPacket, refcnt uint8, size uint32) {
 	h[0] = byte(size >> 16)
 	h[1] = byte(size >> 8)
 	h[2] = byte(size)
@@ -92,7 +89,7 @@ func (h Header) Pack(pkt fatchoy.IPacket, refcnt uint8, size uint32) {
 	binary.BigEndian.PutUint32(h[8:], uint32(pkt.Command()))
 }
 
-func (h Header) MD5Sum() string {
+func (h V2Header) MD5Sum() string {
 	return md5Sum(h[:])
 }
 

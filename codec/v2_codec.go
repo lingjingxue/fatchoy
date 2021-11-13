@@ -19,7 +19,7 @@ import (
 var CompressThreshold = 4096 // 默认压缩阈值，4K
 
 // 内部不应该修改pkt的body
-func MarshalV1(pkt fatchoy.IPacket, encryptor cipher.BlockCryptor) ([]byte, error) {
+func MarshalV2(pkt fatchoy.IPacket, encryptor cipher.BlockCryptor) ([]byte, error) {
 	var flag = pkt.Flag()
 	var refer = pkt.Refer()
 	if n := len(refer); n > math.MaxUint8 {
@@ -40,7 +40,7 @@ func MarshalV1(pkt fatchoy.IPacket, encryptor cipher.BlockCryptor) ([]byte, erro
 	}
 	pkt.SetFlag(flag)
 
-	var nn = HeaderSize + len(refer)*4
+	var nn = V2HeaderSize + len(refer)*4
 	var nbytes = nn + len(body)
 	if nbytes > MaxPayloadBytes {
 		return nil, fmt.Errorf("payload size %d overflow", nbytes)
@@ -49,20 +49,20 @@ func MarshalV1(pkt fatchoy.IPacket, encryptor cipher.BlockCryptor) ([]byte, erro
 	copy(buf[nn:], body)
 
 	if len(refer) > 0 {
-		var i = HeaderSize
+		var i = V2HeaderSize
 		for _, ref := range refer {
 			binary.BigEndian.PutUint32(buf[i:], ref)
 			i += 4
 		}
 	}
-	var head = Header(buf[:HeaderSize])
+	var head = V2Header(buf[:V2HeaderSize])
 	head.Pack(pkt, uint8(len(refer)), uint32(nbytes))
-	var checksum = head.CalcChecksum(buf[HeaderSize:])
+	var checksum = head.CalcChecksum(buf[V2HeaderSize:])
 	head.SetChecksum(checksum)
 	return buf, nil
 }
 
-func UnmarshalV1(header Header, payload []byte, decrypt cipher.BlockCryptor, pkt fatchoy.IPacket) error {
+func UnmarshalV2(header V2Header, payload []byte, decrypt cipher.BlockCryptor, pkt fatchoy.IPacket) error {
 	var flag = fatchoy.PacketFlag(header.Flag())
 	pkt.SetType(fatchoy.PacketType(header.Type()))
 	pkt.SetSeq(header.Seq())
