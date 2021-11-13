@@ -66,7 +66,7 @@ func (m *testPacket) Errno() int32 {
 
 func (m *testPacket) SetErrno(ec int32) {
 	m.flag |= fatchoy.PFlagError
-	m.SetBodyNumber(int64(ec))
+	m.SetBodyInt(int64(ec))
 }
 
 func (m *testPacket) Endpoint() fatchoy.MessageEndpoint {
@@ -81,13 +81,13 @@ func (m *testPacket) Body() interface{} {
 	return m.body
 }
 
-func (m *testPacket) SetBodyNumber(n int64) {
+func (m *testPacket) SetBodyInt(n int64) {
 	var buf = make([]byte, 8)
 	binary.LittleEndian.PutUint64(buf, uint64(n))
 	m.body = buf
 }
 
-func (m *testPacket) BodyToNumber() int64 {
+func (m *testPacket) BodyToInt() int64 {
 	return int64(binary.LittleEndian.Uint64(m.body))
 }
 
@@ -121,6 +121,10 @@ func (m *testPacket) EncodeBodyToBytes() ([]byte, error) {
 
 func (m *testPacket) DecodeTo(msg proto.Message) error {
 	return proto.Unmarshal(m.body, msg)
+}
+
+func (m *testPacket) Decode() error {
+	return nil
 }
 
 func (m testPacket) String() string {

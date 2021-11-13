@@ -17,15 +17,15 @@ import (
 // 如果消息表示一个错误码，设置PacketFlagError标记，并且body为错误码数值
 func (m *Packet) SetErrno(ec int32) {
 	m.Flg |= fatchoy.PFlagError
-	m.SetBodyNumber(int64(ec))
+	m.SetBodyInt(int64(ec))
 }
 
 // 消息体是number
-func (m *Packet) SetBodyNumber(n int64) {
+func (m *Packet) SetBodyInt(n int64) {
 	m.Body = n
 }
 
-func (m *Packet) BodyToNumber() int64 {
+func (m *Packet) BodyToInt() int64 {
 	switch v := m.Body.(type) {
 	case int64:
 		return v
@@ -96,4 +96,18 @@ func (m *Packet) SetBodyMsg(msg proto.Message) {
 
 func (m *Packet) DecodeTo(msg proto.Message) error {
 	return proto.Unmarshal(m.Body.([]byte), msg)
+}
+
+// 自动解析
+func (m *Packet) Decode() error {
+	var msg = CreateMessageByID(m.Cmd)
+	if msg == nil {
+		return fmt.Errorf("cannot create message of ID %d", m.Cmd)
+	}
+	var data = m.BodyToBytes()
+	if err := proto.Unmarshal(data, msg); err != nil {
+		return fmt.Errorf("cannot unmarshal message %d: %w", m.Cmd, err)
+	}
+	m.Body = msg
+	return nil
 }

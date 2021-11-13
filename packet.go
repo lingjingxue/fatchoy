@@ -48,18 +48,20 @@ type IPacket interface {
 	Endpoint() MessageEndpoint
 	SetEndpoint(MessageEndpoint)
 
-	IBody() interface{}
-	SetBodyNumber(n int64)
-	BodyToNumber() int64
+	BodyToInt() int64
+	SetBodyInt(n int64)
 
-	SetBodyString(s string)
 	BodyToString() string
+	SetBodyString(s string)
 
-	SetBodyBytes(b []byte)
 	BodyToBytes() []byte
+	SetBodyBytes(b []byte)
 
+	IBody() interface{}
 	SetBodyMsg(msg proto.Message)
+
 	DecodeTo(msg proto.Message) error
+	Decode() error
 
 	ReplyWith(command int32, ack proto.Message) error
 	Reply(ack proto.Message) error

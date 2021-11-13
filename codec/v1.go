@@ -92,9 +92,9 @@ func UnmarshalV1(header Header, body []byte, decrypt cipher.BlockCryptor, pkt fa
 	if (flag & fatchoy.PFlagError) != 0 {
 		val, n := binary.Varint(body)
 		if n > 0 {
-			pkt.SetBodyNumber(val)
+			pkt.SetBodyInt(val)
 		} else {
-			pkt.SetBodyNumber(int64(codes.TransportFailure))
+			pkt.SetBodyInt(int64(codes.TransportFailure))
 		}
 	} else {
 		pkt.SetBodyBytes(body)
