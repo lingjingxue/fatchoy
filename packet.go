@@ -48,6 +48,7 @@ type IPacket interface {
 	Endpoint() MessageEndpoint
 	SetEndpoint(MessageEndpoint)
 
+	IBody() interface{}
 	SetBodyNumber(n int64)
 	BodyToNumber() int64
 

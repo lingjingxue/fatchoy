@@ -67,10 +67,6 @@ func (m *Packet) SetFlag(v fatchoy.PacketFlag) {
 	m.Flg = v
 }
 
-func (m *Packet) SetBody(v interface{}) {
-	m.Body = v
-}
-
 func (m *Packet) Endpoint() fatchoy.MessageEndpoint {
 	return m.endpoint
 }
@@ -97,6 +93,10 @@ func (m *Packet) Clone() Packet {
 		Body:     m.Body,
 		endpoint: m.endpoint,
 	}
+}
+
+func (m *Packet) IBody() interface{} {
+	return m.Body
 }
 
 func (m *Packet) Errno() int32 {

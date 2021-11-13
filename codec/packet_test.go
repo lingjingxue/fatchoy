@@ -53,6 +53,10 @@ func (m *testPacket) SetFlag(v fatchoy.PacketFlag) {
 	m.flag = v
 }
 
+func (m *testPacket) IBody() interface{} {
+	return m.body
+}
+
 func (m *testPacket) Errno() int32 {
 	if (m.flag & fatchoy.PFlagError) != 0 {
 		return m.command
