@@ -28,22 +28,25 @@ var (
 const (
 	EventChanCapacity = 1000
 	OpTimeout         = 3
+
+	VerboseLv1 = 1
+	VerboseLv2 = 2
 )
 
 // 基于etcd的服务发现
 type Client struct {
 	closing   int32            //
+	verbose   int32            //
 	endpoints []string         // etcd server address
 	namespace string           // name space of key
 	client    *clientv3.Client // etcd client
-	verbose   bool
 }
 
 func NewClient(hostAddr, namespace string) *Client {
 	d := &Client{
 		endpoints: strings.Split(hostAddr, ","),
 		namespace: namespace,
-		verbose:   true,
+		verbose:   VerboseLv1,
 	}
 	return d
 }
@@ -70,8 +73,8 @@ func (c *Client) Close() {
 	}
 }
 
-func (c *Client) SetVerbose(b bool) {
-	c.verbose = b
+func (c *Client) SetVerbose(v int32) {
+	c.verbose = v
 }
 
 func (c *Client) IsClosing() bool {
@@ -125,8 +128,8 @@ func (c *Client) PutNode(ctx context.Context, name string, value interface{}, le
 	if err != nil {
 		return err
 	}
-	if c.verbose {
-		log.Debugf("put key [%s] at rev %d", key, resp.Header.Revision)
+	if c.verbose >= VerboseLv1 {
+		log.Infof("put key [%s] at rev %d", key, resp.Header.Revision)
 	}
 	return nil
 }
@@ -217,15 +220,15 @@ func (c *Client) RegisterNode(rootCtx context.Context, name string, value interf
 }
 
 func revokeLeaseWithTimeout(c *Client, leaseId int64) {
-	if c.verbose {
-		log.Debugf("try revoke lease %d", leaseId)
+	if c.verbose >= VerboseLv1 {
+		log.Infof("try revoke lease %d", leaseId)
 	}
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second*OpTimeout)
 	defer cancel()
 	if err := c.RevokeLease(ctx, leaseId); err != nil {
-		log.Debugf("revoke lease %x: %v", leaseId, err)
+		log.Warnf("revoke lease %x: %v", leaseId, err)
 	} else {
-		log.Debugf("revoke lease %x done", leaseId)
+		log.Infof("revoke lease %x done", leaseId)
 	}
 }
 
@@ -248,8 +251,8 @@ func (c *Client) KeepAlive(ctx context.Context, leaseId int64) (chan struct{}, e
 					log.Warnf("lease %x is not alive", leaseId)
 					return
 				}
-				if c.verbose {
-					log.Debugf("lease %d respond alive, ttl %d", ka.ID, ka.TTL)
+				if c.verbose >= VerboseLv2 {
+					log.Infof("lease %d respond alive, ttl %d", ka.ID, ka.TTL)
 				}
 
 			case <-ctx.Done():
@@ -269,8 +272,8 @@ func (c *Client) RegisterAndKeepAliveForever(ctx context.Context, name string, v
 
 	var doRegister = func() error {
 		var err error
-		if c.verbose {
-			log.Debugf("try register key: %s", name)
+		if c.verbose >= VerboseLv1 {
+			log.Infof("try register key: %s", name)
 		}
 		leaseAlive = false
 		leaseId = 0
@@ -284,8 +287,8 @@ func (c *Client) RegisterAndKeepAliveForever(ctx context.Context, name string, v
 			return err
 		}
 		leaseAlive = true
-		if c.verbose {
-			log.Debugf("register key [%s] with lease %x done", name, leaseId)
+		if c.verbose >= VerboseLv1 {
+			log.Infof("register key [%s] with lease %x done", name, leaseId)
 		}
 		return nil
 	}
@@ -302,13 +305,13 @@ func (c *Client) RegisterAndKeepAliveForever(ctx context.Context, name string, v
 			case <-ticker.C:
 				if !leaseAlive {
 					if err := doRegister(); err != nil {
-						log.Warnf("register or keepalive %s failed: %v", name, err)
+						log.Infof("register or keepalive %s failed: %v", name, err)
 					}
 				}
 
 			case <-done:
-				if c.verbose {
-					log.Debugf("node %s lease(%d) is not alive, try register later", name, leaseId)
+				if c.verbose >= VerboseLv1 {
+					log.Infof("node %s lease(%d) is not alive, try register later", name, leaseId)
 				}
 				leaseAlive = false
 				leaseId = 0
