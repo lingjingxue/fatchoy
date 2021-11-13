@@ -21,7 +21,7 @@ const (
 type PacketType int8
 
 const (
-	PTypeMessage   PacketType = 0 // 4字节长度前缀的消息
+	PTypeMessage   PacketType = 0 // 4字节长度前缀的消息（兼容性）
 	PTypePacket    PacketType = 1 // 以header前缀的消息
 	PTypeMulticast PacketType = 2 // 多播
 	PTypeRoute     PacketType = 3 // 路由
