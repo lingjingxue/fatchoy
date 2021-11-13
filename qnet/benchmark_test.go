@@ -5,7 +5,6 @@
 package qnet
 
 import (
-	"bytes"
 	"context"
 	"fmt"
 	"net"
@@ -71,11 +70,11 @@ func startBenchClient(t *testing.T, address string, msgCount int, ready chan str
 
 	for i := 0; i < msgCount; i++ {
 		var pkt = packet.New(int32(i), 0, 0, "ping")
-		var buf bytes.Buffer
-		if _, err := codec.MarshalV1(&buf, pkt, nil); err != nil {
+		buf, err := codec.MarshalV1(pkt, nil)
+		if err != nil {
 			t.Fatalf("Encode: %v", err)
 		}
-		if _, err := conn.Write(buf.Bytes()); err != nil {
+		if _, err := conn.Write(buf); err != nil {
 			t.Fatalf("Write: %v", err)
 		}
 	}

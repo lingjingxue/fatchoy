@@ -6,7 +6,6 @@ package qnet
 
 import (
 	"bufio"
-	"bytes"
 	"context"
 	"io"
 	"net"
@@ -112,14 +111,13 @@ func (t *TcpConn) finally() {
 }
 
 func (t *TcpConn) flush() {
-	var buf bytes.Buffer
 	for i := 0; i < len(t.outbound); i++ {
 		select {
 		case pkt, ok := <-t.outbound:
 			if !ok {
 				break
 			}
-			if err := t.writeTo(&buf, pkt); err != nil {
+			if err := t.write(pkt); err != nil {
 				log.Errorf("%v flush message %v: %v", t.node, pkt.Command(), err)
 			}
 
@@ -129,16 +127,16 @@ func (t *TcpConn) flush() {
 	}
 }
 
-func (t *TcpConn) writeTo(buf *bytes.Buffer, pkt fatchoy.IPacket) error {
-	n, err := codec.MarshalV1(buf, pkt, t.encrypt)
+func (t *TcpConn) write(pkt fatchoy.IPacket) error {
+	buf, err := codec.MarshalV1(pkt, t.encrypt)
 	if err != nil {
 		return err
 	}
-	if _, err := buf.WriteTo(t.conn); err != nil {
+	if _, err := t.conn.Write(buf); err != nil {
 		return err
 	}
 	t.stats.Add(StatPacketsSent, 1)
-	t.stats.Add(StatBytesSent, int64(n))
+	t.stats.Add(StatBytesSent, int64(len(buf)))
 	return nil
 }
 
@@ -150,14 +148,14 @@ func (t *TcpConn) writePump() {
 	}()
 
 	log.Debugf("TcpConn: node %v(%v) writer started", t.node, t.addr)
-	var buf bytes.Buffer
+
 	for {
 		select {
 		case pkt, ok := <-t.outbound:
 			if !ok {
 				return
 			}
-			if err := t.writeTo(&buf, pkt); err != nil {
+			if err := t.write(pkt); err != nil {
 				log.Errorf("%v write message %v: %v", t.node, pkt.Command(), err)
 			}
 

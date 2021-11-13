@@ -5,7 +5,6 @@
 package qnet
 
 import (
-	"bytes"
 	"context"
 	"fmt"
 	"net"
@@ -31,11 +30,11 @@ func startRawClient(t *testing.T, id int, address string, msgCount int) {
 		pkt.SetCommand(int32(i))
 		pkt.SetSeq(int16(i))
 		pkt.SetBodyString("ping")
-		var buf bytes.Buffer
-		if _, err := codec.MarshalV1(&buf, pkt, nil); err != nil {
+		buf, err := codec.MarshalV1(pkt, nil)
+		if err != nil {
 			t.Fatalf("Encode: %v", err)
 		}
-		if _, err := conn.Write(buf.Bytes()); err != nil {
+		if _, err := conn.Write(buf); err != nil {
 			t.Fatalf("Write: %v", err)
 		}
 		var resp = packet.Make()
