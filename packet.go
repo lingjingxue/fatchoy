@@ -52,6 +52,8 @@ type IPacket interface {
 	Endpoint() MessageEndpoint
 	SetEndpoint(MessageEndpoint)
 
+	Clone() IPacket
+
 	BodyToInt() int64
 	SetBodyInt(n int64)
 

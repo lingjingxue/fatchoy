@@ -94,8 +94,8 @@ func (m *Packet) Reset() {
 	m.endpoint = nil
 }
 
-func (m *Packet) Clone() Packet {
-	return Packet{
+func (m *Packet) Clone() fatchoy.IPacket {
+	return &Packet{
 		Cmd:      m.Cmd,
 		Flg:      m.Flg,
 		Typ:      m.Typ,

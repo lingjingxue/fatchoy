@@ -16,9 +16,9 @@ type testPacket struct {
 	command  int32
 	seq      int16
 	flag     fatchoy.PacketFlag
-	typ    fatchoy.PacketType
+	typ      fatchoy.PacketType
 	body     []byte
-	refer []uint32
+	refer    []uint32
 	endpoint fatchoy.MessageEndpoint
 }
 
@@ -86,8 +86,16 @@ func (m *testPacket) SetEndpoint(v fatchoy.MessageEndpoint) {
 	m.endpoint = v
 }
 
-func (m *testPacket) Body() interface{} {
-	return m.body
+func (m *testPacket) Clone() fatchoy.IPacket {
+	return &testPacket{
+		command:  m.command,
+		seq:      m.seq,
+		flag:     m.flag,
+		typ:      m.typ,
+		body:     m.body,
+		refer:    m.refer,
+		endpoint: m.endpoint,
+	}
 }
 
 func (m *testPacket) SetBodyInt(n int64) {
