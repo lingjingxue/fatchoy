@@ -24,6 +24,7 @@ const (
 	PTypeMessage   PacketType = 0 // 4字节长度前缀的消息
 	PTypePacket    PacketType = 1 // 以header前缀的消息
 	PTypeMulticast PacketType = 2 // 多播
+	PTypeRoute     PacketType = 3 // 路由
 )
 
 type PacketHandler func(IPacket) error // 消息处理器
@@ -44,6 +45,9 @@ type IPacket interface {
 
 	Errno() int32
 	SetErrno(ec int32)
+
+	Refer() []uint32
+	SetRefer([]uint32)
 
 	Endpoint() MessageEndpoint
 	SetEndpoint(MessageEndpoint)

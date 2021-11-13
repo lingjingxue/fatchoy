@@ -18,6 +18,7 @@ type Packet struct {
 	Typ      fatchoy.PacketType      `json:"typ,omitempty"`  // 类型
 	Flg      fatchoy.PacketFlag      `json:"flg,omitempty"`  // 标志位
 	Body     interface{}             `json:"body,omitempty"` // 消息内容，number/string/bytes/proto.Message
+	Ref      []uint32                `json:"ref,omitempty"`  // referenced session IDs
 	endpoint fatchoy.MessageEndpoint // 关联的endpoint
 }
 
@@ -67,6 +68,14 @@ func (m *Packet) SetFlag(v fatchoy.PacketFlag) {
 	m.Flg = v
 }
 
+func (m *Packet) Refer() []uint32 {
+	return m.Ref
+}
+
+func (m *Packet) SetRefer(v []uint32) {
+	m.Ref = v
+}
+
 func (m *Packet) Endpoint() fatchoy.MessageEndpoint {
 	return m.endpoint
 }
@@ -80,6 +89,7 @@ func (m *Packet) Reset() {
 	m.Sequence = 0
 	m.Flg = 0
 	m.Typ = 0
+	m.Ref = nil
 	m.Body = nil
 	m.endpoint = nil
 }
@@ -90,6 +100,7 @@ func (m *Packet) Clone() Packet {
 		Flg:      m.Flg,
 		Typ:      m.Typ,
 		Sequence: m.Sequence,
+		Ref:      m.Ref,
 		Body:     m.Body,
 		endpoint: m.endpoint,
 	}
