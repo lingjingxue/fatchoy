@@ -95,14 +95,19 @@ func (m *Packet) SetBodyMsg(msg proto.Message) {
 }
 
 func (m *Packet) DecodeTo(msg proto.Message) error {
-	return proto.Unmarshal(m.Body.([]byte), msg)
+	var data = m.BodyToBytes()
+	return proto.Unmarshal(data, msg)
 }
 
 // 自动解析
 func (m *Packet) Decode() error {
-	var msg = CreateMessageByID(m.Cmd)
+	var name = GetMessageNameByID(m.Cmd)
+	if name == "" {
+		return fmt.Errorf("cannot create message of %d", m.Cmd)
+	}
+	var msg = CreateMessageByName(name)
 	if msg == nil {
-		return fmt.Errorf("cannot create message of ID %d", m.Cmd)
+		return fmt.Errorf("cannot create message %s", name)
 	}
 	var data = m.BodyToBytes()
 	if err := proto.Unmarshal(data, msg); err != nil {

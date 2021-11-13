@@ -121,6 +121,14 @@ func RegisterMsgID(exName string) {
 	log.Printf("%d messages registered\n", len(msgTypeRegistry))
 }
 
+func GetMessageIDByName(msgName string) int32 {
+	return msgNameIds[msgName]
+}
+
+func GetMessageNameByID(msgId int32) string {
+	return msgIdNames[msgId]
+}
+
 // 根据名称创建消息
 func CreateMessageByName(name string) proto.Message {
 	if rtype, ok := msgTypeRegistry[name]; ok {
@@ -143,10 +151,6 @@ func GetMessageIDOf(msg proto.Message) int32 {
 	var rtype = reflect.TypeOf(msg).Elem()
 	var fullname = rtype.String()
 	return msgNameIds[fullname]
-}
-
-func GetMessageIDByName(msgName string) int32 {
-	return msgNameIds[msgName]
 }
 
 // 根据Req消息的名称，返回其对应的Ack消息名称
