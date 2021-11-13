@@ -7,7 +7,7 @@ package codec
 import (
 	"encoding/binary"
 	"fmt"
-	"io"
+	"math"
 
 	"gopkg.in/qchencc/fatchoy.v1/codes"
 	"gopkg.in/qchencc/fatchoy.v1/x/fsutil"
@@ -19,59 +19,78 @@ import (
 var CompressThreshold = 4096 // 默认压缩阈值，4K
 
 // 内部不应该修改pkt的body
-func MarshalV1(w io.Writer, pkt fatchoy.IPacket, encryptor cipher.BlockCryptor) (int, error) {
+func MarshalV1(pkt fatchoy.IPacket, encryptor cipher.BlockCryptor) ([]byte, error) {
 	var flag = pkt.Flag()
-	var payload = pkt.BodyToBytes()
-	if CompressThreshold > 0 && len(payload) > CompressThreshold {
-		if data, err := fsutil.CompressBytes(payload); err != nil {
-			return 0, fmt.Errorf("compress packet %v: %w", pkt.Command(), err)
+	var refer = pkt.Refer()
+	if n := len(refer); n > math.MaxUint8 {
+		return nil, fmt.Errorf("refer count #%d overflow", n)
+	}
+	var body = pkt.BodyToBytes()
+	if CompressThreshold > 0 && len(body) > CompressThreshold {
+		if data, err := fsutil.CompressBytes(body); err != nil {
+			return nil, fmt.Errorf("compress packet %v: %w", pkt.Command(), err)
 		} else {
-			payload = data
+			body = data
 			flag |= fatchoy.PFlagCompressed
 		}
 	}
-	if len(payload) > 0 && encryptor != nil {
-		payload = encryptor.Encrypt(payload)
+	if len(body) > 0 && encryptor != nil {
+		body = encryptor.Encrypt(body)
 		flag |= fatchoy.PFlagEncrypted
 	}
-
-	var nbytes = HeaderSize + len(payload)
-	if nbytes > MaxPayloadBytes {
-		return 0, fmt.Errorf("payload size %d overflow", nbytes)
-	}
-
 	pkt.SetFlag(flag)
 
-	var head = NewHeader()
-	head.Pack(pkt, uint32(nbytes))
-	head.SetChecksum(head.CalcChecksum(payload))
-
-	if _, err := w.Write(head); err != nil {
-		return 0, err
+	var nn = HeaderSize + len(refer)*4
+	var nbytes = nn + len(body)
+	if nbytes > MaxPayloadBytes {
+		return nil, fmt.Errorf("payload size %d overflow", nbytes)
 	}
-	if len(payload) > 0 {
-		if _, err := w.Write(payload); err != nil {
-			return 0, err
+	var buf = make([]byte, nbytes)
+	copy(buf[nn:], body)
+
+	if len(refer) > 0 {
+		var i = HeaderSize
+		for _, ref := range refer {
+			binary.BigEndian.PutUint32(buf[i:], ref)
+			i += 4
 		}
 	}
-	return nbytes, nil
+	var head = Header(buf[:HeaderSize])
+	head.Pack(pkt, uint8(len(refer)), uint32(nbytes))
+	var checksum = head.CalcChecksum(buf[HeaderSize:])
+	head.SetChecksum(checksum)
+	return buf, nil
 }
 
-func UnmarshalV1(header Header, body []byte, decrypt cipher.BlockCryptor, pkt fatchoy.IPacket) error {
+func UnmarshalV1(header Header, payload []byte, decrypt cipher.BlockCryptor, pkt fatchoy.IPacket) error {
 	var flag = fatchoy.PacketFlag(header.Flag())
 	pkt.SetType(fatchoy.PacketType(header.Type()))
 	pkt.SetSeq(header.Seq())
 	pkt.SetCommand(header.Command())
 
 	var checksum = header.Checksum()
-	if crc := header.CalcChecksum(body); crc != checksum {
+	if crc := header.CalcChecksum(payload); crc != checksum {
 		return fmt.Errorf("message %v checksum mismatch %x != %x", pkt.Command(), checksum, crc)
 	}
 
-	if len(body) == 0 {
+	if len(payload) == 0 {
 		return nil
 	}
-
+	var refcnt = header.RefCount()
+	if refcnt > 0 {
+		if len(payload) < int(refcnt)*4 {
+			return fmt.Errorf("message %d refer count mismatch %d != %d", pkt.Command(), len(payload)/4, refcnt)
+		}
+		var pos = 0
+		var refers = make([]uint32, 0, refcnt)
+		for i := 0; i < int(refcnt); i++ {
+			var refer = binary.BigEndian.Uint32(payload[pos:])
+			pos += 4
+			refers = append(refers, refer)
+		}
+		pkt.SetRefer(refers)
+	}
+	var body = payload[refcnt*4:]
 	if (flag & fatchoy.PFlagEncrypted) != 0 {
 		if decrypt == nil {
 			return fmt.Errorf("message %v must be decrypted", pkt.Command())

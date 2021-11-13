@@ -16,8 +16,9 @@ type testPacket struct {
 	command  int32
 	seq      int16
 	flag     fatchoy.PacketFlag
-	type_    fatchoy.PacketType
+	typ    fatchoy.PacketType
 	body     []byte
+	refer []uint32
 	endpoint fatchoy.MessageEndpoint
 }
 
@@ -38,11 +39,11 @@ func (m *testPacket) SetSeq(v int16) {
 }
 
 func (m *testPacket) Type() fatchoy.PacketType {
-	return m.type_
+	return m.typ
 }
 
 func (m *testPacket) SetType(v fatchoy.PacketType) {
-	m.type_ = v
+	m.typ = v
 }
 
 func (m *testPacket) Flag() fatchoy.PacketFlag {
@@ -67,6 +68,14 @@ func (m *testPacket) Errno() int32 {
 func (m *testPacket) SetErrno(ec int32) {
 	m.flag |= fatchoy.PFlagError
 	m.SetBodyInt(int64(ec))
+}
+
+func (m *testPacket) Refer() []uint32 {
+	return m.refer
+}
+
+func (m *testPacket) SetRefer(v []uint32) {
+	m.refer = v
 }
 
 func (m *testPacket) Endpoint() fatchoy.MessageEndpoint {

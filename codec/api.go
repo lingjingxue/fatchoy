@@ -5,7 +5,6 @@
 package codec
 
 import (
-	"bytes"
 	"encoding/binary"
 	"fmt"
 	"io"
@@ -51,19 +50,20 @@ func WriteLenData(w io.Writer, data []byte) (int, error) {
 
 // 使用从r读取消息到pkt，并按需使用decrypt解密，返回读取长度和错误
 func ReadV1(r io.Reader) (Header, []byte, error) {
-	var head = NewHeader()
-	if _, err := io.ReadFull(r, head); err != nil {
+	var headbuf [HeaderSize]byte
+	if _, err := io.ReadFull(r, headbuf[:]); err != nil {
 		return nil, nil, err
 	}
+	var head = Header(headbuf[:])
 	var length = head.Len()
 	if length > MaxPayloadBytes {
 		return nil, nil, fmt.Errorf("payload size %d overflow", length)
 	}
-	var buf = make([]byte, length-HeaderSize)
-	if _, err := io.ReadFull(r, buf); err != nil {
+	var payload = make([]byte, length-HeaderSize)
+	if _, err := io.ReadFull(r, payload); err != nil {
 		return nil, nil, err
 	}
-	return head, buf, nil
+	return head, payload, nil
 }
 
 // 读取一个packet
@@ -80,11 +80,11 @@ func ReadPacket(r io.Reader, decrypt cipher.BlockCryptor, pkt fatchoy.IPacket) e
 
 // 写入一个packet
 func WritePacket(w io.Writer, encrypt cipher.BlockCryptor, pkt fatchoy.IPacket) error {
-	var buf bytes.Buffer
-	if _, err := MarshalV1(&buf, pkt, encrypt); err != nil {
+	buf, err := MarshalV1(pkt, encrypt)
+	if err != nil {
 		return err
 	}
-	if _, err := w.Write(buf.Bytes()); err != nil {
+	if _, err := w.Write(buf); err != nil {
 		return err
 	}
 	return nil

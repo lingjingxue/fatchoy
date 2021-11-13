@@ -26,17 +26,13 @@ const (
 )
 
 //  协议头，little endian表示，len包含header和body
-//       -------------------------------------------------
-// field | len | type | flag | reserve | seq | cmd | crc |
-//       -------------------------------------------------
-// bytes |  3  |   1  |   1  |    1    |  2  |  4  |  4  |
+//       ------------------------------------------------
+// field | len | type | flag | refcnt | seq | cmd | crc |
+//       ------------------------------------------------
+// bytes |  3  |   1  |   1  |   1    |  2  |  4  |  4  |
 
 // 不包含length
 type Header []byte
-
-func NewHeader() Header {
-	return make([]byte, HeaderSize)
-}
 
 func (h Header) Len() uint32 {
 	return uint32(h[2]) | uint32(h[1])<<8 | uint32(h[0])<<16
@@ -50,6 +46,11 @@ func (h Header) Type() uint8 {
 // 标记位
 func (h Header) Flag() uint8 {
 	return h[4]
+}
+
+// 标记位
+func (h Header) RefCount() uint8 {
+	return h[5]
 }
 
 // session内的唯一序号
@@ -66,7 +67,7 @@ func (h Header) Checksum() uint32 {
 	return binary.BigEndian.Uint32(h[12:])
 }
 
-// 校验码包含head和body
+// 校验码包含head和body，不包含refer
 func (h Header) CalcChecksum(payload []byte) uint32 {
 	var hasher = crc32.NewIEEE()
 	hasher.Write(h[:12])
@@ -80,12 +81,13 @@ func (h Header) SetChecksum(crc uint32) {
 	binary.BigEndian.PutUint32(h[12:], crc)
 }
 
-func (h Header) Pack(pkt fatchoy.IPacket, size uint32) {
+func (h Header) Pack(pkt fatchoy.IPacket, refcnt uint8, size uint32) {
 	h[0] = byte(size >> 16)
 	h[1] = byte(size >> 8)
 	h[2] = byte(size)
 	h[3] = byte(pkt.Type())
 	h[4] = byte(pkt.Flag())
+	h[5] = refcnt
 	binary.BigEndian.PutUint16(h[6:], uint16(pkt.Seq()))
 	binary.BigEndian.PutUint32(h[8:], uint32(pkt.Command()))
 }

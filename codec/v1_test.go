@@ -33,10 +33,10 @@ func isEqualPacket(t *testing.T, a, b fatchoy.IPacket) bool {
 
 func newTestPacket(bodyLen int) fatchoy.IPacket {
 	var pkt testPacket
-	pkt.type_ = fatchoy.PTypePacket
-	pkt.flag = 0
-	pkt.command = 0x1234
-	pkt.seq = 0x5678
+	pkt.SetType(fatchoy.PTypePacket)
+	pkt.SetCommand(1234)
+	pkt.SetSeq(5678)
+	pkt.SetRefer([]uint32{1234567, 7654321})
 	if bodyLen > 0 {
 		s := strutil.RandString(bodyLen)
 		pkt.SetBodyBytes([]byte(s))
@@ -58,17 +58,17 @@ func createCryptor(method string) (cipher.BlockCryptor, error) {
 }
 
 func testProtoCodec(t *testing.T, size int, msgSent fatchoy.IPacket) {
-	var encoded bytes.Buffer
 	encrypt, _ := createCryptor("aes-192")
 	decrypt := cipher.NewCrypt("aes-192", encrypt.Key(), encrypt.IV())
 	// 如果加密方式是原地加密，会导致packet的body是加密后的内容
 	clone := append([]byte(nil), msgSent.BodyToBytes()...)
-	if _, err := MarshalV1(&encoded, msgSent, encrypt); err != nil {
+	encoded, err := MarshalV1(msgSent, encrypt)
+	if err != nil {
 		t.Fatalf("Encode with size %d: %v", size, err)
 	}
 	msgSent.SetBodyBytes(nil)
 	var msgRecv testPacket
-	if err := ReadPacket(&encoded, decrypt, &msgRecv); err != nil {
+	if err := ReadPacket(bytes.NewBuffer(encoded), decrypt, &msgRecv); err != nil {
 		t.Fatalf("Decode with size %d: %v", size, err)
 	}
 	msgSent.SetBodyBytes(clone)
@@ -92,12 +92,12 @@ func BenchmarkCodecMarshal(b *testing.B) {
 	var msg = newTestPacket(int(size))
 	b.StartTimer()
 
-	var buf bytes.Buffer
-	if _, err := MarshalV1(&buf, msg, nil); err != nil {
+	if _, err := MarshalV1(msg, nil); err != nil {
 		b.Logf("Encode: %v", err)
 	}
+
 	var msg2 testPacket
-	if _, err := MarshalV1(&buf, &msg2, nil); err != nil {
+	if _, err := MarshalV1(&msg2, nil); err != nil {
 		b.Logf("Decode: %v", err)
 	}
 }
