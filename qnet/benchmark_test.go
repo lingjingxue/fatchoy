@@ -70,7 +70,7 @@ func startBenchClient(t *testing.T, address string, msgCount int, ready chan str
 
 	for i := 0; i < msgCount; i++ {
 		var pkt = packet.New(int32(i), 0, 0, "ping")
-		buf, err := codec.MarshalV1(pkt, nil)
+		buf, err := codec.MarshalV2(pkt, nil)
 		if err != nil {
 			t.Fatalf("Encode: %v", err)
 		}
@@ -80,7 +80,7 @@ func startBenchClient(t *testing.T, address string, msgCount int, ready chan str
 	}
 	for i := 0; i < msgCount; i++ {
 		var resp = packet.Make()
-		if err := codec.ReadPacket(conn, nil, resp); err != nil {
+		if err := codec.ReadPacketV2(conn, nil, resp); err != nil {
 			t.Fatalf("Decode: %v", err)
 		}
 		respChan <- 1

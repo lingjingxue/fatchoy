@@ -128,7 +128,7 @@ func (t *TcpConn) flush() {
 }
 
 func (t *TcpConn) write(pkt fatchoy.IPacket) error {
-	buf, err := codec.MarshalV1(pkt, t.encrypt)
+	buf, err := codec.MarshalV2(pkt, t.encrypt)
 	if err != nil {
 		return err
 	}
@@ -168,12 +168,12 @@ func (t *TcpConn) writePump() {
 func (t *TcpConn) readFrom(reader io.Reader) (fatchoy.IPacket, error) {
 	var deadline = time.Now().Add(time.Duration(TConnReadTimeout) * time.Second)
 	t.conn.SetReadDeadline(deadline)
-	head, body, err := codec.ReadV1(reader)
+	head, body, err := codec.ReadV2(reader)
 	if err != nil {
 		return nil, err
 	}
 	var pkt = packet.Make()
-	if err := codec.UnmarshalV1(head, body, t.decrypt, pkt); err != nil {
+	if err := codec.UnmarshalV2(head, body, t.decrypt, pkt); err != nil {
 		return nil, err
 	}
 	var nbytes = len(head) + len(body)

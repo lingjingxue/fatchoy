@@ -31,7 +31,7 @@ func handleConn(conn net.Conn) {
 	for {
 		conn.SetReadDeadline(time.Now().Add(time.Minute))
 		var pkt = packet.Make()
-		if err := codec.ReadPacket(conn, nil, pkt); err != nil {
+		if err := codec.ReadPacketV2(conn, nil, pkt); err != nil {
 			fmt.Printf("Decode: %v\n", err)
 			break
 		}

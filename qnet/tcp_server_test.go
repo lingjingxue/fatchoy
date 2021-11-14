@@ -30,7 +30,7 @@ func startRawClient(t *testing.T, id int, address string, msgCount int) {
 		pkt.SetCommand(int32(i))
 		pkt.SetSeq(int16(i))
 		pkt.SetBodyString("ping")
-		buf, err := codec.MarshalV1(pkt, nil)
+		buf, err := codec.MarshalV2(pkt, nil)
 		if err != nil {
 			t.Fatalf("Encode: %v", err)
 		}
@@ -38,7 +38,7 @@ func startRawClient(t *testing.T, id int, address string, msgCount int) {
 			t.Fatalf("Write: %v", err)
 		}
 		var resp = packet.Make()
-		if err := codec.ReadPacket(conn, nil, resp); err != nil {
+		if err := codec.ReadPacketV2(conn, nil, resp); err != nil {
 			t.Fatalf("Decode: %v", err)
 		}
 		if resp.Seq() != pkt.Seq() {
