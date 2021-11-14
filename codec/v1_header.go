@@ -16,15 +16,20 @@ const (
 )
 
 //  协议头，len包含header和body
-//       ---------------------------------
-// field | len | flag |  seq | cmd | crc |
-//       ---------------------------------
-// bytes |  3  |   1  |   2  |  4  |  4  |
+//       ----------------------------------------
+// field | len | type | flag |  seq | cmd | crc |
+//       ----------------------------------------
+// bytes |  2  |   1  |   1  |   2  |  4  |  4  |
 
 type V1Header []byte
 
-func (h V1Header) Len() uint32 {
-	return uint32(h[2]) | uint32(h[1])<<8 | uint32(h[0])<<16 // big endian
+func (h V1Header) Len() uint16 {
+	return binary.BigEndian.Uint16(h)
+}
+
+// 标记位
+func (h V1Header) Type() uint8 {
+	return h[2]
 }
 
 // 标记位
@@ -60,10 +65,9 @@ func (h V1Header) SetChecksum(crc uint32) {
 	binary.BigEndian.PutUint32(h[10:], crc)
 }
 
-func (h V1Header) Pack(pkt fatchoy.IPacket, size uint32) {
-	h[0] = byte(size >> 16)
-	h[1] = byte(size >> 8)
-	h[2] = byte(size)
+func (h V1Header) Pack(pkt fatchoy.IPacket, size uint16) {
+	binary.BigEndian.PutUint16(h, size)
+	h[2] = byte(pkt.Type())
 	h[3] = byte(pkt.Flag())
 	binary.BigEndian.PutUint16(h[4:], uint16(pkt.Seq()))
 	binary.BigEndian.PutUint32(h[6:], uint32(pkt.Command()))

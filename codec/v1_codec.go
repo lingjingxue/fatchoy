@@ -40,7 +40,7 @@ func MarshalV1(pkt fatchoy.IPacket, encryptor cipher.BlockCryptor) ([]byte, erro
 	copy(buf[V1HeaderSize:], body)
 
 	var head = V1Header(buf[:V1HeaderSize])
-	head.Pack(pkt, uint32(nbytes))
+	head.Pack(pkt, uint16(nbytes))
 	var checksum = head.CalcChecksum(buf[V1HeaderSize:])
 	head.SetChecksum(checksum)
 	return buf, nil

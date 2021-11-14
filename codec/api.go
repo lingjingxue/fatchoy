@@ -5,6 +5,7 @@
 package codec
 
 import (
+	"encoding/binary"
 	"fmt"
 	"io"
 
@@ -12,35 +13,35 @@ import (
 	"gopkg.in/qchencc/fatchoy.v1/x/cipher"
 )
 
-// read 3bytes length-prefixed data
+const (
+	MaxPayloadBytes = (1 << 16) - 1
+)
+
+// read 2-bytes length-prefixed data
 func ReadLenData(r io.Reader) ([]byte, error) {
-	var tmp [3]byte
+	var tmp [2]byte
 	if _, err := io.ReadFull(r, tmp[:]); err != nil {
 		return nil, err
 	}
-	var length = uint32(tmp[2]) | uint32(tmp[1])<<8 | uint32(tmp[0])<<16 // big endian
+	var length = binary.BigEndian.Uint16(tmp[:])
 	if length > MaxPayloadBytes {
 		return nil, fmt.Errorf("payload size %d overflow", length)
 	}
-	var buf = make([]byte, length-3)
+	var buf = make([]byte, length-2)
 	if _, err := io.ReadFull(r, buf); err != nil {
 		return nil, err
 	}
 	return buf, nil
 }
 
-// write 3bytes length-prefixed data
+// write 2-bytes length-prefixed data
 func WriteLenData(w io.Writer, data []byte) (int, error) {
-	var length = uint32(len(data)) + 3
+	var length = len(data) + 2
 	if length > MaxPayloadBytes {
 		return 0, fmt.Errorf("payload size %d overflow", length)
 	}
-	// big endian
-	var tmp [3]byte
-	tmp[0] = byte(length >> 16)
-	tmp[1] = byte(length >> 8)
-	tmp[2] = byte(length)
-
+	var tmp [2]byte
+	binary.BigEndian.PutUint16(tmp[:], uint16(length))
 	if _, err := w.Write(tmp[:]); err != nil {
 		return 0, err
 	}
