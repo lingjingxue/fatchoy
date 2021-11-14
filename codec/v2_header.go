@@ -13,21 +13,18 @@ import (
 	"gopkg.in/qchencc/fatchoy.v1"
 )
 
-
-
 const (
-	VersionV2  = 2
-	V2HeaderSize       = 16               // 包头大小(包含长度）
+	VersionV2        = 2
+	V2HeaderSize     = 16               // 包头大小(包含长度）
 	PacketBytesLimit = (1 << 24) - 1    // 3字节限制
 	MaxPayloadBytes  = 16 * 1024 * 1024 // 16M
 )
 
-//  协议头，little endian表示，len包含header和body
+//  协议头，len包含header和body
 //       ------------------------------------------------
-// field | len | type | flag | refcnt | seq | cmd | crc |
+// field | len | flag | type | refcnt | seq | cmd | crc |
 //       ------------------------------------------------
 // bytes |  3  |   1  |   1  |   1    |  2  |  4  |  4  |
-
 
 type V2Header []byte
 
@@ -36,12 +33,12 @@ func (h V2Header) Len() uint32 {
 }
 
 // 标记位
-func (h V2Header) Type() uint8 {
+func (h V2Header) Flag() uint8 {
 	return h[3]
 }
 
-// 标记位
-func (h V2Header) Flag() uint8 {
+// 类型
+func (h V2Header) Type() uint8 {
 	return h[4]
 }
 
@@ -64,7 +61,7 @@ func (h V2Header) Checksum() uint32 {
 	return binary.BigEndian.Uint32(h[12:])
 }
 
-// 校验码包含head和body，不包含refer
+// 校验码包含head和body
 func (h V2Header) CalcChecksum(payload []byte) uint32 {
 	var hasher = crc32.NewIEEE()
 	hasher.Write(h[:12])
@@ -82,8 +79,8 @@ func (h V2Header) Pack(pkt fatchoy.IPacket, refcnt uint8, size uint32) {
 	h[0] = byte(size >> 16)
 	h[1] = byte(size >> 8)
 	h[2] = byte(size)
-	h[3] = byte(pkt.Type())
-	h[4] = byte(pkt.Flag())
+	h[3] = byte(pkt.Flag())
+	h[4] = byte(pkt.Type())
 	h[5] = refcnt
 	binary.BigEndian.PutUint16(h[6:], uint16(pkt.Seq()))
 	binary.BigEndian.PutUint32(h[8:], uint32(pkt.Command()))

@@ -1,31 +1,24 @@
-// Copyright © 2021-present ichenq@outlook.com All rights reserved.
+// Copyright © 2020-present ichenq@outlook.com All rights reserved.
 // Distributed under the terms and conditions of the BSD License.
 // See accompanying files LICENSE.
 
 package codec
 
 import (
-	"encoding/binary"
 	"fmt"
-	"math"
 
 	"gopkg.in/qchencc/fatchoy.v1"
-	"gopkg.in/qchencc/fatchoy.v1/codes"
 	"gopkg.in/qchencc/fatchoy.v1/x/cipher"
 	"gopkg.in/qchencc/fatchoy.v1/x/fsutil"
 )
 
-var V2CompressThreshold = 4096 // 默认压缩阈值，4K
+var V1CompressThreshold = 4096 // 默认压缩阈值，4K
 
 // 内部除了flag不应该修改pkt的其它字段
-func MarshalV2(pkt fatchoy.IPacket, encryptor cipher.BlockCryptor) ([]byte, error) {
+func MarshalV1(pkt fatchoy.IPacket, encryptor cipher.BlockCryptor) ([]byte, error) {
 	var flag = pkt.Flag()
-	var refer = pkt.Refer()
-	if n := len(refer); n > math.MaxUint8 {
-		return nil, fmt.Errorf("refer count #%d overflow", n)
-	}
 	var body = pkt.BodyToBytes()
-	if V2CompressThreshold > 0 && len(body) > V2CompressThreshold {
+	if V1CompressThreshold > 0 && len(body) > V2CompressThreshold {
 		if data, err := fsutil.CompressBytes(body); err != nil {
 			return nil, fmt.Errorf("compress packet %v: %w", pkt.Command(), err)
 		} else {
@@ -39,32 +32,23 @@ func MarshalV2(pkt fatchoy.IPacket, encryptor cipher.BlockCryptor) ([]byte, erro
 	}
 	pkt.SetFlag(flag)
 
-	var nn = V2HeaderSize + len(refer)*4
-	var nbytes = nn + len(body)
+	var nbytes = V1HeaderSize + len(body)
 	if nbytes > MaxPayloadBytes {
 		return nil, fmt.Errorf("payload size %d overflow", nbytes)
 	}
 	var buf = make([]byte, nbytes)
-	copy(buf[nn:], body)
+	copy(buf[V1HeaderSize:], body)
 
-	if len(refer) > 0 {
-		var i = V2HeaderSize
-		for _, ref := range refer {
-			binary.BigEndian.PutUint32(buf[i:], ref)
-			i += 4
-		}
-	}
-	var head = V2Header(buf[:V2HeaderSize])
-	head.Pack(pkt, uint8(len(refer)), uint32(nbytes))
-	var checksum = head.CalcChecksum(buf[V2HeaderSize:])
+	var head = V1Header(buf[:V1HeaderSize])
+	head.Pack(pkt, uint32(nbytes))
+	var checksum = head.CalcChecksum(buf[V1HeaderSize:])
 	head.SetChecksum(checksum)
 	return buf, nil
 }
 
 // 解码消息到pkt
-func UnmarshalV2(header V2Header, payload []byte, decrypt cipher.BlockCryptor, pkt fatchoy.IPacket) error {
+func UnmarshalV1(header V1Header, payload []byte, decrypt cipher.BlockCryptor, pkt fatchoy.IPacket) error {
 	var flag = fatchoy.PacketFlag(header.Flag())
-	pkt.SetType(fatchoy.PacketType(header.Type()))
 	pkt.SetSeq(header.Seq())
 	pkt.SetCommand(header.Command())
 
@@ -72,25 +56,10 @@ func UnmarshalV2(header V2Header, payload []byte, decrypt cipher.BlockCryptor, p
 	if crc := header.CalcChecksum(payload); crc != checksum {
 		return fmt.Errorf("message %v checksum mismatch %x != %x", pkt.Command(), checksum, crc)
 	}
-
 	if len(payload) == 0 {
 		return nil
 	}
-	var refcnt = header.RefCount()
-	if refcnt > 0 {
-		if len(payload) < int(refcnt)*4 {
-			return fmt.Errorf("message %d refer count mismatch %d != %d", pkt.Command(), len(payload)/4, refcnt)
-		}
-		var pos = 0
-		var refers = make([]uint32, 0, refcnt)
-		for i := 0; i < int(refcnt); i++ {
-			var refer = binary.BigEndian.Uint32(payload[pos:])
-			pos += 4
-			refers = append(refers, refer)
-		}
-		pkt.SetRefer(refers)
-	}
-	var body = payload[refcnt*4:]
+	var body = payload[:]
 	if (flag & fatchoy.PFlagEncrypted) != 0 {
 		if decrypt == nil {
 			return fmt.Errorf("message %v must be decrypted", pkt.Command())
@@ -107,16 +76,6 @@ func UnmarshalV2(header V2Header, payload []byte, decrypt cipher.BlockCryptor, p
 		}
 	}
 	pkt.SetFlag(flag)
-	// 如果有FlagError，则body是数值错误码
-	if (flag & fatchoy.PFlagError) != 0 {
-		val, n := binary.Varint(body)
-		if n > 0 {
-			pkt.SetBodyInt(val)
-		} else {
-			pkt.SetBodyInt(int64(codes.TransportFailure))
-		}
-	} else {
-		pkt.SetBodyBytes(body)
-	}
+	pkt.SetBodyBytes(body)
 	return nil
 }
