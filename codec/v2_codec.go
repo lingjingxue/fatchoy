@@ -10,52 +10,39 @@ import (
 	"math"
 
 	"gopkg.in/qchencc/fatchoy.v1"
-	"gopkg.in/qchencc/fatchoy.v1/codes"
 	"gopkg.in/qchencc/fatchoy.v1/x/cipher"
-	"gopkg.in/qchencc/fatchoy.v1/x/fsutil"
 )
 
 var V2CompressThreshold = 4096 // 默认压缩阈值，4K
 
 // 内部除了flag不应该修改pkt的其它字段
 func MarshalV2(pkt fatchoy.IPacket, encryptor cipher.BlockCryptor) ([]byte, error) {
-	var flag = pkt.Flag()
-	var refer = pkt.Refer()
-	if n := len(refer); n > math.MaxUint8 {
-		return nil, fmt.Errorf("refer count #%d overflow", n)
+	var refers = pkt.Refer()
+	if n := len(refers); n > math.MaxUint8 {
+		return nil, fmt.Errorf("packet %d refer count #%d overflow", pkt.Command(), n)
 	}
-	var body = pkt.BodyToBytes()
-	if V2CompressThreshold > 0 && len(body) > V2CompressThreshold {
-		if data, err := fsutil.CompressBytes(body); err != nil {
-			return nil, fmt.Errorf("compress packet %v: %w", pkt.Command(), err)
-		} else {
-			body = data
-			flag |= fatchoy.PFlagCompressed
-		}
+	body, err := marshalPacketBody(pkt, V2CompressThreshold, encryptor)
+	if err != nil {
+		return nil, err
 	}
-	if len(body) > 0 && encryptor != nil {
-		body = encryptor.Encrypt(body)
-		flag |= fatchoy.PFlagEncrypted
-	}
-	pkt.SetFlag(flag)
 
-	var nn = V2HeaderSize + len(refer)*4
+	var nn = V2HeaderSize + len(refers)*4
 	var nbytes = nn + len(body)
-	if nbytes > MaxPayloadBytes {
-		return nil, fmt.Errorf("payload size %d overflow", nbytes)
+	if nbytes > V2MaxPayloadBytes {
+		return nil, fmt.Errorf("packet %d payload size %d overflow", pkt.Command(), nbytes)
 	}
 	var buf = make([]byte, nbytes)
 	copy(buf[nn:], body)
 
-	if len(refer) > 0 {
+	if len(refers) > 0 {
 		var i = V2HeaderSize
-		for _, ref := range refer {
-			binary.BigEndian.PutUint32(buf[i:], ref)
+		for _, refer := range refers {
+			binary.BigEndian.PutUint32(buf[i:], refer)
 			i += 4
 		}
 	}
 	var head = V2Header(buf[:V2HeaderSize])
-	head.Pack(pkt, uint8(len(refer)), uint32(nbytes))
+	head.Pack(pkt, uint8(len(refers)), uint32(nbytes))
 	var checksum = head.CalcChecksum(buf[V2HeaderSize:])
 	head.SetChecksum(checksum)
 	return buf, nil
@@ -63,25 +50,24 @@ func MarshalV2(pkt fatchoy.IPacket, encryptor cipher.BlockCryptor) ([]byte, erro
 
 // 解码消息到pkt
 func UnmarshalV2(header V2Header, payload []byte, decrypt cipher.BlockCryptor, pkt fatchoy.IPacket) error {
-	var flag = fatchoy.PacketFlag(header.Flag())
+	pkt.SetFlag(fatchoy.PacketFlag(header.Flag()))
 	pkt.SetType(fatchoy.PacketType(header.Type()))
 	pkt.SetSeq(header.Seq())
 	pkt.SetCommand(header.Command())
 
 	var checksum = header.Checksum()
 	if crc := header.CalcChecksum(payload); crc != checksum {
-		return fmt.Errorf("message %v checksum mismatch %x != %x", pkt.Command(), checksum, crc)
+		return fmt.Errorf("packet %v checksum mismatch %x != %x", pkt.Command(), checksum, crc)
 	}
-
 	if len(payload) == 0 {
 		return nil
 	}
+	var pos = 0
 	var refcnt = header.RefCount()
 	if refcnt > 0 {
 		if len(payload) < int(refcnt)*4 {
-			return fmt.Errorf("message %d refer count mismatch %d != %d", pkt.Command(), len(payload)/4, refcnt)
+			return fmt.Errorf("packet %d refer count mismatch %d != %d", pkt.Command(), len(payload)/4, refcnt)
 		}
-		var pos = 0
 		var refers = make([]uint32, 0, refcnt)
 		for i := 0; i < int(refcnt); i++ {
 			var refer = binary.BigEndian.Uint32(payload[pos:])
@@ -90,33 +76,6 @@ func UnmarshalV2(header V2Header, payload []byte, decrypt cipher.BlockCryptor, p
 		}
 		pkt.SetRefer(refers)
 	}
-	var body = payload[refcnt*4:]
-	if (flag & fatchoy.PFlagEncrypted) != 0 {
-		if decrypt == nil {
-			return fmt.Errorf("message %v must be decrypted", pkt.Command())
-		}
-		body = decrypt.Decrypt(body)
-		flag = flag &^ fatchoy.PFlagEncrypted
-	}
-	if (flag & fatchoy.PFlagCompressed) != 0 {
-		if uncompressed, err := fsutil.UncompressBytes(body); err != nil {
-			return fmt.Errorf("decompress packet %d: %w", pkt.Command(), err)
-		} else {
-			body = uncompressed
-			flag = flag &^ fatchoy.PFlagCompressed
-		}
-	}
-	pkt.SetFlag(flag)
-	// 如果有FlagError，则body是数值错误码
-	if (flag & fatchoy.PFlagError) != 0 {
-		val, n := binary.Varint(body)
-		if n > 0 {
-			pkt.SetBodyInt(val)
-		} else {
-			pkt.SetBodyInt(int64(codes.TransportFailure))
-		}
-	} else {
-		pkt.SetBodyBytes(body)
-	}
-	return nil
+	var body = payload[pos:]
+	return unmarshalPacketBody(body, decrypt, pkt)
 }

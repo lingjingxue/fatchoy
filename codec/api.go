@@ -8,13 +8,10 @@ import (
 	"encoding/binary"
 	"fmt"
 	"io"
+	"math"
 
 	"gopkg.in/qchencc/fatchoy.v1"
 	"gopkg.in/qchencc/fatchoy.v1/x/cipher"
-)
-
-const (
-	MaxPayloadBytes = (1 << 16) - 1
 )
 
 // read 2-bytes length-prefixed data
@@ -24,9 +21,6 @@ func ReadLenData(r io.Reader) ([]byte, error) {
 		return nil, err
 	}
 	var length = binary.BigEndian.Uint16(tmp[:])
-	if length > MaxPayloadBytes {
-		return nil, fmt.Errorf("payload size %d overflow", length)
-	}
 	var buf = make([]byte, length-2)
 	if _, err := io.ReadFull(r, buf); err != nil {
 		return nil, err
@@ -37,7 +31,7 @@ func ReadLenData(r io.Reader) ([]byte, error) {
 // write 2-bytes length-prefixed data
 func WriteLenData(w io.Writer, data []byte) (int, error) {
 	var length = len(data) + 2
-	if length > MaxPayloadBytes {
+	if length >= math.MaxUint16 {
 		return 0, fmt.Errorf("payload size %d overflow", length)
 	}
 	var tmp [2]byte
@@ -54,13 +48,13 @@ func WriteLenData(w io.Writer, data []byte) (int, error) {
 
 // 使用从r读取消息到pkt，并按需使用decrypt解密，返回读取长度和错误
 func ReadV1(r io.Reader) (V1Header, []byte, error) {
-	var headbuf [V1HeaderSize]byte
-	if _, err := io.ReadFull(r, headbuf[:]); err != nil {
+	var buf [V1HeaderSize]byte
+	if _, err := io.ReadFull(r, buf[:]); err != nil {
 		return nil, nil, err
 	}
-	var head = V1Header(headbuf[:])
+	var head = V1Header(buf[:])
 	var length = head.Len()
-	if length > MaxPayloadBytes {
+	if length > V1MaxPayloadBytes {
 		return nil, nil, fmt.Errorf("payload size %d overflow", length)
 	}
 	var payload = make([]byte, length-V1HeaderSize)
@@ -72,13 +66,13 @@ func ReadV1(r io.Reader) (V1Header, []byte, error) {
 
 // 使用从r读取消息到pkt，并按需使用decrypt解密，返回读取长度和错误
 func ReadV2(r io.Reader) (V2Header, []byte, error) {
-	var headbuf [V2HeaderSize]byte
-	if _, err := io.ReadFull(r, headbuf[:]); err != nil {
+	var buf [V2HeaderSize]byte
+	if _, err := io.ReadFull(r, buf[:]); err != nil {
 		return nil, nil, err
 	}
-	var head = V2Header(headbuf[:])
+	var head = V2Header(buf[:])
 	var length = head.Len()
-	if length > MaxPayloadBytes {
+	if length > V2MaxPayloadBytes {
 		return nil, nil, fmt.Errorf("payload size %d overflow", length)
 	}
 	var payload = make([]byte, length-V2HeaderSize)

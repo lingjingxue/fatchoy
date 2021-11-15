@@ -6,13 +6,15 @@ package codec
 
 import (
 	"encoding/binary"
-	"gopkg.in/qchencc/fatchoy.v1"
 	"hash/crc32"
+
+	"gopkg.in/qchencc/fatchoy.v1"
 )
 
 const (
-	VersionV1    = 1
-	V1HeaderSize = 14 // 包头大小(包含长度）
+	VersionV1         = 1
+	V1HeaderSize      = 14        // 包头大小(包含长度）
+	V1MaxPayloadBytes = 60 * 1024 // 60K
 )
 
 //  协议头，len包含header和body

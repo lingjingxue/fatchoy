@@ -62,13 +62,13 @@ func testProtoCodec(t *testing.T, size int, msgSent fatchoy.IPacket) {
 	decrypt := cipher.NewCrypt("aes-192", encrypt.Key(), encrypt.IV())
 	// 如果加密方式是原地加密，会导致packet的body是加密后的内容
 	clone := append([]byte(nil), msgSent.BodyToBytes()...)
-	encoded, err := MarshalV1(msgSent, encrypt)
+	encoded, err := MarshalV2(msgSent, encrypt)
 	if err != nil {
 		t.Fatalf("Encode with size %d: %v", size, err)
 	}
 	msgSent.SetBodyBytes(nil)
 	var msgRecv testPacket
-	if err := ReadPacket(bytes.NewBuffer(encoded), decrypt, &msgRecv); err != nil {
+	if err := ReadPacketV2(bytes.NewBuffer(encoded), decrypt, &msgRecv); err != nil {
 		t.Fatalf("Decode with size %d: %v", size, err)
 	}
 	msgSent.SetBodyBytes(clone)
