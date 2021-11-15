@@ -21,8 +21,9 @@ const (
 type PacketType int8
 
 const (
-	PTypePacket PacketType = 0 // 应用消息
-	PTypeRoute  PacketType = 1 // 路由消息
+	PTypePacket    PacketType = 0 // 应用消息
+	PTypeRoute     PacketType = 1 // 路由消息
+	PTypeMulticast PacketType = 2 // 组播消息
 )
 
 type PacketHandler func(IPacket) error // 消息处理器
