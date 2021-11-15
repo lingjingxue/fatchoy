@@ -17,8 +17,8 @@ type Packet struct {
 	Sequence int16                   `json:"seq"`            // 序列号
 	Typ      fatchoy.PacketType      `json:"typ,omitempty"`  // 类型
 	Flg      fatchoy.PacketFlag      `json:"flg,omitempty"`  // 标志位
-	Body     interface{}             `json:"body,omitempty"` // 消息内容，number/string/bytes/proto.Message
-	Ref      []uint32                `json:"ref,omitempty"`  // referenced session IDs
+	Body     interface{}             `json:"body,omitempty"` // 消息内容，int64/float64/string/bytes/proto.Message
+	Refer    []fatchoy.NodeID        `json:"ref,omitempty"`  // referenced node IDs
 	endpoint fatchoy.MessageEndpoint // 关联的endpoint
 }
 
@@ -68,12 +68,12 @@ func (m *Packet) SetFlag(v fatchoy.PacketFlag) {
 	m.Flg = v
 }
 
-func (m *Packet) Refer() []uint32 {
-	return m.Ref
+func (m *Packet) Refers() []fatchoy.NodeID {
+	return m.Refer
 }
 
-func (m *Packet) SetRefer(v []uint32) {
-	m.Ref = v
+func (m *Packet) SetRefers(v []fatchoy.NodeID) {
+	m.Refer = v
 }
 
 func (m *Packet) Endpoint() fatchoy.MessageEndpoint {
@@ -89,7 +89,7 @@ func (m *Packet) Reset() {
 	m.Sequence = 0
 	m.Flg = 0
 	m.Typ = 0
-	m.Ref = nil
+	m.Refer = nil
 	m.Body = nil
 	m.endpoint = nil
 }
@@ -100,14 +100,10 @@ func (m *Packet) Clone() fatchoy.IPacket {
 		Flg:      m.Flg,
 		Typ:      m.Typ,
 		Sequence: m.Sequence,
-		Ref:      m.Ref,
+		Refer:    m.Refer,
 		Body:     m.Body,
 		endpoint: m.endpoint,
 	}
-}
-
-func (m *Packet) IBody() interface{} {
-	return m.Body
 }
 
 func (m *Packet) Errno() int32 {
@@ -117,16 +113,26 @@ func (m *Packet) Errno() int32 {
 	return 0
 }
 
-// 返回响应
-func (m *Packet) ReplyWith(command int32, ack proto.Message) error {
-	var pkt = New(command, m.Sequence, m.Flg, ack)
+// 如果消息表示一个错误码，设置PacketFlagError标记，并且body为错误码数值
+func (m *Packet) SetErrno(ec int32) {
+	m.Flg |= fatchoy.PFlagError
+	m.SetBody(int64(ec))
+}
+
+// body的类型仅支持int64/float64/string/bytes/proto.Message
+func (m *Packet) Reply(command int32, body interface{}) error {
+	var pkt = New(command, m.Sequence, m.Flg, body)
+	pkt.Refer = m.Refer
 	return m.endpoint.SendPacket(pkt)
 }
 
 // 响应proto消息内容
-func (m *Packet) Reply(ack proto.Message) error {
+func (m *Packet) ReplyMsg(ack proto.Message) error {
 	var mid = GetMessageIDOf(ack)
-	return m.ReplyWith(mid, ack)
+	if mid == 0 {
+		mid = m.Cmd
+	}
+	return m.Reply(mid, ack)
 }
 
 // 响应string内容
@@ -146,6 +152,7 @@ func (m *Packet) Refuse(errno int32) error {
 
 func (m *Packet) RefuseWith(command, errno int32) error {
 	var pkt = New(command, m.Sequence, m.Flg|fatchoy.PFlagError, nil)
+	pkt.Refer = m.Refer
 	pkt.SetErrno(errno)
 	return m.endpoint.SendPacket(pkt)
 }

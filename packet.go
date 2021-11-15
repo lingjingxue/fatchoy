@@ -21,10 +21,8 @@ const (
 type PacketType int8
 
 const (
-	PTypeMessage   PacketType = 0 // 4字节长度前缀的消息（兼容性）
-	PTypePacket    PacketType = 1 // 以header前缀的消息
-	PTypeMulticast PacketType = 2 // 多播
-	PTypeRoute     PacketType = 3 // 路由
+	PTypePacket PacketType = 0 // 应用消息
+	PTypeRoute  PacketType = 1 // 路由消息
 )
 
 type PacketHandler func(IPacket) error // 消息处理器
@@ -46,33 +44,28 @@ type IPacket interface {
 	Errno() int32
 	SetErrno(ec int32)
 
-	Refer() []uint32
-	SetRefer([]uint32)
+	Refers() []NodeID
+	SetRefers([]NodeID)
 
 	Endpoint() MessageEndpoint
 	SetEndpoint(MessageEndpoint)
 
 	Clone() IPacket
 
-	BodyToInt() int64
-	SetBodyInt(n int64)
-
-	BodyToString() string
-	SetBodyString(s string)
-
-	BodyToBytes() []byte
-	SetBodyBytes(b []byte)
-
+	SetBody(v interface{})
 	IBody() interface{}
-	SetBodyMsg(msg proto.Message)
+
+	BodyToInt() int64
+	BodyToFloat() float64
+	BodyToString() string
+	BodyToBytes() []byte
 
 	DecodeTo(msg proto.Message) error
 	Decode() error
 
-	ReplyWith(command int32, ack proto.Message) error
-	Reply(ack proto.Message) error
-	ReplyString(command int32, s string) error
+	Reply(command int32, body interface{}) error
+	ReplyMsg(ack proto.Message) error
 
-	RefuseWith(command, errno int32) error
 	Refuse(errno int32) error
+	RefuseWith(command, errno int32) error
 }
