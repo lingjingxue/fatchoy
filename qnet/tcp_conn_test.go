@@ -37,7 +37,7 @@ func handleConn(conn net.Conn) {
 		}
 
 		// fmt.Printf("%d srecv: %s\n", file.Fd(), pkt.Body)
-		pkt.SetBodyString(fmt.Sprintf("pong %d", pkt.Command()))
+		pkt.SetBody(fmt.Sprintf("pong %d", pkt.Command()))
 		tconn.SendPacket(pkt)
 		//fmt.Printf("message %d OK\n", count)
 		count++
@@ -68,7 +68,7 @@ func tconnReadLoop(errchan chan error, inbound chan fatchoy.IPacket) {
 				return
 			}
 			pkt.SetCommand(pkt.Command() + 1)
-			pkt.ReplyString(pkt.Command(), fmt.Sprintf("ping %d", pkt.Command()))
+			pkt.Reply(pkt.Command(), fmt.Sprintf("ping %d", pkt.Command()))
 
 		case <-errchan:
 			return
@@ -103,7 +103,7 @@ func TestExampleTcpConn(t *testing.T) {
 	stats := tconn.Stats()
 	var pkt = packet.Make()
 	pkt.SetCommand(1)
-	pkt.SetBodyString("ping")
+	pkt.SetBody("ping")
 	tconn.SendPacket(pkt)
 	tconnReadLoop(errchan, inbound)
 	fmt.Printf("recv %d packets, %s\n", stats.Get(StatPacketsRecv), strutil.PrettyBytes(stats.Get(StatBytesRecv)))

@@ -29,7 +29,7 @@ func startRawClient(t *testing.T, id int, address string, msgCount int) {
 	for i := 1; i <= msgCount; i++ {
 		pkt.SetCommand(int32(i))
 		pkt.SetSeq(int16(i))
-		pkt.SetBodyString("ping")
+		pkt.SetBody("ping")
 		buf, err := codec.MarshalV2(pkt, nil)
 		if err != nil {
 			t.Fatalf("Encode: %v", err)
@@ -86,7 +86,7 @@ func startServeRawClient(t *testing.T, ctx context.Context, cancel context.Cance
 
 		case pkt := <-incoming:
 			//println("recv", pkt.BodyToString())
-			pkt.ReplyString(pkt.Command(), "pong") //返回pong
+			pkt.Reply(pkt.Command(), "pong") //返回pong
 
 			// all message recv, close server
 			recvNum++

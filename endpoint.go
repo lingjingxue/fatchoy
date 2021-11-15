@@ -95,6 +95,16 @@ func (e *EndpointMap) Reset() {
 	e.Unlock()
 }
 
+func (e *EndpointMap) Range(f func(Endpoint) bool) {
+	e.Lock()
+	defer e.Unlock()
+	for _, endpoint := range e.endpoints {
+		if !f(endpoint) {
+			break
+		}
+	}
+}
+
 func (e *EndpointMap) List() []Endpoint {
 	e.RLock()
 	var endpoints = make([]Endpoint, 0, len(e.endpoints))

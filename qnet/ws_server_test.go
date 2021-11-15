@@ -33,7 +33,7 @@ func startWsClient(t *testing.T, addr, path string, msgCount int, ready chan str
 	var pkt = packet.Make()
 	pkt.SetCommand(1234)
 	pkt.SetSeq(100)
-	pkt.SetBodyString("ping")
+	pkt.SetBody("ping")
 
 	data, err := json.Marshal(pkt)
 	if err != nil {
@@ -79,7 +79,7 @@ func serveWs(incoming chan fatchoy.IPacket, server *WsServer) {
 
 		case pkt := <-incoming:
 			msgcnt++
-			pkt.ReplyString(pkt.Command(), "pong")
+			pkt.Reply(pkt.Command(), "pong")
 			//fmt.Printf("recv client message: %v\n", text)
 			if msgcnt == totalMsgNum {
 				return
