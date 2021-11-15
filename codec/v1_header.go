@@ -17,7 +17,9 @@ const (
 	V1MaxPayloadBytes = 60 * 1024 // 60K
 )
 
-//  协议头，len包含header和body
+// V1协议注意用于client和gateway之间的通信，设计目标主要是简单、稳定、易实现
+//
+//  V1协议头，len包含header和body
 //       ----------------------------------------
 // field | len | type | flag |  seq | cmd | crc |
 //       ----------------------------------------

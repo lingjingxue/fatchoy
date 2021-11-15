@@ -19,7 +19,11 @@ const (
 	V2MaxPayloadBytes = 8 * 1024 * 1024 // 8M
 )
 
-//  协议头，len包含header和body
+// V2协议注意用于server内部的通信，一条消息大致分为下面这3段：
+//  `header + refer(变长） + body`
+// refer指的是节点的session号，个数由header中的`nref`指定，主要用于协议转发和广播等等
+//
+// V2协议头，len包含header和body
 //       -----------------------------------------------
 // field | len | type | flag | nref  | seq | cmd | crc |
 //       -----------------------------------------------
