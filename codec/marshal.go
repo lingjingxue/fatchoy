@@ -55,12 +55,12 @@ func unmarshalPacketBody(body []byte, decrypt cipher.BlockCryptor, pkt fatchoy.I
 	if (flag & fatchoy.PFlagError) != 0 {
 		val, n := binary.Varint(body)
 		if n > 0 {
-			pkt.SetBodyInt(val)
+			pkt.SetBody(val)
 		} else {
-			pkt.SetBodyInt(int64(codes.TransportFailure))
+			pkt.SetBody(int64(codes.TransportFailure))
 		}
 	} else {
-		pkt.SetBodyBytes(body)
+		pkt.SetBody(body)
 	}
 	return nil
 }

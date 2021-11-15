@@ -36,10 +36,10 @@ func newTestPacket(bodyLen int) fatchoy.IPacket {
 	pkt.SetType(fatchoy.PTypePacket)
 	pkt.SetCommand(1234)
 	pkt.SetSeq(5678)
-	pkt.SetRefer([]uint32{1234567, 7654321})
+	pkt.SetRefers([]fatchoy.NodeID{1234567, 7654321})
 	if bodyLen > 0 {
 		s := strutil.RandString(bodyLen)
-		pkt.SetBodyBytes([]byte(s))
+		pkt.SetBody([]byte(s))
 	}
 	return &pkt
 }
@@ -66,12 +66,12 @@ func testProtoCodec(t *testing.T, size int, msgSent fatchoy.IPacket) {
 	if err != nil {
 		t.Fatalf("Encode with size %d: %v", size, err)
 	}
-	msgSent.SetBodyBytes(nil)
+	msgSent.SetBody(nil)
 	var msgRecv testPacket
 	if err := ReadPacketV2(bytes.NewBuffer(encoded), decrypt, &msgRecv); err != nil {
 		t.Fatalf("Decode with size %d: %v", size, err)
 	}
-	msgSent.SetBodyBytes(clone)
+	msgSent.SetBody(clone)
 	if !isEqualPacket(t, msgSent, &msgRecv) {
 		t.Fatalf("Encode and Decode not equal: %d\n%v\n%v", size, msgSent, msgRecv)
 	}

@@ -17,7 +17,7 @@ var V2CompressThreshold = 4096 // 默认压缩阈值，4K
 
 // 内部除了flag不应该修改pkt的其它字段
 func MarshalV2(pkt fatchoy.IPacket, encryptor cipher.BlockCryptor) ([]byte, error) {
-	var refers = pkt.Refer()
+	var refers = pkt.Refers()
 	if n := len(refers); n > math.MaxUint8 {
 		return nil, fmt.Errorf("packet %d refer count #%d overflow", pkt.Command(), n)
 	}
@@ -36,8 +36,8 @@ func MarshalV2(pkt fatchoy.IPacket, encryptor cipher.BlockCryptor) ([]byte, erro
 
 	if len(refers) > 0 {
 		var i = V2HeaderSize
-		for _, refer := range refers {
-			binary.BigEndian.PutUint32(buf[i:], refer)
+		for _, node := range refers {
+			binary.BigEndian.PutUint32(buf[i:], uint32(node))
 			i += 4
 		}
 	}
@@ -68,13 +68,13 @@ func UnmarshalV2(header V2Header, payload []byte, decrypt cipher.BlockCryptor, p
 		if len(payload) < int(refcnt)*4 {
 			return fmt.Errorf("packet %d refer count mismatch %d != %d", pkt.Command(), len(payload)/4, refcnt)
 		}
-		var refers = make([]uint32, 0, refcnt)
+		var refers = make([]fatchoy.NodeID, 0, refcnt)
 		for i := 0; i < int(refcnt); i++ {
 			var refer = binary.BigEndian.Uint32(payload[pos:])
 			pos += 4
-			refers = append(refers, refer)
+			refers = append(refers, fatchoy.NodeID(refer))
 		}
-		pkt.SetRefer(refers)
+		pkt.SetRefers(refers)
 	}
 	var body = payload[pos:]
 	return unmarshalPacketBody(body, decrypt, pkt)

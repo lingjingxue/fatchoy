@@ -5,7 +5,9 @@
 package codec
 
 import (
+	"bytes"
 	"encoding/binary"
+	"encoding/gob"
 	"fmt"
 
 	"github.com/golang/protobuf/proto"
@@ -18,7 +20,7 @@ type testPacket struct {
 	flag     fatchoy.PacketFlag
 	typ      fatchoy.PacketType
 	body     []byte
-	refer    []uint32
+	refer    []fatchoy.NodeID
 	endpoint fatchoy.MessageEndpoint
 }
 
@@ -67,14 +69,14 @@ func (m *testPacket) Errno() int32 {
 
 func (m *testPacket) SetErrno(ec int32) {
 	m.flag |= fatchoy.PFlagError
-	m.SetBodyInt(int64(ec))
+	m.SetBody(int64(ec))
 }
 
-func (m *testPacket) Refer() []uint32 {
+func (m *testPacket) Refers() []fatchoy.NodeID {
 	return m.refer
 }
 
-func (m *testPacket) SetRefer(v []uint32) {
+func (m *testPacket) SetRefers(v []fatchoy.NodeID) {
 	m.refer = v
 }
 
@@ -98,42 +100,41 @@ func (m *testPacket) Clone() fatchoy.IPacket {
 	}
 }
 
-func (m *testPacket) SetBodyInt(n int64) {
-	var buf = make([]byte, 8)
-	binary.LittleEndian.PutUint64(buf, uint64(n))
-	m.body = buf
+func (m *testPacket) SetBody(val interface{}) {
+	switch val.(type) {
+	case int, int8, int16, int32, int64:
+	case uint, uint8, uint16, uint32, uint64:
+	case float32, float64:
+	case bool, nil, string, []byte, proto.Message:
+	default:
+		panic(fmt.Sprintf("cannot set body as %T", val))
+	}
+	if val != nil {
+		var buf bytes.Buffer
+		var enc = gob.NewEncoder(&buf)
+		if err := enc.Encode(val); err != nil {
+			panic(err)
+		}
+		m.body = buf.Bytes()
+	} else {
+		m.body = nil
+	}
 }
 
 func (m *testPacket) BodyToInt() int64 {
 	return int64(binary.LittleEndian.Uint64(m.body))
 }
 
-func (m *testPacket) SetBodyString(s string) {
-	m.body = []byte(s)
+func (m *testPacket) BodyToFloat() float64 {
+	return 0
 }
 
 func (m *testPacket) BodyToString() string {
 	return string(m.body)
 }
 
-func (m *testPacket) SetBodyBytes(b []byte) {
-	m.body = b
-}
-
 func (m *testPacket) BodyToBytes() []byte {
 	return m.body
-}
-
-func (m *testPacket) SetBodyMsg(msg proto.Message) {
-	data, err := proto.Marshal(msg)
-	if err != nil {
-		panic(err)
-	}
-	m.body = data
-}
-
-func (m *testPacket) EncodeBodyToBytes() ([]byte, error) {
-	return m.body, nil
 }
 
 func (m *testPacket) DecodeTo(msg proto.Message) error {
@@ -149,22 +150,12 @@ func (m testPacket) String() string {
 	return fmt.Sprintf("c:%d seq:%d 0x%x %s", m.Command(), m.Seq(), m.Flag(), checksum)
 }
 
-func (m *testPacket) ReplyWith(command int32, ack proto.Message) error {
+func (m *testPacket) Reply(command int32, s interface{}) error {
 	panic("not implemented")
 	return nil
 }
 
-func (m *testPacket) Reply(ack proto.Message) error {
-	panic("not implemented")
-	return nil
-}
-
-func (m *testPacket) ReplyString(command int32, s string) error {
-	panic("not implemented")
-	return nil
-}
-
-func (m *testPacket) ReplyBytes(command int32, b []byte) error {
+func (m *testPacket) ReplyMsg(ack proto.Message) error {
 	panic("not implemented")
 	return nil
 }
