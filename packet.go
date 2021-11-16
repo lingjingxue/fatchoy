@@ -15,6 +15,7 @@ const (
 	PFlagCompressed PacketFlag = 0x01 // 压缩
 	PFlagEncrypted  PacketFlag = 0x02 // 加密
 	PFlagError      PacketFlag = 0x10 // 错误标记
+	PFlagRpc        PacketFlag = 0x20 // RPC标记
 )
 
 // 消息编码类型
