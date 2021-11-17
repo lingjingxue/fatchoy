@@ -13,7 +13,7 @@ import (
 	"time"
 
 	"gopkg.in/qchencc/fatchoy.v1/debug"
-	"gopkg.in/qchencc/fatchoy.v1/log"
+	"gopkg.in/qchencc/fatchoy.v1/qlog"
 	"gopkg.in/qchencc/fatchoy.v1/x/stats"
 )
 
@@ -82,7 +82,7 @@ func (e *Executor) StopAndWait() {
 
 //
 func (e *Executor) Shutdown() {
-	log.Debugf("start shutting down executor")
+	qlog.Debugf("start shutting down executor")
 	if !atomic.CompareAndSwapInt32(&e.closing, 0, 1) {
 		return
 	}
@@ -122,7 +122,7 @@ func (e *Executor) run(r Runner) (err error) {
 }
 
 func (e *Executor) serve(idx int) {
-	log.Debugf("executor worker #%d start serving", idx)
+	qlog.Debugf("executor worker #%d start serving", idx)
 	for {
 		select {
 		case r, ok := <-e.bus:
@@ -130,7 +130,7 @@ func (e *Executor) serve(idx int) {
 				return
 			}
 			if err := e.run(r); err != nil {
-				log.Warnf("execute %T: %v", r, err)
+				qlog.Warnf("execute %T: %v", r, err)
 			}
 
 		case <-e.ctx.Done():

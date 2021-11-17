@@ -12,7 +12,7 @@ import (
 	"sync/atomic"
 	"time"
 
-	"gopkg.in/qchencc/fatchoy.v1/log"
+	"gopkg.in/qchencc/fatchoy.v1/qlog"
 )
 
 const (
@@ -83,7 +83,7 @@ func (s *TimeoutScheduler) Shutdown() {
 }
 
 func (s *TimeoutScheduler) serve() {
-	log.Debugf("scheduler start serving")
+	qlog.Debugf("scheduler start serving")
 	for {
 		select {
 		case now := <-s.ticker.C:
