@@ -4,4 +4,4 @@
 
 package fatchoy
 
-const VERSION = "1.3.21"
+const VERSION = "1.3.22"
