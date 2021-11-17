@@ -15,6 +15,7 @@ import (
 
 	"github.com/gorilla/websocket"
 	"gopkg.in/qchencc/fatchoy.v1"
+	"gopkg.in/qchencc/fatchoy.v1/codec"
 	"gopkg.in/qchencc/fatchoy.v1/log"
 	"gopkg.in/qchencc/fatchoy.v1/packet"
 	"gopkg.in/qchencc/fatchoy.v1/x/stats"
@@ -34,7 +35,7 @@ type WsConn struct {
 	conn *websocket.Conn // websocket conn
 }
 
-func NewWsConn(parentCtx context.Context, node fatchoy.NodeID,  conn *websocket.Conn, errChan chan error,
+func NewWsConn(parentCtx context.Context, node fatchoy.NodeID, conn *websocket.Conn, errChan chan error,
 	incoming chan<- fatchoy.IPacket, outsize int, stat *stats.Stats) *WsConn {
 	wsconn := &WsConn{
 		conn: conn,
@@ -173,7 +174,10 @@ func (c *WsConn) ReadPacket(pkt fatchoy.IPacket) error {
 			return err
 		}
 
-	case websocket.BinaryMessage, websocket.PingMessage, websocket.PongMessage:
+	case websocket.BinaryMessage:
+		return codec.ReadPacketV1(bytes.NewReader(data), c.decrypt, pkt)
+
+	case websocket.PingMessage, websocket.PongMessage:
 		log.Debugf("recv %v: %v", msgType, data)
 
 	default:

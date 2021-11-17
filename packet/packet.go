@@ -109,16 +109,14 @@ func (m *Packet) Reset() {
 }
 
 func (m *Packet) Clone() fatchoy.IPacket {
-	return &Packet{
-		Cmd:      m.Cmd,
-		Flg:      m.Flg,
-		Type_:    m.Type_,
-		Seq_:     m.Seq_,
-		Node_:    m.Node_,
-		Refers_:  m.Refers_,
-		Body_:    m.Body_,
-		endpoint: m.endpoint,
-	}
+	var clone = Make()
+	clone.Cmd = m.Cmd
+	clone.Seq_ = m.Seq_
+	clone.Flg = m.Flg
+	clone.Type_ = m.Type_
+	clone.Refers_ = m.Refers_
+	clone.Body_ = m.Body_
+	return clone
 }
 
 func (m *Packet) Errno() int32 {
