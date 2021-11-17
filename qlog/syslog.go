@@ -4,7 +4,7 @@
 
 // +build linux
 
-package log
+package qlog
 
 import (
 	"fmt"
