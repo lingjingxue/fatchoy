@@ -16,9 +16,10 @@ import (
 
 type testPacket struct {
 	command  int32
-	seq      int16
+	seq      uint16
 	flag     fatchoy.PacketFlag
 	typ      fatchoy.PacketType
+	node     fatchoy.NodeID
 	body     []byte
 	refer    []fatchoy.NodeID
 	endpoint fatchoy.MessageEndpoint
@@ -32,11 +33,11 @@ func (m *testPacket) SetCommand(v int32) {
 	m.command = v
 }
 
-func (m *testPacket) Seq() int16 {
+func (m *testPacket) Seq() uint16 {
 	return m.seq
 }
 
-func (m *testPacket) SetSeq(v int16) {
+func (m *testPacket) SetSeq(v uint16) {
 	m.seq = v
 }
 
@@ -70,6 +71,14 @@ func (m *testPacket) Errno() int32 {
 func (m *testPacket) SetErrno(ec int32) {
 	m.flag |= fatchoy.PFlagError
 	m.SetBody(int64(ec))
+}
+
+func (m *testPacket) Node() fatchoy.NodeID {
+	return m.node
+}
+
+func (m *testPacket) SetNode(n fatchoy.NodeID) {
+	m.node = n
 }
 
 func (m *testPacket) Refers() []fatchoy.NodeID {

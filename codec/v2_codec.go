@@ -49,21 +49,22 @@ func MarshalV2(pkt fatchoy.IPacket, encryptor cipher.BlockCryptor) ([]byte, erro
 }
 
 // 解码消息到pkt
-func UnmarshalV2(header V2Header, payload []byte, decrypt cipher.BlockCryptor, pkt fatchoy.IPacket) error {
-	pkt.SetFlag(fatchoy.PacketFlag(header.Flag()))
-	pkt.SetType(fatchoy.PacketType(header.Type()))
-	pkt.SetSeq(header.Seq())
-	pkt.SetCommand(header.Command())
+func UnmarshalV2(head V2Header, payload []byte, decrypt cipher.BlockCryptor, pkt fatchoy.IPacket) error {
+	pkt.SetFlag(fatchoy.PacketFlag(head.Flag()))
+	pkt.SetType(fatchoy.PacketType(head.Type()))
+	pkt.SetSeq(head.Seq())
+	pkt.SetCommand(head.Command())
+	pkt.SetNode(head.Node())
 
-	var checksum = header.Checksum()
-	if crc := header.CalcChecksum(payload); crc != checksum {
+	var checksum = head.Checksum()
+	if crc := head.CalcChecksum(payload); crc != checksum {
 		return fmt.Errorf("packet %v checksum mismatch %x != %x", pkt.Command(), checksum, crc)
 	}
 	if len(payload) == 0 {
 		return nil
 	}
 	var pos = 0
-	var refcnt = header.RefCount()
+	var refcnt = head.RefCount()
 	if refcnt > 0 {
 		if len(payload) < int(refcnt)*4 {
 			return fmt.Errorf("packet %d refer count mismatch %d != %d", pkt.Command(), len(payload)/4, refcnt)

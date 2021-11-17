@@ -34,13 +34,13 @@ func MarshalV1(pkt fatchoy.IPacket, encryptor cipher.BlockCryptor) ([]byte, erro
 }
 
 // 解码消息到pkt
-func UnmarshalV1(header V1Header, payload []byte, decrypt cipher.BlockCryptor, pkt fatchoy.IPacket) error {
-	pkt.SetFlag(fatchoy.PacketFlag(header.Flag()))
-	pkt.SetSeq(header.Seq())
-	pkt.SetCommand(header.Command())
+func UnmarshalV1(head V1Header, payload []byte, decrypt cipher.BlockCryptor, pkt fatchoy.IPacket) error {
+	pkt.SetFlag(fatchoy.PacketFlag(head.Flag()))
+	pkt.SetSeq(head.Seq())
+	pkt.SetCommand(head.Command())
 
-	var checksum = header.Checksum()
-	if crc := header.CalcChecksum(payload); crc != checksum {
+	var checksum = head.Checksum()
+	if crc := head.CalcChecksum(payload); crc != checksum {
 		return fmt.Errorf("packet %v checksum mismatch %x != %x", pkt.Command(), checksum, crc)
 	}
 	if len(payload) == 0 {
