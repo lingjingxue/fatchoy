@@ -15,42 +15,42 @@ import (
 	"gopkg.in/qchencc/fatchoy.v1/log"
 )
 
-func (m *Packet) IBody() interface{} {
-	return m.Body
+func (m *Packet) Body() interface{} {
+	return m.Body_
 }
 
 func (m *Packet) SetBody(val interface{}) {
 	switch v := val.(type) {
 	case int:
-		m.Body = int64(v)
+		m.Body_ = int64(v)
 	case uint:
-		m.Body = int64(v)
+		m.Body_ = int64(v)
 	case int8:
-		m.Body = int64(v)
+		m.Body_ = int64(v)
 	case int16:
-		m.Body = int64(v)
+		m.Body_ = int64(v)
 	case int32:
-		m.Body = int64(v)
+		m.Body_ = int64(v)
 	case uint8:
-		m.Body = int64(v)
+		m.Body_ = int64(v)
 	case uint16:
-		m.Body = int64(v)
+		m.Body_ = int64(v)
 	case uint32:
-		m.Body = int64(v)
+		m.Body_ = int64(v)
 	case uint64:
-		m.Body = int64(v)
+		m.Body_ = int64(v)
 	case float32:
-		m.Body = float64(v)
+		m.Body_ = float64(v)
 	case nil:
-		m.Body = nil
+		m.Body_ = nil
 	case bool:
 		if v {
-			m.Body = int64(1)
+			m.Body_ = int64(1)
 		} else {
-			m.Body = int64(0)
+			m.Body_ = int64(0)
 		}
 	case int64, float64, string, []byte, proto.Message:
-		m.Body = val
+		m.Body_ = val
 	default:
 		panic(fmt.Sprintf("cannot set body as %T", val))
 	}
@@ -58,7 +58,7 @@ func (m *Packet) SetBody(val interface{}) {
 
 // 将body转为int64
 func (m *Packet) BodyToInt() int64 {
-	switch v := m.Body.(type) {
+	switch v := m.Body_.(type) {
 	case int64:
 		return v
 	case float64:
@@ -92,7 +92,7 @@ func (m *Packet) BodyToInt() int64 {
 
 // 将body转为float4
 func (m *Packet) BodyToFloat() float64 {
-	switch v := m.Body.(type) {
+	switch v := m.Body_.(type) {
 	case int64:
 		return float64(v)
 	case float64:
@@ -121,7 +121,7 @@ func (m *Packet) BodyToFloat() float64 {
 
 // 将body转为string
 func (m *Packet) BodyToString() string {
-	switch v := m.Body.(type) {
+	switch v := m.Body_.(type) {
 	case string:
 		return v
 	case []byte:
@@ -151,7 +151,7 @@ func encodeUint64(n uint64) []byte {
 
 // 将body转为[]byte，用于网络传输
 func (m *Packet) BodyToBytes() []byte {
-	switch v := m.Body.(type) {
+	switch v := m.Body_.(type) {
 	case string:
 		return []byte(v)
 	case []byte:
@@ -191,7 +191,7 @@ func (m *Packet) Decode() error {
 	if err := proto.Unmarshal(data, msg); err != nil {
 		return fmt.Errorf("cannot unmarshal message %d: %w", m.Cmd, err)
 	}
-	m.Body = msg
+	m.Body_ = msg
 	return nil
 }
 

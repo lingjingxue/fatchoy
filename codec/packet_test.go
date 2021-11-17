@@ -57,7 +57,7 @@ func (m *testPacket) SetFlag(v fatchoy.PacketFlag) {
 	m.flag = v
 }
 
-func (m *testPacket) IBody() interface{} {
+func (m *testPacket) Body() interface{} {
 	return m.body
 }
 
@@ -87,6 +87,10 @@ func (m *testPacket) Refers() []fatchoy.NodeID {
 
 func (m *testPacket) SetRefers(v []fatchoy.NodeID) {
 	m.refer = v
+}
+
+func (m *testPacket) AddRefers(v ...fatchoy.NodeID) {
+	m.refer = append(m.refer, v...)
 }
 
 func (m *testPacket) Endpoint() fatchoy.MessageEndpoint {

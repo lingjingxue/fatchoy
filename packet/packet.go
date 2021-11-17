@@ -18,8 +18,8 @@ type Packet struct {
 	Type_    fatchoy.PacketType      `json:"typ,omitempty"`  // 类型
 	Flg      fatchoy.PacketFlag      `json:"flg,omitempty"`  // 标志位
 	Node_    fatchoy.NodeID          `json:"node,omitempty"` // 源/目标节点
-	Body     interface{}             `json:"body,omitempty"` // 消息内容，int64/float64/string/bytes/proto.Message
-	Refer    []fatchoy.NodeID        `json:"ref,omitempty"`  // 组播session列表
+	Body_    interface{}             `json:"body,omitempty"` // 消息内容，int64/float64/string/bytes/proto.Message
+	Refers_  []fatchoy.NodeID        `json:"ref,omitempty"`  // 组播session列表
 	endpoint fatchoy.MessageEndpoint // 关联的endpoint
 }
 
@@ -33,7 +33,7 @@ func New(command int32, seq uint16, flag fatchoy.PacketFlag, body interface{}) *
 		Cmd:   command,
 		Flg:   flag,
 		Seq_:  seq,
-		Body:  body,
+		Body_: body,
 	}
 }
 
@@ -78,11 +78,15 @@ func (m *Packet) SetNode(n fatchoy.NodeID) {
 }
 
 func (m *Packet) Refers() []fatchoy.NodeID {
-	return m.Refer
+	return m.Refers_
 }
 
 func (m *Packet) SetRefers(v []fatchoy.NodeID) {
-	m.Refer = v
+	m.Refers_ = v
+}
+
+func (m *Packet) AddRefers(v ...fatchoy.NodeID) {
+	m.Refers_ = append(m.Refers_, v...)
 }
 
 func (m *Packet) Endpoint() fatchoy.MessageEndpoint {
@@ -99,8 +103,8 @@ func (m *Packet) Reset() {
 	m.Flg = 0
 	m.Type_ = 0
 	m.Node_ = 0
-	m.Refer = nil
-	m.Body = nil
+	m.Refers_ = nil
+	m.Body_ = nil
 	m.endpoint = nil
 }
 
@@ -111,8 +115,8 @@ func (m *Packet) Clone() fatchoy.IPacket {
 		Type_:    m.Type_,
 		Seq_:     m.Seq_,
 		Node_:    m.Node_,
-		Refer:    m.Refer,
-		Body:     m.Body,
+		Refers_:  m.Refers_,
+		Body_:    m.Body_,
 		endpoint: m.endpoint,
 	}
 }
@@ -133,8 +137,9 @@ func (m *Packet) SetErrno(ec int32) {
 // body的类型仅支持int64/float64/string/bytes/proto.Message
 func (m *Packet) Reply(command int32, body interface{}) error {
 	var pkt = New(command, m.Seq_, m.Flg, body)
+	pkt.Type_ = m.Type_
 	pkt.Node_ = m.Node_
-	pkt.Refer = m.Refer
+	pkt.Refers_ = m.Refers_
 	return m.endpoint.SendPacket(pkt)
 }
 
@@ -158,8 +163,9 @@ func (m *Packet) Refuse(errno int32) error {
 
 func (m *Packet) RefuseWith(command, errno int32) error {
 	var pkt = New(command, m.Seq_, m.Flg|fatchoy.PFlagError, nil)
+	pkt.Type_ = m.Type_
 	pkt.Node_ = m.Node_
-	pkt.Refer = m.Refer
+	pkt.Refers_ = m.Refers_
 	pkt.SetErrno(errno)
 	return m.endpoint.SendPacket(pkt)
 }

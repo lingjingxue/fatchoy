@@ -51,14 +51,15 @@ type IPacket interface {
 
 	Refers() []NodeID
 	SetRefers([]NodeID)
+	AddRefers(...NodeID)
 
 	Endpoint() MessageEndpoint
 	SetEndpoint(MessageEndpoint)
 
 	Clone() IPacket
 
+	Body() interface{}
 	SetBody(v interface{})
-	IBody() interface{}
 
 	BodyToInt() int64
 	BodyToFloat() float64
