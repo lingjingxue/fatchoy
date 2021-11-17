@@ -16,7 +16,7 @@ import (
 	"unsafe"
 
 	"go.etcd.io/etcd/clientv3"
-	"gopkg.in/qchencc/fatchoy.v1/log"
+	"gopkg.in/qchencc/fatchoy.v1/qlog"
 )
 
 var (
@@ -129,7 +129,7 @@ func (c *Client) PutNode(ctx context.Context, name string, value interface{}, le
 		return err
 	}
 	if c.verbose >= VerboseLv1 {
-		log.Infof("put key [%s] at rev %d", key, resp.Header.Revision)
+		qlog.Infof("put key [%s] at rev %d", key, resp.Header.Revision)
 	}
 	return nil
 }
@@ -221,14 +221,14 @@ func (c *Client) RegisterNode(rootCtx context.Context, name string, value interf
 
 func revokeLeaseWithTimeout(c *Client, leaseId int64) {
 	if c.verbose >= VerboseLv1 {
-		log.Infof("try revoke lease %d", leaseId)
+		qlog.Infof("try revoke lease %d", leaseId)
 	}
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second*OpTimeout)
 	defer cancel()
 	if err := c.RevokeLease(ctx, leaseId); err != nil {
-		log.Warnf("revoke lease %x: %v", leaseId, err)
+		qlog.Warnf("revoke lease %x: %v", leaseId, err)
 	} else {
-		log.Infof("revoke lease %x done", leaseId)
+		qlog.Infof("revoke lease %x done", leaseId)
 	}
 }
 
@@ -248,11 +248,11 @@ func (c *Client) KeepAlive(ctx context.Context, leaseId int64) (chan struct{}, e
 			select {
 			case ka, ok := <-kaChan:
 				if !ok || ka == nil {
-					log.Warnf("lease %x is not alive", leaseId)
+					qlog.Warnf("lease %x is not alive", leaseId)
 					return
 				}
 				if c.verbose >= VerboseLv2 {
-					log.Infof("lease %d respond alive, ttl %d", ka.ID, ka.TTL)
+					qlog.Infof("lease %d respond alive, ttl %d", ka.ID, ka.TTL)
 				}
 
 			case <-ctx.Done():
@@ -273,7 +273,7 @@ func (c *Client) RegisterAndKeepAliveForever(ctx context.Context, name string, v
 	var doRegister = func() error {
 		var err error
 		if c.verbose >= VerboseLv1 {
-			log.Infof("try register key: %s", name)
+			qlog.Infof("try register key: %s", name)
 		}
 		leaseAlive = false
 		leaseId = 0
@@ -288,7 +288,7 @@ func (c *Client) RegisterAndKeepAliveForever(ctx context.Context, name string, v
 		}
 		leaseAlive = true
 		if c.verbose >= VerboseLv1 {
-			log.Infof("register key [%s] with lease %x done", name, leaseId)
+			qlog.Infof("register key [%s] with lease %x done", name, leaseId)
 		}
 		return nil
 	}
@@ -305,13 +305,13 @@ func (c *Client) RegisterAndKeepAliveForever(ctx context.Context, name string, v
 			case <-ticker.C:
 				if !leaseAlive {
 					if err := doRegister(); err != nil {
-						log.Infof("register or keepalive %s failed: %v", name, err)
+						qlog.Infof("register or keepalive %s failed: %v", name, err)
 					}
 				}
 
 			case <-done:
 				if c.verbose >= VerboseLv1 {
-					log.Infof("node %s lease(%d) is not alive, try register later", name, leaseId)
+					qlog.Infof("node %s lease(%d) is not alive, try register later", name, leaseId)
 				}
 				leaseAlive = false
 				leaseId = 0
@@ -342,7 +342,7 @@ func propagateWatchEvent(eventChan chan<- *NodeEvent, ev *clientv3.Event) {
 	}
 	if len(ev.Kv.Value) > 0 {
 		if err := json.Unmarshal(ev.Kv.Value, &event.Node); err != nil {
-			log.Errorf("unmarshal node %s: %v", event.Key, err)
+			qlog.Errorf("unmarshal node %s: %v", event.Key, err)
 			return
 		}
 	}
@@ -350,7 +350,7 @@ func propagateWatchEvent(eventChan chan<- *NodeEvent, ev *clientv3.Event) {
 	select {
 	case eventChan <- event:
 	default:
-		log.Warnf("watch event channel is full, new event lost: %v", event)
+		qlog.Warnf("watch event channel is full, new event lost: %v", event)
 	}
 }
 
@@ -368,7 +368,7 @@ func (c *Client) WatchDir(ctx context.Context, dir string) <-chan *NodeEvent {
 					return
 				}
 				if resp.Err() != nil {
-					log.Warnf("watch key %s canceled: %v", key, resp.Err())
+					qlog.Warnf("watch key %s canceled: %v", key, resp.Err())
 					return
 				}
 				for _, ev := range resp.Events {
@@ -377,7 +377,7 @@ func (c *Client) WatchDir(ctx context.Context, dir string) <-chan *NodeEvent {
 
 			case <-ctx.Done():
 				if err := c.client.Watcher.Close(); err != nil {
-					log.Warnf("close watcher: %v", err)
+					qlog.Warnf("close watcher: %v", err)
 				}
 				return
 			}

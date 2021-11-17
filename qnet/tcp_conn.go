@@ -14,8 +14,8 @@ import (
 
 	"gopkg.in/qchencc/fatchoy.v1"
 	"gopkg.in/qchencc/fatchoy.v1/codec"
-	"gopkg.in/qchencc/fatchoy.v1/log"
 	"gopkg.in/qchencc/fatchoy.v1/packet"
+	"gopkg.in/qchencc/fatchoy.v1/qlog"
 	"gopkg.in/qchencc/fatchoy.v1/x/stats"
 )
 
@@ -70,7 +70,7 @@ func (t *TcpConn) SendPacket(pkt fatchoy.IPacket) error {
 
 func (t *TcpConn) Close() error {
 	if !atomic.CompareAndSwapInt32(&t.closing, 0, 1) {
-		// log.Errorf("TcpConn: connection %v is already closed", t.node)
+		// qlog.Errorf("TcpConn: connection %v is already closed", t.node)
 		return nil
 	}
 	if tconn, ok := t.conn.(*net.TCPConn); ok {
@@ -84,7 +84,7 @@ func (t *TcpConn) Close() error {
 
 func (t *TcpConn) ForceClose(err error) {
 	if !atomic.CompareAndSwapInt32(&t.closing, 0, 1) {
-		// log.Errorf("TcpConn: connection %v is already closed", t.node)
+		// qlog.Errorf("TcpConn: connection %v is already closed", t.node)
 		return
 	}
 	if tconn, ok := t.conn.(*net.TCPConn); ok {
@@ -118,7 +118,7 @@ func (t *TcpConn) flush() {
 				break
 			}
 			if err := t.write(pkt); err != nil {
-				log.Errorf("%v flush message %v: %v", t.node, pkt.Command(), err)
+				qlog.Errorf("%v flush message %v: %v", t.node, pkt.Command(), err)
 			}
 
 		default:
@@ -144,10 +144,10 @@ func (t *TcpConn) writePump() {
 	defer func() {
 		t.flush()
 		t.wg.Done()
-		log.Debugf("TcpConn: node %v writer stopped", t.node)
+		qlog.Debugf("TcpConn: node %v writer stopped", t.node)
 	}()
 
-	log.Debugf("TcpConn: node %v(%v) writer started", t.node, t.addr)
+	qlog.Debugf("TcpConn: node %v(%v) writer started", t.node, t.addr)
 
 	for {
 		select {
@@ -156,7 +156,7 @@ func (t *TcpConn) writePump() {
 				return
 			}
 			if err := t.write(pkt); err != nil {
-				log.Errorf("%v write message %v: %v", t.node, pkt.Command(), err)
+				qlog.Errorf("%v write message %v: %v", t.node, pkt.Command(), err)
 			}
 
 		case <-t.ctx.Done():
@@ -186,16 +186,16 @@ func (t *TcpConn) readFrom(reader io.Reader) (fatchoy.IPacket, error) {
 func (t *TcpConn) readPump() {
 	defer func() {
 		t.wg.Done()
-		log.Debugf("TcpConn: node %v reader stopped", t.node)
+		qlog.Debugf("TcpConn: node %v reader stopped", t.node)
 	}()
 
-	log.Debugf("TcpConn: node %v(%v) reader started", t.node, t.addr)
+	qlog.Debugf("TcpConn: node %v(%v) reader started", t.node, t.addr)
 	var reader = bufio.NewReader(t.conn)
 	for {
 		pkt, err := t.readFrom(reader)
 		if err != nil {
 			if err != io.EOF {
-				log.Errorf("%v read packet %v", t.node, err)
+				qlog.Errorf("%v read packet %v", t.node, err)
 			}
 			t.ForceClose(err) // I/O超时或者发生错误，强制关闭连接
 			return

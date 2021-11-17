@@ -10,7 +10,7 @@ import (
 	"sync"
 
 	"gopkg.in/qchencc/fatchoy.v1"
-	"gopkg.in/qchencc/fatchoy.v1/log"
+	"gopkg.in/qchencc/fatchoy.v1/qlog"
 	"gopkg.in/qchencc/fatchoy.v1/x/stats"
 )
 
@@ -70,7 +70,7 @@ func (s *TcpServer) serve(ln net.Listener) {
 	for {
 		conn, err := ln.Accept()
 		if err != nil {
-			log.Errorf("accept error: %v", err)
+			qlog.Errorf("accept error: %v", err)
 			// check if we should exit
 			if s.testShouldExit() {
 				return

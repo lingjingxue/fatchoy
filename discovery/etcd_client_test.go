@@ -13,7 +13,7 @@ import (
 	"testing"
 	"time"
 
-	"gopkg.in/qchencc/fatchoy.v1/log"
+	"gopkg.in/qchencc/fatchoy.v1/qlog"
 )
 
 var (
@@ -24,7 +24,7 @@ var (
 
 func init() {
 	rand.Seed(time.Now().UnixNano())
-	log.Setup(log.NewConfig("debug"))
+	qlog.Setup(qlog.NewConfig("debug"))
 }
 
 func connectClient(t *testing.T) *Client {

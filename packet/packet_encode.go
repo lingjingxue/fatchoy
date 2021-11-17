@@ -12,7 +12,7 @@ import (
 
 	"github.com/golang/protobuf/jsonpb"
 	"github.com/golang/protobuf/proto"
-	"gopkg.in/qchencc/fatchoy.v1/log"
+	"gopkg.in/qchencc/fatchoy.v1/qlog"
 )
 
 func (m *Packet) Body() interface{} {
@@ -198,7 +198,7 @@ func (m *Packet) Decode() error {
 func MessageToString(msg proto.Message) string {
 	var m jsonpb.Marshaler
 	if s, err := m.MarshalToString(msg); err != nil {
-		log.Errorf("marshal %T: %v", msg, err)
+		qlog.Errorf("marshal %T: %v", msg, err)
 	} else {
 		return s
 	}

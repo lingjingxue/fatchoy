@@ -12,7 +12,7 @@ import (
 
 	"github.com/gorilla/websocket"
 	"gopkg.in/qchencc/fatchoy.v1"
-	"gopkg.in/qchencc/fatchoy.v1/log"
+	"gopkg.in/qchencc/fatchoy.v1/qlog"
 	"gopkg.in/qchencc/fatchoy.v1/x/stats"
 )
 
@@ -61,11 +61,11 @@ func NewWebsocketServer(parentCtx context.Context, addr, path string, inbound ch
 func (s *WsServer) onRequest(w http.ResponseWriter, r *http.Request) {
 	conn, err := s.upgrader.Upgrade(w, r, nil)
 	if err != nil {
-		log.Errorf("WebSocket upgrade %s, %v", r.RemoteAddr, err)
+		qlog.Errorf("WebSocket upgrade %s, %v", r.RemoteAddr, err)
 		return
 	}
 	wsconn := NewWsConn(r.Context(), 0, conn, s.errChan, s.inbound, s.outsize, stats.New(NumStat))
-	log.Infof("websocket connection %s established", wsconn.RemoteAddr())
+	qlog.Infof("websocket connection %s established", wsconn.RemoteAddr())
 	defer wsconn.Close()
 	wsconn.Go(fatchoy.EndpointWriter)
 	wsconn.readLoop()
@@ -82,7 +82,7 @@ func (s *WsServer) ErrChan() chan error {
 func (s *WsServer) Go() {
 	go func() {
 		if err := s.server.ListenAndServe(); err != nil {
-			log.Errorf("ListenAndServe: %v", err)
+			qlog.Errorf("ListenAndServe: %v", err)
 		}
 	}()
 }

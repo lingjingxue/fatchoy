@@ -16,8 +16,8 @@ import (
 	"github.com/gorilla/websocket"
 	"gopkg.in/qchencc/fatchoy.v1"
 	"gopkg.in/qchencc/fatchoy.v1/codec"
-	"gopkg.in/qchencc/fatchoy.v1/log"
 	"gopkg.in/qchencc/fatchoy.v1/packet"
+	"gopkg.in/qchencc/fatchoy.v1/qlog"
 	"gopkg.in/qchencc/fatchoy.v1/x/stats"
 )
 
@@ -120,10 +120,10 @@ func (c *WsConn) writePacket(pkt fatchoy.IPacket) error {
 func (c *WsConn) writePump() {
 	defer func() {
 		c.wg.Done()
-		log.Debugf("node %v writer exit", c.node)
+		qlog.Debugf("node %v writer exit", c.node)
 	}()
 
-	log.Debugf("node %v writer started at %v", c.node, c.addr)
+	qlog.Debugf("node %v writer started at %v", c.node, c.addr)
 	for {
 		select {
 		case pkt, ok := <-c.outbound:
@@ -131,7 +131,7 @@ func (c *WsConn) writePump() {
 				return
 			}
 			if err := c.writePacket(pkt); err != nil {
-				log.Errorf("send packet %d: %v", pkt.Command(), err)
+				qlog.Errorf("send packet %d: %v", pkt.Command(), err)
 			}
 
 		case <-c.ctx.Done():
@@ -144,7 +144,7 @@ func (c *WsConn) readLoop() {
 	for {
 		var pkt = packet.Make()
 		if err := c.ReadPacket(pkt); err != nil {
-			log.Errorf("%v read packet: %v", c.node, err)
+			qlog.Errorf("%v read packet: %v", c.node, err)
 			break
 		}
 		pkt.SetEndpoint(c)
@@ -178,7 +178,7 @@ func (c *WsConn) ReadPacket(pkt fatchoy.IPacket) error {
 		return codec.ReadPacketV1(bytes.NewReader(data), c.decrypt, pkt)
 
 	case websocket.PingMessage, websocket.PongMessage:
-		log.Debugf("recv %v: %v", msgType, data)
+		qlog.Debugf("recv %v: %v", msgType, data)
 
 	default:
 		return fmt.Errorf("unexpected websock message type %d", msgType)
@@ -187,6 +187,6 @@ func (c *WsConn) ReadPacket(pkt fatchoy.IPacket) error {
 }
 
 func (c *WsConn) handlePing(data string) error {
-	log.Debugf("ping message: %s", data)
+	qlog.Debugf("ping message: %s", data)
 	return nil
 }
