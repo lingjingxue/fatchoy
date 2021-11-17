@@ -7,6 +7,7 @@ package strutil
 import (
 	"fmt"
 	"math/rand"
+	"reflect"
 	"unicode"
 	"unsafe"
 )
@@ -15,12 +16,16 @@ const alphabet = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789
 
 // 对[]byte的修改会影响到返回的string
 func BytesAsString(b []byte) string {
-	return *(*string)(unsafe.Pointer(&b))
+	bh := (*reflect.SliceHeader)(unsafe.Pointer(&b))
+	sh := reflect.StringHeader{Data: bh.Data, Len: bh.Len}
+	return *(*string)(unsafe.Pointer(&sh))
 }
 
 // 注意：修改返回的[]byte会引起panic
 func StringAsBytes(s string) []byte {
-	return *(*[]byte)(unsafe.Pointer(&s))
+	sh := (*reflect.StringHeader)(unsafe.Pointer(&s))
+	bh := reflect.SliceHeader{Data: sh.Data, Len: sh.Len, Cap: sh.Len}
+	return *(*[]byte)(unsafe.Pointer(&bh))
 }
 
 // 随机长度的字符串
