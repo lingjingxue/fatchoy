@@ -34,8 +34,8 @@ type IPacket interface {
 	Command() int32
 	SetCommand(int32)
 
-	Seq() int16
-	SetSeq(int16)
+	Seq() uint16
+	SetSeq(uint16)
 
 	Type() PacketType
 	SetType(PacketType)
@@ -45,6 +45,9 @@ type IPacket interface {
 
 	Errno() int32
 	SetErrno(ec int32)
+
+	Node() NodeID
+	SetNode(NodeID)
 
 	Refers() []NodeID
 	SetRefers([]NodeID)

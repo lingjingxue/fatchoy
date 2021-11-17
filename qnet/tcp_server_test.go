@@ -28,7 +28,7 @@ func startRawClient(t *testing.T, id int, address string, msgCount int) {
 	var pkt = packet.Make()
 	for i := 1; i <= msgCount; i++ {
 		pkt.SetCommand(int32(i))
-		pkt.SetSeq(int16(i))
+		pkt.SetSeq(uint16(i))
 		pkt.SetBody("ping")
 		buf, err := codec.MarshalV2(pkt, nil)
 		if err != nil {
