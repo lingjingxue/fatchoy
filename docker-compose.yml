@@ -25,6 +25,7 @@ services:
             MYSQL_DATABASE: testdb
 
     mongodb:
+      image: mongo:4.4
       environment:
         MONGO_INITDB_ROOT_USERNAME: admin
         MONGO_INITDB_ROOT_PASSWORD: cuKpVrfZzUvg
