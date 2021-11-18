@@ -94,7 +94,13 @@ func (c *ServiceContext) WaitDone() <-chan struct{} {
 }
 
 func (c *ServiceContext) Close() {
+	c.registrar.Close()
+	c.registrar = nil
 	close(c.queue)
 	c.queue = nil
-	c.done <- struct{}{}
+
+	select {
+	case c.done <- struct{}{}:
+	default:
+	}
 }
