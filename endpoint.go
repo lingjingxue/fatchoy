@@ -15,9 +15,9 @@ import (
 type EndpointFlag uint32
 
 const (
-	EndpointReader     EndpointFlag = 0x01
-	EndpointWriter     EndpointFlag = 0x02
-	EndpointReadWriter EndpointFlag = 0x03
+	EndpointReader     EndpointFlag = 0x01 // 只开启reader
+	EndpointWriter     EndpointFlag = 0x02 // 只开启writer
+	EndpointReadWriter EndpointFlag = 0x03 // 开启reader和writer
 )
 
 type MessageEndpoint interface {

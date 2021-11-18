@@ -36,6 +36,7 @@ func MakeNodeID(service uint8, instance uint16) NodeID {
 	return NodeID((uint32(service) << NodeServiceShift) | uint32(instance))
 }
 
+// 解析16进制字符串
 func MustParseNodeID(s string) NodeID {
 	n, err := strconv.ParseUint(s, 16, 32)
 	if err != nil {

@@ -14,7 +14,7 @@ import (
 	"qchen.fun/fatchoy/x/cipher"
 )
 
-// read 2-bytes length-prefixed data
+// 读取2字节开头的数据
 func ReadLenData(r io.Reader) ([]byte, error) {
 	var tmp [2]byte
 	if _, err := io.ReadFull(r, tmp[:]); err != nil {
@@ -28,7 +28,7 @@ func ReadLenData(r io.Reader) ([]byte, error) {
 	return buf, nil
 }
 
-// write 2-bytes length-prefixed data
+// 写入2字节开头的数据
 func WriteLenData(w io.Writer, data []byte) (int, error) {
 	var length = len(data) + 2
 	if length >= math.MaxUint16 {

@@ -5,6 +5,6 @@
 package fatchoy
 
 const (
-	SERVICE_ALL  = 0xFF
-	INSTANCE_ALL = 0xFFFF
+	SERVICE_ALL  = 0xFF   // 所有服务
+	INSTANCE_ALL = 0xFFFF // 所有实例
 )
