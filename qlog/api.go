@@ -5,8 +5,7 @@
 package qlog
 
 import (
-	"fmt"
-	"os"
+	"log"
 
 	"go.uber.org/zap"
 )
@@ -34,7 +33,7 @@ func NewLogger(cfg *Config) *zap.Logger {
 
 func Reset() {
 	if err := _logger.Sync(); err != nil {
-		fmt.Fprintf(os.Stderr, "%v\n", err)
+		log.Printf("sync logger: %v", err)
 	}
 	_logger = zap.L()
 	_sugar = zap.S()

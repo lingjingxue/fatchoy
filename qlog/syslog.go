@@ -28,7 +28,7 @@ type SyslogHook struct {
 func NewSyslogHook(network, raddr string, priority syslog.Priority, tag string) Hooker {
 	w, err := syslog.Dial(network, raddr, priority, tag)
 	if err != nil {
-		panic(fmt.Errorf("dial syslog: %v", err))
+		panic(fmt.Errorf("dial syslog: %w", err))
 	}
 	return &SyslogHook{
 		writer:  w,
