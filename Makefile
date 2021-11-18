@@ -4,16 +4,29 @@
 
 PWD = $(shell pwd)
 GOBIN = $(PWD)/bin
-GO ?= go
 
 GO_PKG_LIST := $(shell go list ./...)
 
+# load .env if exist
+ifneq (,$(wildcard ./.env))
+    include .env
+    export
+endif
+
+
+# docker-compose up -d
 test:
-	docker-compose up -d
-	$(GO) test -v ./...
-	docker-compose down
+	go test -v ./x/...
+	go test -v ./codec
+	go test -v ./codes
+	go test -v ./debug
+	go test -v ./packet
+	go test -v ./sched
+	go test -v ./qlog
+	go test -v ./qnet
+	go test -v ./discovery
 
 clean:
-	$(GO) clean
+	go clean
 
 .PHONY: clean build test all
