@@ -35,3 +35,11 @@ func TestExampleParseHex(t *testing.T) {
 	}
 	fmt.Println(u)
 }
+
+func TestExampleSeqIDEtcd(t *testing.T) {
+	runSeqIDTestSimple(t, "etcd", "/uuid/counter101")
+}
+
+func TestExampleSeqIDRedis(t *testing.T) {
+	runSeqIDTestSimple(t, "redis", "/uuid/counter101")
+}
