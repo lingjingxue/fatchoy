@@ -82,6 +82,9 @@ func (c *Client) IsClosing() bool {
 }
 
 func (c *Client) formatKey(name string) string {
+	if name[0] == '/' {
+		name = name[1:]
+	}
 	return fmt.Sprintf("%s/%s", c.namespace, name)
 }
 
@@ -226,9 +229,32 @@ func revokeLeaseWithTimeout(c *Client, leaseId int64) {
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second*OpTimeout)
 	defer cancel()
 	if err := c.RevokeLease(ctx, leaseId); err != nil {
-		qlog.Warnf("revoke lease %x: %v", leaseId, err)
+		qlog.Warnf("revoke lease %x failed: %v", leaseId, err)
 	} else {
 		qlog.Infof("revoke lease %x done", leaseId)
+	}
+}
+
+func (c *Client) aliveKeeper(ctx context.Context, kaChan <-chan *clientv3.LeaseKeepAliveResponse, stopChan chan struct{}, leaseId int64) {
+	defer func() {
+		stopChan <- struct{}{} // notify signal
+		revokeLeaseWithTimeout(c, leaseId)
+	}()
+	for {
+		select {
+		case ka, ok := <-kaChan:
+			if !ok || ka == nil {
+				qlog.Infof("lease %x is not alive", leaseId)
+				return
+			}
+			if c.verbose >= VerboseLv2 {
+				qlog.Infof("lease %d respond alive, ttl %d", ka.ID, ka.TTL)
+			}
+
+		case <-ctx.Done():
+			qlog.Infof("stop keepalive with lease %d", leaseId)
+			return
+		}
 	}
 }
 
@@ -238,90 +264,83 @@ func (c *Client) KeepAlive(ctx context.Context, leaseId int64) (chan struct{}, e
 	if err != nil {
 		return nil, err
 	}
-	var signal = make(chan struct{})
-	var aliveKeeper = func() {
-		defer func() {
-			signal <- struct{}{} // notify signal
-			revokeLeaseWithTimeout(c, leaseId)
-		}()
-		for {
-			select {
-			case ka, ok := <-kaChan:
-				if !ok || ka == nil {
-					qlog.Infof("lease %x is not alive", leaseId)
-					return
-				}
-				if c.verbose >= VerboseLv2 {
-					qlog.Infof("lease %d respond alive, ttl %d", ka.ID, ka.TTL)
-				}
+	var stopChan = make(chan struct{}, 1)
+	go c.aliveKeeper(ctx, kaChan, stopChan, leaseId)
+	return stopChan, nil
+}
 
-			case <-ctx.Done():
-				return
+// 用于注册并保活节点
+type regNodeContext struct {
+	stopChan   chan struct{}
+	leaseId    int64
+	leaseAlive bool
+	name       string
+	value      interface{}
+	ttl        int
+}
+
+func (c *Client) doRegisterNode(ctx context.Context, regCtx *regNodeContext) error {
+	var err error
+	if c.verbose >= VerboseLv1 {
+		qlog.Infof("try register key: %s", regCtx.name)
+	}
+	regCtx.leaseAlive = false
+	regCtx.leaseId = 0
+
+	regCtx.leaseId, err = c.RegisterNode(ctx, regCtx.name, regCtx.value, regCtx.ttl)
+	if err != nil {
+		return err
+	}
+	regCtx.stopChan, err = c.KeepAlive(ctx, regCtx.leaseId)
+	if err != nil {
+		return err
+	}
+	regCtx.leaseAlive = true
+	if c.verbose >= VerboseLv1 {
+		qlog.Infof("register key [%s] with lease %x done", regCtx.name, regCtx.leaseId)
+	}
+	return nil
+}
+
+func (c *Client) regAliveKeeper(ctx context.Context, regCtx *regNodeContext) {
+	var ticker = time.NewTicker(time.Millisecond * 1000) // 1s
+	defer ticker.Stop()
+	for {
+		select {
+		case <-ticker.C:
+			if !regCtx.leaseAlive {
+				if err := c.doRegisterNode(ctx, regCtx); err != nil {
+					qlog.Infof("register or keepalive %s failed: %v", regCtx.name, err)
+				}
 			}
+
+		case <-regCtx.stopChan:
+			regCtx.leaseAlive = false
+			regCtx.leaseId = 0
+			if c.verbose >= VerboseLv1 {
+				qlog.Infof("node %s lease(%d) is not alive, try register later", regCtx.name, regCtx.leaseId)
+			}
+
+		case <-ctx.Done():
+			if c.verbose >= VerboseLv1 {
+				qlog.Infof("register alive keeper with key %s stopped", regCtx.name)
+			}
+			return
 		}
 	}
-	go aliveKeeper()
-	return signal, nil
 }
 
 // 注册一个节点，并永久保活
 func (c *Client) RegisterAndKeepAliveForever(ctx context.Context, name string, value interface{}, ttl int) error {
-	var leaseId int64
-	var done chan struct{}
-	var leaseAlive bool
-
-	var doRegister = func() error {
-		var err error
-		if c.verbose >= VerboseLv1 {
-			qlog.Infof("try register key: %s", name)
-		}
-		leaseAlive = false
-		leaseId = 0
-
-		leaseId, err = c.RegisterNode(ctx, name, value, ttl)
-		if err != nil {
-			return err
-		}
-		done, err = c.KeepAlive(ctx, leaseId)
-		if err != nil {
-			return err
-		}
-		leaseAlive = true
-		if c.verbose >= VerboseLv1 {
-			qlog.Infof("register key [%s] with lease %x done", name, leaseId)
-		}
-		return nil
+	var regCtx = &regNodeContext{
+		name:  name,
+		value: value,
+		ttl:   ttl,
 	}
-
-	if err := doRegister(); err != nil {
+	if err := c.doRegisterNode(ctx, regCtx); err != nil {
 		return err
 	}
-
-	var aliveKeeper = func() {
-		var ticker = time.NewTicker(time.Second)
-		defer ticker.Stop()
-		for {
-			select {
-			case <-ticker.C:
-				if !leaseAlive {
-					if err := doRegister(); err != nil {
-						qlog.Infof("register or keepalive %s failed: %v", name, err)
-					}
-				}
-
-			case <-done:
-				if c.verbose >= VerboseLv1 {
-					qlog.Infof("node %s lease(%d) is not alive, try register later", name, leaseId)
-				}
-				leaseAlive = false
-				leaseId = 0
-
-			case <-ctx.Done():
-				return
-			}
-		}
-	}
-	go aliveKeeper()
+	go c.regAliveKeeper(ctx, regCtx)
 	return nil
 }
 
