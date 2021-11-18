@@ -18,7 +18,10 @@ type BitSet struct {
 	bits    []uint64
 }
 
-func BitSetFrom(bitsize int, array []uint64) *BitSet {
+func BitSetFrom(array []uint64, bitsize int) *BitSet {
+	if bitsize <= 0 {
+		bitsize = len(array) * 64
+	}
 	return &BitSet{
 		bitsize: bitsize,
 		bits:    array,
