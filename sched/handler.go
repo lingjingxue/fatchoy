@@ -9,6 +9,7 @@ import (
 	"reflect"
 
 	"qchen.fun/fatchoy"
+	"qchen.fun/fatchoy/qlog"
 )
 
 // 消息派发
@@ -51,14 +52,15 @@ func (d *MessageHandlers) DeregisterOne(msgId int32, handler fatchoy.PacketHandl
 }
 
 func (d *MessageHandlers) Dispatch(pkt fatchoy.IPacket) error {
-	var msgId = pkt.Command()
-	var handlers = d.fns[msgId]
 	var cnt = 0
 	var err error
+	var msgId = pkt.Command()
+	var handlers = d.fns[msgId]
 	for _, h := range handlers {
 		cnt++
 		if er := h(pkt); er != nil {
 			err = er
+			qlog.Errorf("execute handler for msg %d: %v", msgId, er)
 		}
 	}
 	if cnt == 0 {
