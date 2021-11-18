@@ -73,7 +73,12 @@ func (c *ServiceContext) Registrar() *discovery.Client {
 	return c.registrar
 }
 
-// 消息队列
+// 消息队列，仅接收
+func (c *ServiceContext) InboundQueue() chan<- IPacket {
+	return c.queue
+}
+
+// 消息队列，仅消费
 func (c *ServiceContext) MessageQueue() <-chan IPacket {
 	return c.queue
 }
