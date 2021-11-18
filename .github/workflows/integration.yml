@@ -1,4 +1,4 @@
-name: Go
+name: integration
 
 on:
   push:
@@ -21,4 +21,4 @@ jobs:
       run: docker-compose up -d
 
     - name: Test
-      run: go test -v ./...
+      run: make test
