@@ -14,12 +14,10 @@ _test
 /logs
 /vendor
 /bin
-/pkg
+
 
 # Project files
 .idea/
 .vscode
 *.sublime-project
 *.sublime-workspace
-
-.env
