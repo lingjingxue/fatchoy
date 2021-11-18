@@ -26,10 +26,14 @@ func init() {
 	var username = os.Getenv("MONGODB_USER")
 	var passwd = os.Getenv("MONGODB_PASSWORD")
 	mongoUri = fmt.Sprintf("mongodb://%s:%s@127.0.0.1:27017/?connect=direct", username, passwd)
+	println("mongo user:", username)
+	println("mongo password:", passwd)
 
 	username = os.Getenv("MYSQL_USER")
 	passwd = os.Getenv("MYSQL_PASSWORD")
 	var db = os.Getenv("MYSQL_DATABASE")
+	println("mysql user:", username)
+	println("mysql password:", passwd)
 	mysqlDSN = fmt.Sprintf("%s:%s@tcp(localhost:3306)/%s", username, passwd, db)
 }
 
