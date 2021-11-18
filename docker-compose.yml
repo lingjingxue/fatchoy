@@ -2,7 +2,7 @@ version: "3"
 
 services:
     etcd:
-        image: bitnami/etcd
+        image: bitnami/etcd:3.5.1
         environment:
             - ALLOW_NONE_AUTHENTICATION=yes
             - ETCD_NAME=etcd1
