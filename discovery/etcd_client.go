@@ -248,7 +248,7 @@ func (c *Client) KeepAlive(ctx context.Context, leaseId int64) (chan struct{}, e
 			select {
 			case ka, ok := <-kaChan:
 				if !ok || ka == nil {
-					qlog.Warnf("lease %x is not alive", leaseId)
+					qlog.Infof("lease %x is not alive", leaseId)
 					return
 				}
 				if c.verbose >= VerboseLv2 {

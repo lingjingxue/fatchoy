@@ -174,7 +174,10 @@ func (m *Packet) BodyToBytes() []byte {
 
 func (m *Packet) DecodeTo(msg proto.Message) error {
 	var data = m.BodyToBytes()
-	return proto.Unmarshal(data, msg)
+	if len(data) > 0 {
+		return proto.Unmarshal(data, msg)
+	}
+	return nil
 }
 
 // 自动解析
@@ -188,8 +191,10 @@ func (m *Packet) Decode() error {
 		return fmt.Errorf("cannot create message %s", name)
 	}
 	var data = m.BodyToBytes()
-	if err := proto.Unmarshal(data, msg); err != nil {
-		return fmt.Errorf("cannot unmarshal message %d: %w", m.Cmd, err)
+	if len(data) > 0 {
+		if err := proto.Unmarshal(data, msg); err != nil {
+			return fmt.Errorf("cannot unmarshal message %d: %w", m.Cmd, err)
+		}
 	}
 	m.Body_ = msg
 	return nil

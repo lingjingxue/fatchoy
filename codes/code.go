@@ -34,6 +34,13 @@ const (
 	InternalError         Code = 23 // 内部错误
 )
 
+func (c Code) String() string {
+	if s, found := codeName[int32(c)]; found {
+		return s
+	}
+	return "??"
+}
+
 var codeName = map[int32]string{
 	0:  "OK",
 	1:  "UNKNOWN",
