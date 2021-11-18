@@ -8,7 +8,7 @@ import (
 	"fmt"
 	"reflect"
 
-	"gopkg.in/qchencc/fatchoy.v1/x/strutil"
+	"qchen.fun/fatchoy/x/strutil"
 )
 
 // 解析字符串的值到value

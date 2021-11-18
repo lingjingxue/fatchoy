@@ -18,10 +18,10 @@ type Hooker interface {
 
 // 配置参数
 type Config struct {
-	Level           string // 等级
-	Filepath        string // 日志文件
-	ErrFilepath     string // err文件
-	IsProduction    bool   // 是否product模式
+	Level        string // 等级
+	Filepath     string // 日志文件
+	ErrFilepath  string // err文件
+	IsProduction bool   // 是否product模式
 
 	Conf *zap.Config
 }

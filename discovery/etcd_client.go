@@ -16,7 +16,7 @@ import (
 	"unsafe"
 
 	"go.etcd.io/etcd/clientv3"
-	"gopkg.in/qchencc/fatchoy.v1/qlog"
+	"qchen.fun/fatchoy/qlog"
 )
 
 var (

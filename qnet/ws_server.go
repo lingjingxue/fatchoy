@@ -11,9 +11,9 @@ import (
 	"time"
 
 	"github.com/gorilla/websocket"
-	"gopkg.in/qchencc/fatchoy.v1"
-	"gopkg.in/qchencc/fatchoy.v1/qlog"
-	"gopkg.in/qchencc/fatchoy.v1/x/stats"
+	"qchen.fun/fatchoy"
+	"qchen.fun/fatchoy/qlog"
+	"qchen.fun/fatchoy/x/stats"
 )
 
 // Websocket server

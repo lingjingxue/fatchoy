@@ -7,7 +7,7 @@ package qnet
 import (
 	"net"
 
-	"gopkg.in/qchencc/fatchoy.v1"
+	"qchen.fun/fatchoy"
 )
 
 // a fake endpoint

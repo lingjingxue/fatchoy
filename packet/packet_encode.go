@@ -12,7 +12,7 @@ import (
 
 	"github.com/golang/protobuf/jsonpb"
 	"github.com/golang/protobuf/proto"
-	"gopkg.in/qchencc/fatchoy.v1/qlog"
+	"qchen.fun/fatchoy/qlog"
 )
 
 func (m *Packet) Body() interface{} {

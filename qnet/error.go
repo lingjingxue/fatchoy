@@ -8,7 +8,7 @@ import (
 	"errors"
 	"fmt"
 
-	"gopkg.in/qchencc/fatchoy.v1"
+	"qchen.fun/fatchoy"
 )
 
 var (

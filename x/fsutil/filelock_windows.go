@@ -2,7 +2,7 @@
 // Distributed under the terms and conditions of the BSD License.
 // See accompanying files LICENSE.
 
-// +build windows
+//go:build windows
 
 package fsutil
 

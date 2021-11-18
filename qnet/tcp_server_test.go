@@ -11,9 +11,9 @@ import (
 	"testing"
 	"time"
 
-	"gopkg.in/qchencc/fatchoy.v1"
-	"gopkg.in/qchencc/fatchoy.v1/codec"
-	"gopkg.in/qchencc/fatchoy.v1/packet"
+	"qchen.fun/fatchoy"
+	"qchen.fun/fatchoy/codec"
+	"qchen.fun/fatchoy/packet"
 )
 
 //不断发送ping接收pong

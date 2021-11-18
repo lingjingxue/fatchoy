@@ -2,7 +2,7 @@
 // Distributed under the terms and conditions of the BSD License.
 // See accompanying files LICENSE.
 
-// +build linux darwin
+//go:build linux || darwin
 
 package fsutil
 

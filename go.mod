@@ -1,4 +1,4 @@
-module gopkg.in/qchencc/fatchoy.v1
+module qchen.fun/fatchoy
 
 go 1.16
 

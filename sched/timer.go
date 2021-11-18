@@ -12,7 +12,7 @@ import (
 	"sync/atomic"
 	"time"
 
-	"gopkg.in/qchencc/fatchoy.v1/qlog"
+	"qchen.fun/fatchoy/qlog"
 )
 
 const (

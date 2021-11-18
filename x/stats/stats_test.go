@@ -7,7 +7,7 @@
 // exploit the content. Nor may you transmit it or store it in any other website or
 // other form of electronic retrieval system.
 
-// +build !ignore
+//go:build !ignore
 
 package stats
 

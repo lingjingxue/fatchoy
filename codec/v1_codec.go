@@ -7,8 +7,8 @@ package codec
 import (
 	"fmt"
 
-	"gopkg.in/qchencc/fatchoy.v1"
-	"gopkg.in/qchencc/fatchoy.v1/x/cipher"
+	"qchen.fun/fatchoy"
+	"qchen.fun/fatchoy/x/cipher"
 )
 
 var V1CompressThreshold = 4096 // 默认压缩阈值，4K

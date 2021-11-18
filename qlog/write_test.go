@@ -8,7 +8,7 @@ import (
 	"os"
 	"testing"
 
-	"gopkg.in/qchencc/fatchoy.v1/x/fsutil"
+	"qchen.fun/fatchoy/x/fsutil"
 )
 
 func TestWriteFileLog(t *testing.T) {

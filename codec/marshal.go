@@ -8,10 +8,10 @@ import (
 	"encoding/binary"
 	"fmt"
 
-	"gopkg.in/qchencc/fatchoy.v1"
-	"gopkg.in/qchencc/fatchoy.v1/codes"
-	"gopkg.in/qchencc/fatchoy.v1/x/cipher"
-	"gopkg.in/qchencc/fatchoy.v1/x/fsutil"
+	"qchen.fun/fatchoy"
+	"qchen.fun/fatchoy/codes"
+	"qchen.fun/fatchoy/x/cipher"
+	"qchen.fun/fatchoy/x/fsutil"
 )
 
 func marshalPacketBody(pkt fatchoy.IPacket, threshold int, encryptor cipher.BlockCryptor) ([]byte, error) {

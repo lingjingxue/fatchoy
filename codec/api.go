@@ -10,8 +10,8 @@ import (
 	"io"
 	"math"
 
-	"gopkg.in/qchencc/fatchoy.v1"
-	"gopkg.in/qchencc/fatchoy.v1/x/cipher"
+	"qchen.fun/fatchoy"
+	"qchen.fun/fatchoy/x/cipher"
 )
 
 // read 2-bytes length-prefixed data

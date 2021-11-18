@@ -26,4 +26,3 @@ func TestNewPacket(t *testing.T) {
 	clone.SetErrno(1002)
 	t.Logf("clone: %v", clone)
 }
-

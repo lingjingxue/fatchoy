@@ -8,7 +8,7 @@ import (
 	"encoding/binary"
 	"hash/crc32"
 
-	"gopkg.in/qchencc/fatchoy.v1"
+	"qchen.fun/fatchoy"
 )
 
 const (

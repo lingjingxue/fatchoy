@@ -9,9 +9,9 @@ import (
 	"crypto/rand"
 	"testing"
 
-	"gopkg.in/qchencc/fatchoy.v1"
-	"gopkg.in/qchencc/fatchoy.v1/x/cipher"
-	"gopkg.in/qchencc/fatchoy.v1/x/strutil"
+	"qchen.fun/fatchoy"
+	"qchen.fun/fatchoy/x/cipher"
+	"qchen.fun/fatchoy/x/strutil"
 )
 
 func isEqualPacket(t *testing.T, a, b fatchoy.IPacket) bool {

@@ -13,7 +13,7 @@ import (
 	"testing"
 	"time"
 
-	"gopkg.in/qchencc/fatchoy.v1/qlog"
+	"qchen.fun/fatchoy/qlog"
 )
 
 var (
@@ -279,7 +279,7 @@ func TestEtcdClient_WatchDirTo(t *testing.T) {
 
 	showNodeMap()
 
-	var ticker = time.NewTicker(time.Second*2)
+	var ticker = time.NewTicker(time.Second * 2)
 	defer ticker.Stop()
 	var tick = 0
 

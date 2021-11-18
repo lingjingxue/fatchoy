@@ -8,7 +8,7 @@ import (
 	"fmt"
 
 	"github.com/golang/protobuf/proto"
-	"gopkg.in/qchencc/fatchoy.v1"
+	"qchen.fun/fatchoy"
 )
 
 // Packet表示一个应用层消息

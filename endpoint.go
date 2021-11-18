@@ -8,8 +8,8 @@ import (
 	"net"
 	"sync"
 
-	"gopkg.in/qchencc/fatchoy.v1/x/cipher"
-	"gopkg.in/qchencc/fatchoy.v1/x/stats"
+	"qchen.fun/fatchoy/x/cipher"
+	"qchen.fun/fatchoy/x/stats"
 )
 
 type EndpointFlag uint32

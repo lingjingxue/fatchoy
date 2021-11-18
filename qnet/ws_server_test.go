@@ -13,8 +13,8 @@ import (
 	"time"
 
 	"github.com/gorilla/websocket"
-	"gopkg.in/qchencc/fatchoy.v1"
-	"gopkg.in/qchencc/fatchoy.v1/packet"
+	"qchen.fun/fatchoy"
+	"qchen.fun/fatchoy/packet"
 )
 
 func startWsClient(t *testing.T, addr, path string, msgCount int, ready chan struct{}) {

@@ -2,7 +2,7 @@
 // Distributed under the terms and conditions of the BSD License.
 // See accompanying files LICENSE.
 
-// +build linux
+//go:build linux
 
 package qlog
 
@@ -10,7 +10,7 @@ import (
 	"fmt"
 	"log/syslog"
 
-	"gopkg.in/qchencc/fatchoy.v1/x/strutil"
+	"qchen.fun/fatchoy/x/strutil"
 
 	"go.uber.org/zap"
 	"go.uber.org/zap/zapcore"

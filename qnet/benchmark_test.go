@@ -11,10 +11,10 @@ import (
 	"testing"
 	"time"
 
-	"gopkg.in/qchencc/fatchoy.v1"
-	"gopkg.in/qchencc/fatchoy.v1/codec"
-	"gopkg.in/qchencc/fatchoy.v1/packet"
-	"gopkg.in/qchencc/fatchoy.v1/x/datetime"
+	"qchen.fun/fatchoy"
+	"qchen.fun/fatchoy/codec"
+	"qchen.fun/fatchoy/packet"
+	"qchen.fun/fatchoy/x/datetime"
 )
 
 const (
