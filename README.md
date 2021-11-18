@@ -21,7 +21,6 @@ packet      | 消息结构
 qlog         | 日志
 qnet        | 网络通信
 sched       | 执行器
-secure      | 密码生成
 x           | 工具包
 
 #### 包名规范
