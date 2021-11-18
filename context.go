@@ -11,22 +11,22 @@ import (
 // 服务的上下文
 type ServiceContext struct {
 	done     chan struct{}   // 同步等待
-	ctx      context.Context // context对象
+	workCtx  context.Context // 用于执行业务
 	instance Service         // service实例
 	queue    chan IPacket    // 消息队列
 }
 
 func NewServiceContext(ctx context.Context, srv Service, queueSize int) *ServiceContext {
 	return &ServiceContext{
-		ctx:      ctx,
+		workCtx:  ctx,
 		instance: srv,
 		done:     make(chan struct{}, 1),
 		queue:    make(chan IPacket, queueSize),
 	}
 }
 
-func (c *ServiceContext) Context() context.Context {
-	return c.ctx
+func (c *ServiceContext) WorkCtx() context.Context {
+	return c.workCtx
 }
 
 func (c *ServiceContext) Instance() Service {
