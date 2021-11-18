@@ -33,6 +33,25 @@ const (
 	VerboseLv2 = 2
 )
 
+// 用于注册并保活节点
+type NodeKeepAliveContext struct {
+	stopChan   chan struct{}
+	LeaseId    int64
+	LeaseAlive bool
+	Name       string
+	Value      interface{}
+	TTL        int
+}
+
+func NewNodeKeepAliveContext(name string, value interface{}, ttl int) *NodeKeepAliveContext {
+	return &NodeKeepAliveContext{
+		stopChan: make(chan struct{}, 1),
+		Name:     name,
+		Value:    value,
+		TTL:      ttl,
+	}
+}
+
 // 基于etcd的服务发现
 type Client struct {
 	closing   int32            //
@@ -197,6 +216,27 @@ func (c *Client) RevokeLease(ctx context.Context, leaseId int64) error {
 	return err
 }
 
+func (c *Client) RevokeKeepAlive(ctx context.Context, regCtx *NodeKeepAliveContext) error {
+	if c.verbose >= VerboseLv1 {
+		qlog.Infof("try revoke node %s lease %d", regCtx.Name, regCtx.LeaseId)
+	}
+	if regCtx.LeaseId == 0 || !regCtx.LeaseAlive {
+		if c.verbose >= VerboseLv1 {
+			qlog.Infof("node %s lease %d is not alive", regCtx.Name, regCtx.LeaseId)
+		}
+		return nil
+	}
+	if err := c.RevokeLease(ctx, regCtx.LeaseId); err != nil {
+		qlog.Warnf("revoke node %s lease %x failed: %v", regCtx.Name, regCtx.LeaseId, err)
+		return err
+	} else {
+		if c.verbose >= VerboseLv1 {
+			qlog.Infof("revoke node %s lease %x done", regCtx.Name, regCtx.LeaseId)
+		}
+	}
+	return nil
+}
+
 // 注册一个节点信息，并返回一个ttl秒的lease
 func (c *Client) RegisterNode(rootCtx context.Context, name string, value interface{}, ttl int) (int64, error) {
 	ctx, cancel := context.WithTimeout(rootCtx, time.Second*OpTimeout)
@@ -237,9 +277,13 @@ func revokeLeaseWithTimeout(c *Client, leaseId int64) {
 
 func (c *Client) aliveKeeper(ctx context.Context, kaChan <-chan *clientv3.LeaseKeepAliveResponse, stopChan chan struct{}, leaseId int64) {
 	defer func() {
-		stopChan <- struct{}{} // notify signal
-		revokeLeaseWithTimeout(c, leaseId)
+		select {
+		case stopChan <- struct{}{}:
+		default:
+			break
+		}
 	}()
+
 	for {
 		select {
 		case ka, ok := <-kaChan:
@@ -252,78 +296,67 @@ func (c *Client) aliveKeeper(ctx context.Context, kaChan <-chan *clientv3.LeaseK
 			}
 
 		case <-ctx.Done():
+
 			qlog.Infof("stop keepalive with lease %d", leaseId)
 			return
 		}
 	}
 }
 
-// lease保活，返回一个channel，当lease撤销时此channel被激活
-func (c *Client) KeepAlive(ctx context.Context, leaseId int64) (chan struct{}, error) {
+// lease保活，当lease撤销时此stopChan被激活
+func (c *Client) KeepAlive(ctx context.Context, stopChan chan struct{}, leaseId int64) error {
 	kaChan, err := c.client.KeepAlive(ctx, clientv3.LeaseID(leaseId))
 	if err != nil {
-		return nil, err
+		return nil
 	}
-	var stopChan = make(chan struct{}, 1)
 	go c.aliveKeeper(ctx, kaChan, stopChan, leaseId)
-	return stopChan, nil
+	return nil
 }
 
-// 用于注册并保活节点
-type regNodeContext struct {
-	stopChan   chan struct{}
-	leaseId    int64
-	leaseAlive bool
-	name       string
-	value      interface{}
-	ttl        int
-}
-
-func (c *Client) doRegisterNode(ctx context.Context, regCtx *regNodeContext) error {
+func (c *Client) doRegisterNode(ctx context.Context, regCtx *NodeKeepAliveContext) error {
 	var err error
 	if c.verbose >= VerboseLv1 {
-		qlog.Infof("try register key: %s", regCtx.name)
+		qlog.Infof("try register key: %s", regCtx.Name)
 	}
-	regCtx.leaseAlive = false
-	regCtx.leaseId = 0
+	regCtx.LeaseAlive = false
+	regCtx.LeaseId = 0
 
-	regCtx.leaseId, err = c.RegisterNode(ctx, regCtx.name, regCtx.value, regCtx.ttl)
+	regCtx.LeaseId, err = c.RegisterNode(ctx, regCtx.Name, regCtx.Value, regCtx.TTL)
 	if err != nil {
 		return err
 	}
-	regCtx.stopChan, err = c.KeepAlive(ctx, regCtx.leaseId)
-	if err != nil {
+	if err = c.KeepAlive(ctx, regCtx.stopChan, regCtx.LeaseId); err != nil {
 		return err
 	}
-	regCtx.leaseAlive = true
+	regCtx.LeaseAlive = true
 	if c.verbose >= VerboseLv1 {
-		qlog.Infof("register key [%s] with lease %x done", regCtx.name, regCtx.leaseId)
+		qlog.Infof("register key [%s] with lease %x done", regCtx.Name, regCtx.LeaseId)
 	}
 	return nil
 }
 
-func (c *Client) regAliveKeeper(ctx context.Context, regCtx *regNodeContext) {
+func (c *Client) regAliveKeeper(ctx context.Context, regCtx *NodeKeepAliveContext) {
 	var ticker = time.NewTicker(time.Millisecond * 1000) // 1s
 	defer ticker.Stop()
 	for {
 		select {
 		case <-ticker.C:
-			if !regCtx.leaseAlive {
+			if !regCtx.LeaseAlive {
 				if err := c.doRegisterNode(ctx, regCtx); err != nil {
-					qlog.Infof("register or keepalive %s failed: %v", regCtx.name, err)
+					qlog.Infof("register or keepalive %s failed: %v", regCtx.Name, err)
 				}
 			}
 
 		case <-regCtx.stopChan:
-			regCtx.leaseAlive = false
-			regCtx.leaseId = 0
+			regCtx.LeaseAlive = false
+			regCtx.LeaseId = 0
 			if c.verbose >= VerboseLv1 {
-				qlog.Infof("node %s lease(%d) is not alive, try register later", regCtx.name, regCtx.leaseId)
+				qlog.Infof("node %s lease(%d) is not alive, try register later", regCtx.Name, regCtx.LeaseId)
 			}
 
 		case <-ctx.Done():
 			if c.verbose >= VerboseLv1 {
-				qlog.Infof("register alive keeper with key %s stopped", regCtx.name)
+				qlog.Infof("register alive keeper with key %s stopped", regCtx.Name)
 			}
 			return
 		}
@@ -331,17 +364,13 @@ func (c *Client) regAliveKeeper(ctx context.Context, regCtx *regNodeContext) {
 }
 
 // 注册一个节点，并永久保活
-func (c *Client) RegisterAndKeepAliveForever(ctx context.Context, name string, value interface{}, ttl int) error {
-	var regCtx = &regNodeContext{
-		name:  name,
-		value: value,
-		ttl:   ttl,
-	}
+func (c *Client) RegisterAndKeepAliveForever(ctx context.Context, name string, value interface{}, ttl int) (*NodeKeepAliveContext, error) {
+	var regCtx = NewNodeKeepAliveContext(name, value, ttl)
 	if err := c.doRegisterNode(ctx, regCtx); err != nil {
-		return err
+		return nil, err
 	}
 	go c.regAliveKeeper(ctx, regCtx)
-	return nil
+	return regCtx, nil
 }
 
 func propagateWatchEvent(eventChan chan<- *NodeEvent, ev *clientv3.Event) {

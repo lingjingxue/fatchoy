@@ -19,11 +19,12 @@ import (
 var (
 	etcdHostAddr = "127.0.0.1:2379"
 	etcdKeyspace = "/choyd-test"
-	nodeId       = strconv.Itoa(rand.Int() % 100000)
+	nodeId       string
 )
 
 func init() {
 	rand.Seed(time.Now().UnixNano())
+	nodeId = strconv.Itoa(rand.Int() % 100000)
 	qlog.Setup(qlog.NewConfig("debug"))
 }
 
@@ -126,26 +127,21 @@ func TestEtcdClient_RegisterNode(t *testing.T) {
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second*30)
 	defer cancel()
 
-	var leaseId int64
+	var node = createNode(nodeId)
+	var name = "bingo/" + nodeId
+	var regCtx = NewNodeKeepAliveContext(name, node, 7)
 	var err error
-	var done chan struct{}
-
-	var leaseAlive = false
-
 	var job = func() {
-		var node = createNode(nodeId)
-		var name = "bingo/" + nodeId
 		t.Logf("try to register %s", name)
-		leaseId, err = client.RegisterNode(ctx, name, node, 5)
+		regCtx.LeaseId, err = client.RegisterNode(ctx, name, node, 5)
 		if err != nil {
 			t.Logf("register: %v\n", err)
 		} else {
-			done, err = client.KeepAlive(ctx, leaseId)
-			if err != nil {
+			if err = client.KeepAlive(ctx, regCtx.stopChan, regCtx.LeaseId); err != nil {
 				t.Logf("keepalive: %v", err)
 			} else {
-				leaseAlive = true
-				t.Logf("register %s with lease %d done", name, leaseId)
+				regCtx.LeaseAlive = true
+				t.Logf("register %s with lease %d done", name, regCtx.LeaseId)
 			}
 		}
 	}
@@ -160,14 +156,14 @@ func TestEtcdClient_RegisterNode(t *testing.T) {
 		case <-ticker.C:
 			ticks++
 			fmt.Printf("ticks %d\n", ticks)
-			if !leaseAlive {
+			if !regCtx.LeaseAlive {
 				fmt.Printf("re-register worker at tick %d, in case of etcd server lost\n", ticks)
 				job()
 			}
 
-		case <-done:
-			leaseAlive = false
-			fmt.Printf("lease %d is dead, try re-register later\n", leaseId)
+		case <-regCtx.stopChan:
+			regCtx.LeaseAlive = false
+			fmt.Printf("lease %d is dead, try re-register later\n", regCtx.LeaseId)
 
 		case <-ctx.Done():
 			return
@@ -185,13 +181,15 @@ func TestEtcdClient_RegisterAndKeepAliveForever(t *testing.T) {
 	var node = createNode(nodeId)
 	var name = "bingo/" + nodeId
 	t.Logf("register and keepalive forever, only for 30s")
-	if err := client.RegisterAndKeepAliveForever(ctx, name, node, 5); err != nil {
+	regCtx, err := client.RegisterAndKeepAliveForever(ctx, name, node, 5)
+	if err != nil {
 		t.Fatalf("register forever: %v", err)
 	}
 
 	// wait until timed-out
 	select {
 	case <-ctx.Done():
+		client.RevokeKeepAlive(context.Background(), regCtx)
 		break
 	}
 	t.Logf("done")
