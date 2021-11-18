@@ -8,6 +8,7 @@ import (
 	"context"
 	"fmt"
 	"log"
+	"os"
 	"testing"
 	"time"
 
@@ -17,9 +18,20 @@ import (
 var (
 	etcdAddr  = "localhost:2379"
 	redisAddr = "localhost:6379"
-	mongoUri  = "mongodb://admin:cuKpVrfZzUvg@127.0.0.1:27017/?connect=direct"
-	mysqlDSN  = "root:LGrk4IaS0Wflxw@tcp(localhost:3306)/testdb"
+	mongoUri  string
+	mysqlDSN  string
 )
+
+func init() {
+	var username = os.Getenv("MONGODB_USER")
+	var passwd = os.Getenv("MONGODB_PASSWORD")
+	mongoUri = fmt.Sprintf("mongodb://%s:%s@127.0.0.1:27017/?connect=direct", username, passwd)
+
+	username = os.Getenv("MYSQL_USER")
+	passwd = os.Getenv("MYSQL_PASSWORD")
+	var db = os.Getenv("MYSQL_DATABASE")
+	mysqlDSN = fmt.Sprintf("%s:%s@tcp(localhost:3306)/%s", username, passwd, db)
+}
 
 func createCounterStorage(storeTye string, label string) Storage {
 	ctx, _ := context.WithTimeout(context.Background(), time.Second*30)
