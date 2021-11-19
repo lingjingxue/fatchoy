@@ -12,9 +12,13 @@ import (
 func TestStartClock(t *testing.T) {
 	StartClock()
 	defer StopClock()
-	t.Logf("%s", DateTime())
 
-	clock := WallClock()
+	t.Logf("now: %s", NowString())
+	t.Logf("date: %s", DateTime())
+
+	var clock = WallClock()
+	var t1 = Now()
 	clock.Travel(-time.Hour)
-	t.Logf("%s", DateTime())
+	var t2 = Now()
+	t.Logf("elapsed %v", t1.Sub(t2))
 }

@@ -10,10 +10,11 @@ import (
 	"qchen.fun/fatchoy/x/datetime"
 )
 
-var (
-	ClockEpoch int64           = 1577836800 // 2020-01-01 00:00:00 UTC
-	gClock     *datetime.Clock              // default clock
-)
+// epoch of clock
+const ClockEpoch int64 = 1577836800 // 2020-01-01 00:00:00 UTC
+
+// default clock
+var gClock *datetime.Clock
 
 // 开启时钟
 func StartClock() {

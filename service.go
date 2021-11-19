@@ -11,7 +11,7 @@ import (
 	"qchen.fun/fatchoy/x/uuid"
 )
 
-// 定义应用层服务接口
+// 应用层服务
 type Service interface {
 	Type() uint8
 	Name() string
@@ -45,6 +45,7 @@ func NewServiceContext(ctx context.Context, srv Service, queueSize int) *Service
 	}
 }
 
+// 初始化registrar
 func (c *ServiceContext) InitRegistrar(hostAddr, namespace string) error {
 	c.registrar = discovery.NewClient(hostAddr, namespace)
 	if err := c.registrar.Init(); err != nil {
@@ -93,6 +94,7 @@ func (c *ServiceContext) WaitDone() <-chan struct{} {
 	return c.done
 }
 
+// 关闭context
 func (c *ServiceContext) Close() {
 	c.registrar.Close()
 	c.registrar = nil
