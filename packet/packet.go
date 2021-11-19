@@ -133,7 +133,7 @@ func (m *Packet) SetErrno(ec int32) {
 }
 
 // body的类型仅支持int64/float64/string/bytes/proto.Message
-func (m *Packet) Reply(command int32, body interface{}) error {
+func (m *Packet) ReplyWith(command int32, body interface{}) error {
 	var pkt = New(command, m.Seq_, m.Flg, body)
 	pkt.Type_ = m.Type_
 	pkt.Node_ = m.Node_
@@ -142,12 +142,12 @@ func (m *Packet) Reply(command int32, body interface{}) error {
 }
 
 // 响应proto消息内容
-func (m *Packet) ReplyMsg(ack proto.Message) error {
+func (m *Packet) Reply(ack proto.Message) error {
 	var mid = GetMessageIDOf(ack)
 	if mid == 0 {
 		mid = m.Cmd
 	}
-	return m.Reply(mid, ack)
+	return m.ReplyWith(mid, ack)
 }
 
 // 返回一个错误码消息
