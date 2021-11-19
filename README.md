@@ -25,4 +25,4 @@ x           | 工具包
 
 ## 开发规范指南
 
-见[GUIDE](GUID.md)
+见[GUIDE](GUIDE.md)
