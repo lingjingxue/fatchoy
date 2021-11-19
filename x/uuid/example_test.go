@@ -5,35 +5,25 @@
 package uuid
 
 import (
-	"fmt"
 	"testing"
 )
 
-func TestExampleNewV4(t *testing.T) {
-	u4, err := NewV4()
-	if err != nil {
-		fmt.Println("error:", err)
-		return
+func TestExampleUUID(t *testing.T) {
+	var store = createCounterStorage("redis", "/uuid/eg11")
+	if err := Init(0, store); err != nil {
+		t.Fatalf("%v", err)
 	}
-	fmt.Println(u4)
-}
-
-func TestExampleNewV5(t *testing.T) {
-	u5, err := NewV5(NamespaceURL, []byte("nu7hat.ch"))
-	if err != nil {
-		fmt.Println("error:", err)
-		return
-	}
-	fmt.Println(u5)
+	t.Logf("seq id: %d", NextID())
+	t.Logf("uuid: %d", NextUUID())
+	t.Logf("guid: %s", NextGUID())
 }
 
 func TestExampleParseHex(t *testing.T) {
 	u, err := ParseHex("6ba7b810-9dad-11d1-80b4-00c04fd430c8")
 	if err != nil {
-		fmt.Println("error:", err)
-		return
+		t.Fatalf("%v", err)
 	}
-	fmt.Println(u)
+	t.Logf("%v", u)
 }
 
 func TestExampleSeqIDEtcd(t *testing.T) {

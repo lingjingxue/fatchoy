@@ -136,7 +136,7 @@ func (ctx *IDGenWorkerContext) Duration() time.Duration {
 
 func runSeqIDTestSimple(t *testing.T, storeTye, label string) {
 	var store = createCounterStorage(storeTye, label)
-	var seq = NewSeqID(store, DefaultSeqStep)
+	var seq = NewSeqIDGen(store, DefaultSeqStep)
 	if err := seq.Init(); err != nil {
 		t.Fatalf("Init: %v", err)
 	}
@@ -159,7 +159,7 @@ func runSeqIDTestConcurrent(t *testing.T, storeTye, label string) {
 	var gcnt = 20
 	var eachMax = 500000
 	var store = createCounterStorage(storeTye, label)
-	var seq = NewSeqID(store, DefaultSeqStep)
+	var seq = NewSeqIDGen(store, DefaultSeqStep)
 	if err := seq.Init(); err != nil {
 		t.Fatalf("Init: %v", err)
 	}
@@ -181,7 +181,7 @@ func runSeqIDTestDistributed(t *testing.T, storeTye, label string) {
 	var eachMax = 500000
 	var generator = func() IDGenerator {
 		var store = createCounterStorage(storeTye, label)
-		var seq = NewSeqID(store, DefaultSeqStep)
+		var seq = NewSeqIDGen(store, DefaultSeqStep)
 		if err := seq.Init(); err != nil {
 			t.Fatalf("Init: %v", err)
 		}

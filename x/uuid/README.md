@@ -7,13 +7,16 @@
 
 ```go
 // 初始化传入workerID, etcd地址，和命名空间前缀
-uuid.Init(1001, "localhost:2379", "/keyspace/")
+uuid.Init(workerID, "localhost:2379", "/keyspace/")
 
 // 返回一个ID，使用发号器算法，可用于角色、工会ID
 id := NextID()
 
 // 返回一个UUID，使用雪花算法，可用于事件行为、日志ID，通常值比较大
 uuid := NextUUID()
+
+// GUID string, standard universally unique identifier version 4
+guid := NextGUID()
 
 ```
 

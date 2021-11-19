@@ -17,8 +17,8 @@ const (
 // 使用发号器算法的uuid生成器
 // 1. 算法把一个64位的整数按step范围划分为N个号段；
 // 2. service从发号器拿到号段后才可分配此号段内的ID;
-// 3. 发号器依赖存储(etcd, redis)把当前待分配号段持续自增；
-type SeqID struct {
+// 3. 发号器依赖存储(etcd, redis等)把当前待分配号段持续自增；
+type SeqIDGen struct {
 	guard   sync.Mutex //
 	store   Storage    // 存储组件
 	step    int64      // 号段区间
@@ -26,24 +26,24 @@ type SeqID struct {
 	lastID  int64      // 上次生成的ID
 }
 
-func NewSeqID(store Storage, step int32) *SeqID {
+func NewSeqIDGen(store Storage, step int32) *SeqIDGen {
 	if step <= 0 {
 		step = DefaultSeqStep
 	}
-	return &SeqID{
+	return &SeqIDGen{
 		store: store,
 		step:  int64(step),
 	}
 }
 
-func (s *SeqID) Init() error {
+func (s *SeqIDGen) Init() error {
 	if err := s.reload(); err != nil {
 		return err
 	}
 	return nil
 }
 
-func (s *SeqID) reload() error {
+func (s *SeqIDGen) reload() error {
 	counter, err := s.store.Incr()
 	if err != nil {
 		return err
@@ -57,7 +57,7 @@ func (s *SeqID) reload() error {
 	return nil
 }
 
-func (s *SeqID) Next() (int64, error) {
+func (s *SeqIDGen) Next() (int64, error) {
 	s.guard.Lock()
 	defer s.guard.Unlock()
 
@@ -79,7 +79,7 @@ func (s *SeqID) Next() (int64, error) {
 	return next, nil
 }
 
-func (s *SeqID) MustNext() int64 {
+func (s *SeqIDGen) MustNext() int64 {
 	n, err := s.Next()
 	if err != nil {
 		log.Panicf("next ID: %v", err)
