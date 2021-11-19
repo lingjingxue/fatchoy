@@ -17,11 +17,7 @@ geom        | 几何算法
 uuid        | 分布式ID
 
 
-
-
 ### 本包规范
-
-[包名规范细节](https://blog.golang.org/package-names)
 
 * API接口除非`Must`否则不使用panic抛出错误；
 * 本包的各子包之间不相互引用；
