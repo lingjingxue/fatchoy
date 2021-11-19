@@ -170,7 +170,9 @@ func (c *WsConn) ReadPacket(pkt fatchoy.IPacket) error {
 
 	switch msgType {
 	case websocket.TextMessage:
-		if err := json.Unmarshal(data, pkt); err != nil {
+		var dec = json.NewDecoder(bytes.NewReader(data))
+		dec.UseNumber()
+		if err := dec.Decode(pkt); err != nil {
 			return err
 		}
 

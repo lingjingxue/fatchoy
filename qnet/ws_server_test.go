@@ -79,7 +79,7 @@ func serveWs(incoming chan fatchoy.IPacket, server *WsServer) {
 
 		case pkt := <-incoming:
 			msgcnt++
-			pkt.Reply(pkt.Command(), "pong")
+			pkt.ReplyWith(pkt.Command(), "pong")
 			//fmt.Printf("recv client message: %v\n", text)
 			if msgcnt == totalMsgNum {
 				return

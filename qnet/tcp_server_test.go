@@ -86,7 +86,7 @@ func startServeRawClient(t *testing.T, ctx context.Context, cancel context.Cance
 
 		case pkt := <-incoming:
 			//println("recv", pkt.BodyToString())
-			pkt.Reply(pkt.Command(), "pong") //返回pong
+			pkt.ReplyWith(pkt.Command(), "pong") //返回pong
 
 			// all message recv, close server
 			recvNum++

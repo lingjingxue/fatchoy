@@ -48,7 +48,7 @@ func serveBench(t *testing.T, ctx context.Context, addr string, ready chan struc
 			}
 
 		case pkt := <-incoming:
-			pkt.Reply(pkt.Command(), "pong") //返回pong
+			pkt.ReplyWith(pkt.Command(), "pong") //返回pong
 
 		case <-ctx.Done():
 			// handle shutdown

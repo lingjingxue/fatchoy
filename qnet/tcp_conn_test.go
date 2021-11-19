@@ -68,7 +68,7 @@ func tconnReadLoop(errchan chan error, inbound chan fatchoy.IPacket) {
 				return
 			}
 			pkt.SetCommand(pkt.Command() + 1)
-			pkt.Reply(pkt.Command(), fmt.Sprintf("ping %d", pkt.Command()))
+			pkt.ReplyWith(pkt.Command(), fmt.Sprintf("ping %d", pkt.Command()))
 
 		case <-errchan:
 			return
