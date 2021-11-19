@@ -17,6 +17,7 @@ import (
 
 	"go.etcd.io/etcd/clientv3"
 	"qchen.fun/fatchoy/qlog"
+	"qchen.fun/fatchoy/x/strutil"
 )
 
 var (
@@ -128,7 +129,7 @@ func (c *Client) GetNode(ctx context.Context, name string) (Node, error) {
 		return nil, nil
 	}
 	var node Node
-	if err := json.Unmarshal(resp.Kvs[0].Value, &node); err != nil {
+	if err := strutil.UnmarshalJSON(resp.Kvs[0].Value, &node); err != nil {
 		return nil, err
 	}
 	return node, nil
@@ -182,7 +183,7 @@ func (c *Client) ListDir(ctx context.Context, dir string) ([]Node, error) {
 	var nodes = make([]Node, 0, resp.Count)
 	for _, kv := range resp.Kvs {
 		var node Node
-		if err := json.Unmarshal(kv.Value, &node); err != nil {
+		if err := strutil.UnmarshalJSON(kv.Value, &node); err != nil {
 			return nil, err
 		}
 		nodes = append(nodes, node)
@@ -389,7 +390,7 @@ func propagateWatchEvent(eventChan chan<- *NodeEvent, ev *clientv3.Event) {
 		event.Type = EventDelete
 	}
 	if len(ev.Kv.Value) > 0 {
-		if err := json.Unmarshal(ev.Kv.Value, &event.Node); err != nil {
+		if err := strutil.UnmarshalJSON(ev.Kv.Value, &event.Node); err != nil {
 			qlog.Errorf("unmarshal node %s: %v", event.Key, err)
 			return
 		}

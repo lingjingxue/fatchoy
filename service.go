@@ -39,7 +39,7 @@ func NewServiceContext(ctx context.Context, srv Service, queueSize int) *Service
 	return &ServiceContext{
 		workCtx:  ctx,
 		instance: srv,
-		runId:    uuid.MustCreateGUID(),
+		runId:    uuid.NextGUID(),
 		done:     make(chan struct{}, 1),
 		queue:    make(chan IPacket, queueSize),
 	}
