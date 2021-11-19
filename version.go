@@ -4,4 +4,5 @@
 
 package fatchoy
 
-const VERSION = "0.1.7"
+// 版本号
+const VERSION = "0.1.8"
