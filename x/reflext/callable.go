@@ -5,6 +5,7 @@
 package reflext
 
 import (
+	"bytes"
 	"encoding/json"
 	"fmt"
 	"go/ast"
@@ -35,8 +36,12 @@ func castToFuncParams(fnType reflect.Type, args []string) ([]reflect.Value, erro
 	var params = make([]reflect.Value, 0, fnType.NumIn())
 	for i := 0; i < len(args); i++ {
 		value := reflect.New(fnType.In(i))
-		if err := json.Unmarshal([]byte(args[i]), value.Interface()); err != nil {
-			return nil, fmt.Errorf("unmarshal argument %s: %w", args[i], err)
+		if len(args[0]) > 0 {
+			var dec = json.NewDecoder(bytes.NewReader([]byte(args[i])))
+			dec.UseNumber()
+			if err := dec.Decode(value.Interface()); err != nil {
+				return nil, fmt.Errorf("unmarshal argument %d(%s): %w", i, args[i], err)
+			}
 		}
 		params = append(params, value.Elem())
 	}

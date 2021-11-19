@@ -5,6 +5,8 @@
 package strutil
 
 import (
+	"bytes"
+	"encoding/json"
 	"fmt"
 	"math/rand"
 	"reflect"
@@ -123,4 +125,14 @@ func LongestCommonPrefix(s1, s2 string) string {
 		break
 	}
 	return s1[:i]
+}
+
+// 使用bigint序列化大整数
+func UnmarshalJSON(data []byte, v interface{}) error {
+	if len(data) > 0 {
+		var dec = json.NewDecoder(bytes.NewReader(data))
+		dec.UseNumber()
+		return dec.Decode(v)
+	}
+	return nil
 }
