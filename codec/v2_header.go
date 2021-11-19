@@ -5,9 +5,7 @@
 package codec
 
 import (
-	"crypto/md5"
 	"encoding/binary"
-	"encoding/hex"
 	"hash/crc32"
 
 	"qchen.fun/fatchoy"
@@ -99,10 +97,4 @@ func (h V2Header) Pack(pkt fatchoy.IPacket, nRef uint8, size uint32) {
 
 func (h V2Header) MD5Sum() string {
 	return md5Sum(h[:])
-}
-
-func md5Sum(data []byte) string {
-	var hash = md5.New()
-	hash.Write(data)
-	return hex.EncodeToString(hash.Sum(nil))
 }

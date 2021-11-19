@@ -60,12 +60,8 @@ func UnmarshalV2(head V2Header, payload []byte, decrypt cipher.BlockCryptor, pkt
 	if crc := head.CalcChecksum(payload); crc != checksum {
 		return fmt.Errorf("packet %v checksum mismatch %x != %x", pkt.Command(), checksum, crc)
 	}
-	if len(payload) == 0 {
-		return nil
-	}
 	var pos = 0
-	var refcnt = head.RefCount()
-	if refcnt > 0 {
+	if refcnt := head.RefCount(); refcnt > 0 {
 		if len(payload) < int(refcnt)*4 {
 			return fmt.Errorf("packet %d refer count mismatch %d != %d", pkt.Command(), len(payload)/4, refcnt)
 		}
@@ -78,5 +74,8 @@ func UnmarshalV2(head V2Header, payload []byte, decrypt cipher.BlockCryptor, pkt
 		pkt.SetRefers(refers)
 	}
 	var body = payload[pos:]
-	return unmarshalPacketBody(body, decrypt, pkt)
+	if len(body) > 0 {
+		return unmarshalPacketBody(body, decrypt, pkt)
+	}
+	return nil
 }

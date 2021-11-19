@@ -46,7 +46,7 @@ func WriteLenData(w io.Writer, data []byte) (int, error) {
 	return n + 4, nil
 }
 
-// 使用从r读取消息到pkt，并按需使用decrypt解密，返回读取长度和错误
+// 从r读取消息到pkt，并按需使用decrypt解密，返回读取长度和错误
 func ReadV1(r io.Reader) (V1Header, []byte, error) {
 	var buf [V1HeaderSize]byte
 	if _, err := io.ReadFull(r, buf[:]); err != nil {
@@ -64,7 +64,7 @@ func ReadV1(r io.Reader) (V1Header, []byte, error) {
 	return head, payload, nil
 }
 
-// 使用从r读取消息到pkt，并按需使用decrypt解密，返回读取长度和错误
+// 从r读取消息到pkt，并按需使用decrypt解密，返回读取长度和错误
 func ReadV2(r io.Reader) (V2Header, []byte, error) {
 	var buf [V2HeaderSize]byte
 	if _, err := io.ReadFull(r, buf[:]); err != nil {

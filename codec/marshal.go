@@ -5,19 +5,21 @@
 package codec
 
 import (
+	"crypto/md5"
 	"encoding/binary"
+	"encoding/hex"
 	"fmt"
 
 	"qchen.fun/fatchoy"
-	"qchen.fun/fatchoy/codes"
 	"qchen.fun/fatchoy/x/cipher"
 	"qchen.fun/fatchoy/x/fsutil"
 )
 
+// 把packet序列化为字节流，有压缩和加密
 func marshalPacketBody(pkt fatchoy.IPacket, threshold int, encryptor cipher.BlockCryptor) ([]byte, error) {
 	var flag = pkt.Flag()
 	var body = pkt.BodyToBytes()
-	if threshold > 0 && len(body) > V2CompressThreshold {
+	if threshold > 0 && len(body) > threshold {
 		if data, err := fsutil.CompressBytes(body); err != nil {
 			return nil, fmt.Errorf("compress packet %v: %w", pkt.Command(), err)
 		} else {
@@ -33,6 +35,7 @@ func marshalPacketBody(pkt fatchoy.IPacket, threshold int, encryptor cipher.Bloc
 	return body, nil
 }
 
+// 把字节流反序列化为packet，有解密和解压
 func unmarshalPacketBody(body []byte, decrypt cipher.BlockCryptor, pkt fatchoy.IPacket) error {
 	var flag = pkt.Flag()
 	if (flag & fatchoy.PFlagEncrypted) != 0 {
@@ -56,11 +59,15 @@ func unmarshalPacketBody(body []byte, decrypt cipher.BlockCryptor, pkt fatchoy.I
 		val, n := binary.Varint(body)
 		if n > 0 {
 			pkt.SetBody(val)
-		} else {
-			pkt.SetBody(int64(codes.TransportFailure))
 		}
 	} else {
 		pkt.SetBody(body)
 	}
 	return nil
+}
+
+func md5Sum(data []byte) string {
+	var hash = md5.New()
+	hash.Write(data)
+	return hex.EncodeToString(hash.Sum(nil))
 }

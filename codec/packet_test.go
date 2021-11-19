@@ -163,12 +163,12 @@ func (m testPacket) String() string {
 	return fmt.Sprintf("c:%d seq:%d 0x%x %s", m.Command(), m.Seq(), m.Flag(), checksum)
 }
 
-func (m *testPacket) Reply(command int32, s interface{}) error {
+func (m *testPacket) ReplyWith(command int32, s interface{}) error {
 	panic("not implemented")
 	return nil
 }
 
-func (m *testPacket) ReplyMsg(ack proto.Message) error {
+func (m *testPacket) Reply(ack proto.Message) error {
 	panic("not implemented")
 	return nil
 }

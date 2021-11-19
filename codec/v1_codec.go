@@ -43,8 +43,8 @@ func UnmarshalV1(head V1Header, payload []byte, decrypt cipher.BlockCryptor, pkt
 	if crc := head.CalcChecksum(payload); crc != checksum {
 		return fmt.Errorf("packet %v checksum mismatch %x != %x", pkt.Command(), checksum, crc)
 	}
-	if len(payload) == 0 {
-		return nil
+	if len(payload) > 0 {
+		return unmarshalPacketBody(payload, decrypt, pkt)
 	}
-	return unmarshalPacketBody(payload, decrypt, pkt)
+	return nil
 }

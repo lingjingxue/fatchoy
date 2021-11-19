@@ -77,3 +77,7 @@ func (h V1Header) Pack(pkt fatchoy.IPacket, size uint16) {
 	binary.BigEndian.PutUint16(h[4:], pkt.Seq())
 	binary.BigEndian.PutUint32(h[6:], uint32(pkt.Command()))
 }
+
+func (h V1Header) MD5Sum() string {
+	return md5Sum(h[:])
+}
