@@ -1,6 +1,6 @@
 # X Kit
 
-可以跨多个项目使用的基础工具包
+一些基础工具包
 
 ### 各子包说明
 
@@ -11,11 +11,11 @@ collections | 算法和数据结构
 datetime    | 日期相关
 fsutil      | 文件相关
 mathext     | 数学扩展
-reflectutil | 反射相关
+reflext     | 反射相关
 strutil     | 字符串相关
 geom        | 几何算法
 uuid        | 分布式ID
-secure      | 密码生成
+
 
 
 
