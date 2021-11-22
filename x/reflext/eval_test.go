@@ -17,11 +17,19 @@ type TB struct {
 	E map[int]string
 }
 
+func (b *TB) GetC() *image.Rectangle {
+	return &b.C
+}
+
 type TA struct {
 	A int32
 	B TB
 	C []image.Point
 	D map[float64]string
+}
+
+func (a *TA) GetB() *TB {
+	return &a.B
 }
 
 func createTA() *TA {
@@ -50,16 +58,17 @@ func TestEvalView(t *testing.T) {
 		{"B.C.Max.X", false, obj.B.C.Max.X},
 		{"C[0].X", false, obj.C[0].X},
 		{"D[3.14]", false, obj.D[3.14]},
-
+		{`GetB().GetC().Min.X`, false, 12},
 		{"C[10]", false, nil},
 		{"D[10]", false, nil},
 		{"B.D[10]", false, nil},
 		{"B.E[10]", false, nil},
 		{`D["KKK"]`, true, nil},
 		{`B.D["KKK"]`, true, nil},
+
 	}
 	for _, tc := range tests {
-		v, err := EvalView(obj, tc.expr)
+		v, err := NewEvalContext(obj).View(tc.expr)
 		if tc.shouldHasErr {
 			if err == nil {
 				t.Fatalf("%s: %v", tc.expr, err)
@@ -82,16 +91,18 @@ func TestEvalSet(t *testing.T) {
 		val          interface{}
 		shouldHasErr bool
 	}{
-		{"A", 5678, false},
+		{"A", int32(5678), false},
 		{"B.A", "hi", false},
 		{"B.C.Max.X", 100, false},
 		{"C[0].X", 54321, false},
 		{"D[3.14]", "pi", false},
 		{"D[1.68]", "ratio", false},
 		{"B.E[100]", "100", false},
+		{"GetB().E[100]", "100", false},
 	}
+	var ctx = NewEvalContext(obj)
 	for _, tc := range tests {
-		err := EvalSet(obj, tc.expr, tc.val)
+		err := ctx.Set(tc.expr, tc.val)
 		t.Logf("%s: %v", tc.expr, err)
 		if tc.shouldHasErr {
 			if err == nil {
@@ -99,7 +110,7 @@ func TestEvalSet(t *testing.T) {
 			}
 			continue
 		}
-		v, err := EvalView(obj, tc.expr)
+		v, err := ctx.View(tc.expr)
 		if err != nil {
 			t.Fatalf("%s: %v", tc.expr, err)
 		}
@@ -117,9 +128,11 @@ func TestEvalRemove(t *testing.T) {
 	}{
 		{"A", false},
 		{"B.D[2]", false},
+		{"GetB().D[2]", false},
 	}
+	var ctx = NewEvalContext(obj)
 	for _, tc := range tests {
-		err := EvalRemove(obj, tc.expr)
+		err := ctx.Delete(tc.expr)
 		t.Logf("%s: %v", tc.expr, err)
 		if tc.hasErr {
 			if err == nil {
