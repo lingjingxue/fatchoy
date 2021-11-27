@@ -177,46 +177,6 @@ func MustParseDateTime(s string) time.Time {
 	return t
 }
 
-// 是否闰年
-func IsLeapYear(year int) bool {
-	return (year%4 == 0 && year%100 != 0) ||
-		year%400 == 0
-}
-
-// 一个月的天数
-func DaysCountOfMonth(year, month int) int {
-	switch time.Month(month) {
-	case time.January:
-		return 31
-	case time.February:
-		if year > 0 && IsLeapYear(year) {
-			return 29
-		}
-		return 28
-	case time.March:
-		return 31
-	case time.April:
-		return 30
-	case time.May:
-		return 31
-	case time.June:
-		return 30
-	case time.July:
-		return 31
-	case time.August:
-		return 31
-	case time.September:
-		return 30
-	case time.October:
-		return 31
-	case time.November:
-		return 30
-	case time.December:
-		return 31
-	}
-	return 0
-}
-
 // 解析时间字符串
 func MustParseTime(s string) time.Time {
 	t, err := time.ParseInLocation(TimestampFormat, s, time.Local)
@@ -224,24 +184,4 @@ func MustParseTime(s string) time.Time {
 		log.Panicf("MustParseTime: %s, %v", s, err)
 	}
 	return t
-}
-
-// 格式化字符串
-func FormatTime(t time.Time) string {
-	return t.Format(TimestampFormat)
-}
-
-// 格式化时间字符串
-func FormatUnixTime(v int64) string {
-	return time.Unix(v, 0).Format(DateFormat)
-}
-
-// 转换unix毫秒时间戳
-func TimeToMillis(t time.Time) int64 {
-	return t.UnixNano() / int64(1000_000)
-}
-
-// 当前unix毫秒时间戳
-func CurrentTimeMillis() int64 {
-	return time.Now().UnixNano() / int64(1000_000)
 }
