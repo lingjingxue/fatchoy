@@ -6,7 +6,6 @@ package qnet
 
 import (
 	"context"
-	"net"
 	"net/http"
 	"time"
 
@@ -18,8 +17,6 @@ import (
 
 // Websocket server
 type WsServer struct {
-	ctx      context.Context
-	cancel   context.CancelFunc
 	server   *http.Server
 	upgrader *websocket.Upgrader  //
 	pending  chan *WsConn         //
@@ -28,8 +25,7 @@ type WsServer struct {
 	outsize  int                  // outgoing queue size
 }
 
-func NewWebsocketServer(parentCtx context.Context, addr, path string, inbound chan fatchoy.IPacket, outsize int) *WsServer {
-	ctx, cancel := context.WithCancel(parentCtx)
+func NewWebsocketServer(addr, path string, inbound chan fatchoy.IPacket, outsize int) *WsServer {
 	mux := http.NewServeMux()
 	var server = &http.Server{
 		Addr:              addr,
@@ -39,11 +35,8 @@ func NewWebsocketServer(parentCtx context.Context, addr, path string, inbound ch
 		WriteTimeout:      30 * time.Second,
 		IdleTimeout:       45 * time.Second,
 		MaxHeaderBytes:    4096,
-		BaseContext:       func(listener net.Listener) context.Context { return ctx },
 	}
 	ws := &WsServer{
-		ctx:     ctx,
-		cancel:  cancel,
 		server:  server,
 		inbound: inbound,
 		outsize: outsize,
@@ -64,7 +57,7 @@ func (s *WsServer) onRequest(w http.ResponseWriter, r *http.Request) {
 		qlog.Errorf("WebSocket upgrade %s, %v", r.RemoteAddr, err)
 		return
 	}
-	wsconn := NewWsConn(r.Context(), 0, conn, s.errChan, s.inbound, s.outsize, stats.New(NumStat))
+	wsconn := NewWsConn(0, conn, s.errChan, s.inbound, s.outsize, stats.New(NumStat))
 	qlog.Infof("websocket connection %s established", wsconn.RemoteAddr())
 	defer wsconn.Close()
 	wsconn.Go(fatchoy.EndpointWriter)
@@ -88,8 +81,7 @@ func (s *WsServer) Go() {
 }
 
 func (s *WsServer) Shutdown() {
-	s.server.Shutdown(s.ctx)
-	s.cancel()
+	s.server.Shutdown(context.Background())
 	close(s.pending)
 	close(s.errChan)
 	s.errChan = nil

@@ -6,7 +6,6 @@ package qnet
 
 import (
 	"bufio"
-	"context"
 	"io"
 	"net"
 	"sync/atomic"
@@ -31,14 +30,14 @@ type TcpConn struct {
 	writer *bufio.Writer
 }
 
-func NewTcpConn(parentCtx context.Context, node fatchoy.NodeID, conn net.Conn, errChan chan error,
+func NewTcpConn(node fatchoy.NodeID, conn net.Conn, errChan chan error,
 	incoming chan<- fatchoy.IPacket, outsize int, stats *stats.Stats) *TcpConn {
 	tconn := &TcpConn{
 		conn:   conn,
 		writer: bufio.NewWriter(conn),
 		reader: bufio.NewReader(conn),
 	}
-	tconn.StreamConn.init(parentCtx, node, incoming, outsize, errChan, stats)
+	tconn.StreamConn.init(node, incoming, outsize, errChan, stats)
 	tconn.addr = conn.RemoteAddr().String()
 	return tconn
 }
@@ -82,7 +81,7 @@ func (t *TcpConn) Close() error {
 	if tconn, ok := t.conn.(*net.TCPConn); ok {
 		tconn.CloseRead()
 	}
-	t.cancel()
+	close(t.done)
 	t.notifyErr(NewError(ErrConnForceClose, t))
 	t.finally() // 阻塞等待投递剩余的消息
 	return nil
@@ -96,7 +95,7 @@ func (t *TcpConn) ForceClose(err error) {
 	if tconn, ok := t.conn.(*net.TCPConn); ok {
 		tconn.CloseRead()
 	}
-	t.cancel()
+	close(t.done)
 	t.notifyErr(NewError(err, t))
 	go t.finally() // 不阻塞等待
 }
@@ -165,7 +164,7 @@ func (t *TcpConn) writePump() {
 				qlog.Errorf("%v write message %v: %v", t.node, pkt.Command(), err)
 			}
 
-		case <-t.ctx.Done():
+		case <-t.done:
 			return
 		}
 	}

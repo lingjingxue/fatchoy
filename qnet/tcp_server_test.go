@@ -55,7 +55,7 @@ func startRawClient(t *testing.T, id int, address string, msgCount int) {
 
 func startServeRawClient(t *testing.T, ctx context.Context, cancel context.CancelFunc, address string, ready chan struct{}) {
 	var incoming = make(chan fatchoy.IPacket, 1000)
-	var server = NewTcpServer(context.Background(), incoming, 100)
+	var server = NewTcpServer(incoming, 100)
 	if err := server.Listen(address); err != nil {
 		t.Fatalf("Listen: %s %v", address, err)
 	}

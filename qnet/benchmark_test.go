@@ -25,7 +25,7 @@ const (
 
 func serveBench(t *testing.T, ctx context.Context, addr string, ready chan struct{}) {
 	var incoming = make(chan fatchoy.IPacket, totalBenchMsgCount)
-	var listener = NewTcpServer(context.Background(), incoming, totalBenchMsgCount)
+	var listener = NewTcpServer(incoming, totalBenchMsgCount)
 	if err := listener.Listen(addr); err != nil {
 		t.Fatalf("Listen: %s %v", addr, err)
 	}

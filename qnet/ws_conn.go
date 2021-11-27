@@ -6,7 +6,6 @@ package qnet
 
 import (
 	"bytes"
-	"context"
 	"encoding/json"
 	"fmt"
 	"net"
@@ -35,12 +34,12 @@ type WsConn struct {
 	conn *websocket.Conn // websocket conn
 }
 
-func NewWsConn(parentCtx context.Context, node fatchoy.NodeID, conn *websocket.Conn, errChan chan error,
+func NewWsConn(node fatchoy.NodeID, conn *websocket.Conn, errChan chan error,
 	incoming chan<- fatchoy.IPacket, outsize int, stat *stats.Stats) *WsConn {
 	wsconn := &WsConn{
 		conn: conn,
 	}
-	wsconn.StreamConn.init(parentCtx, node, incoming, outsize, errChan, stat)
+	wsconn.StreamConn.init(node, incoming, outsize, errChan, stat)
 	wsconn.addr = conn.RemoteAddr().String()
 	conn.SetReadLimit(WSCONN_MAX_PAYLOAD)
 	conn.SetPingHandler(wsconn.handlePing)
@@ -79,7 +78,7 @@ func (c *WsConn) Close() error {
 		// log.Errorf("WsConn: connection %v is already closed", c.node)
 		return nil
 	}
-	c.cancel()
+
 	c.notifyErr(NewError(ErrConnForceClose, c))
 	c.finally()
 	return nil
@@ -90,12 +89,13 @@ func (c *WsConn) ForceClose(err error) {
 		// log.Errorf("WsConn: connection %v is already closed", c.node)
 		return
 	}
-	c.cancel()
+
 	c.notifyErr(NewError(err, c))
 	go c.finally()
 }
 
 func (c *WsConn) finally() {
+	close(c.done)
 	c.wg.Wait()
 	close(c.outbound)
 	c.outbound = nil
@@ -134,7 +134,7 @@ func (c *WsConn) writePump() {
 				qlog.Errorf("send packet %d: %v", pkt.Command(), err)
 			}
 
-		case <-c.ctx.Done():
+		case <-c.done:
 			return
 		}
 	}

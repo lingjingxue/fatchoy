@@ -5,7 +5,6 @@
 package qnet
 
 import (
-	"context"
 	"sync"
 	"sync/atomic"
 
@@ -16,8 +15,7 @@ import (
 
 // TcpConn和WsConn的公共基类
 type StreamConn struct {
-	ctx      context.Context        // chained context
-	cancel   context.CancelFunc     // cancel func
+	done     chan struct{}
 	wg       sync.WaitGroup         // wait group
 	closing  int32                  // closing flag
 	node     fatchoy.NodeID         // node id
@@ -31,7 +29,7 @@ type StreamConn struct {
 	errChan  chan error             // error signal
 }
 
-func (c *StreamConn) init(parentCtx context.Context, node fatchoy.NodeID, inbound chan<- fatchoy.IPacket,
+func (c *StreamConn) init(node fatchoy.NodeID, inbound chan<- fatchoy.IPacket,
 	outsize int, errChan chan error, stat *stats.Stats) {
 	if stat == nil {
 		stat = stats.New(NumStat)
@@ -41,7 +39,7 @@ func (c *StreamConn) init(parentCtx context.Context, node fatchoy.NodeID, inboun
 	c.inbound = inbound
 	c.errChan = errChan
 	c.outbound = make(chan fatchoy.IPacket, outsize)
-	c.ctx, c.cancel = context.WithCancel(parentCtx)
+	c.done = make(chan struct{})
 }
 
 func (c *StreamConn) NodeID() fatchoy.NodeID {
@@ -75,7 +73,7 @@ func (c *StreamConn) IsClosing() bool {
 
 func (c *StreamConn) testShouldExit() bool {
 	select {
-	case <-c.ctx.Done():
+	case <-c.done:
 		return true
 	default:
 		return false

@@ -5,7 +5,6 @@
 package qnet
 
 import (
-	"context"
 	"fmt"
 	"net"
 	"testing"
@@ -24,8 +23,7 @@ const (
 
 func handleConn(conn net.Conn) {
 	var count = 0
-	var ctx = context.Background()
-	tconn := NewTcpConn(ctx, 0, conn, nil, nil, 1000, nil)
+	tconn := NewTcpConn(0, conn, nil, nil, 1000, nil)
 	tconn.Go(fatchoy.EndpointWriter)
 	defer tconn.Close()
 	for {
@@ -96,7 +94,7 @@ func TestExampleTcpConn(t *testing.T) {
 
 	inbound := make(chan fatchoy.IPacket, 1000)
 	errchan := make(chan error, 4)
-	tconn := NewTcpConn(context.Background(), 0, conn, errchan, inbound, 1000, nil)
+	tconn := NewTcpConn(0, conn, errchan, inbound, 1000, nil)
 	tconn.SetNodeID(fatchoy.NodeID(0x12345))
 	tconn.Go(fatchoy.EndpointReadWriter)
 	defer tconn.Close()

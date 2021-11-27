@@ -5,7 +5,6 @@
 package qnet
 
 import (
-	"context"
 	"encoding/json"
 	"fmt"
 	"net/url"
@@ -96,9 +95,7 @@ func TestWebsocketServer(t *testing.T) {
 	var path = "/ws-test"
 	var incoming = make(chan fatchoy.IPacket, 1000)
 
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
-	server := NewWebsocketServer(ctx, addr, path, incoming, 600)
+	server := NewWebsocketServer(addr, path, incoming, 600)
 	server.Go()
 	var ready = make(chan struct{})
 	for i := 0; i < maxConnection; i++ {

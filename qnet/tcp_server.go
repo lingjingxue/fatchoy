@@ -5,7 +5,6 @@
 package qnet
 
 import (
-	"context"
 	"net"
 	"sync"
 
@@ -15,8 +14,7 @@ import (
 )
 
 type TcpServer struct {
-	ctx     context.Context       // chained context
-	cancel  context.CancelFunc    // cancel func
+	done    chan struct{}
 	wg      sync.WaitGroup        // wait group
 	backlog chan fatchoy.Endpoint // queue of incoming connections
 	errors  chan error            // error queue
@@ -25,13 +23,11 @@ type TcpServer struct {
 	outsize int                   // size of outbound message queue
 }
 
-func NewTcpServer(parentCtx context.Context, inbound chan fatchoy.IPacket, outsize int) *TcpServer {
-	ctx, cancel := context.WithCancel(parentCtx)
+func NewTcpServer(inbound chan fatchoy.IPacket, outsize int) *TcpServer {
 	return &TcpServer{
 		inbound: inbound,
 		outsize: outsize,
-		ctx:     ctx,
-		cancel:  cancel,
+		done:    make(chan struct{}),
 		backlog: make(chan fatchoy.Endpoint, 128),
 		errors:  make(chan error, 16),
 	}
@@ -58,7 +54,7 @@ func (s *TcpServer) Listen(addr string) error {
 
 func (s *TcpServer) testShouldExit() bool {
 	select {
-	case <-s.ctx.Done():
+	case <-s.done:
 		return true
 	default:
 		return false
@@ -88,16 +84,16 @@ func (s *TcpServer) serve(ln net.Listener) {
 }
 
 func (s *TcpServer) accept(conn net.Conn) {
-	var endpoint = NewTcpConn(s.ctx, 0, conn, s.errors, s.inbound, s.outsize, stats.New(NumStat))
+	var endpoint = NewTcpConn(0, conn, s.errors, s.inbound, s.outsize, stats.New(NumStat))
 	s.backlog <- endpoint // this may block current goroutine
 }
 
 func (s *TcpServer) Close() {
-	s.cancel()
 	for i, ln := range s.lns {
 		ln.Close()
 		s.lns[i] = nil
 	}
+	close(s.done)
 	s.wg.Wait()
 	close(s.backlog)
 	close(s.errors)
