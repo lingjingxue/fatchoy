@@ -56,10 +56,8 @@ func unmarshalPacketBody(body []byte, decrypt cipher.BlockCryptor, pkt fatchoy.I
 	pkt.SetFlag(flag)
 	// 如果有FlagError，则body是数值错误码
 	if (flag & fatchoy.PFlagError) != 0 {
-		val, n := binary.Varint(body)
-		if n > 0 {
-			pkt.SetBody(val)
-		}
+		x, _ := binary.Varint(body) // TODO: deal varint error
+		pkt.SetBody(x)
 	} else {
 		pkt.SetBody(body)
 	}

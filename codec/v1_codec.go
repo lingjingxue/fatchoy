@@ -6,6 +6,7 @@ package codec
 
 import (
 	"fmt"
+	"io"
 
 	"qchen.fun/fatchoy"
 	"qchen.fun/fatchoy/x/cipher"
@@ -14,23 +15,28 @@ import (
 var V1CompressThreshold = 4096 // 默认压缩阈值，4K
 
 // 内部除了flag不应该修改pkt的其它字段
-func MarshalV1(pkt fatchoy.IPacket, encryptor cipher.BlockCryptor) ([]byte, error) {
+func MarshalV1(w io.Writer, pkt fatchoy.IPacket, encryptor cipher.BlockCryptor) (int, error) {
 	body, err := marshalPacketBody(pkt, V1CompressThreshold, encryptor)
 	if err != nil {
-		return nil, err
+		return 0, err
 	}
 	var nbytes = V1HeaderSize + len(body)
 	if nbytes > V1MaxPayloadBytes {
-		return nil, fmt.Errorf("packet %d payload size %d overflow", pkt.Command(), nbytes)
+		return 0, fmt.Errorf("packet %d payload size %d overflow", pkt.Command(), nbytes)
 	}
-	var buf = make([]byte, nbytes)
-	copy(buf[V1HeaderSize:], body)
-
-	var head = V1Header(buf[:V1HeaderSize])
+	var headbuf = make([]byte, V1HeaderSize)
+	var head = V1Header(headbuf)
 	head.Pack(pkt, uint16(nbytes))
-	var checksum = head.CalcChecksum(buf[V1HeaderSize:])
+	var checksum = head.CalcChecksum(body)
 	head.SetChecksum(checksum)
-	return buf, nil
+
+	if _, err := w.Write(headbuf); err != nil {
+		return 0, err
+	}
+	if _, err := w.Write(body); err != nil {
+		return 0, err
+	}
+	return nbytes, nil
 }
 
 // 解码消息到pkt

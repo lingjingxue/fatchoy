@@ -107,25 +107,11 @@ func ReadPacketV2(r io.Reader, decrypt cipher.BlockCryptor, pkt fatchoy.IPacket)
 }
 
 // 写入一个packet
-func WritePacketV1(w io.Writer, encrypt cipher.BlockCryptor, pkt fatchoy.IPacket) error {
-	buf, err := MarshalV1(pkt, encrypt)
-	if err != nil {
-		return err
-	}
-	if _, err := w.Write(buf); err != nil {
-		return err
-	}
-	return nil
+func WritePacketV1(w io.Writer, encrypt cipher.BlockCryptor, pkt fatchoy.IPacket) (int, error) {
+	return MarshalV1(w, pkt, encrypt)
 }
 
 // 写入一个packet
-func WritePacketV2(w io.Writer, encrypt cipher.BlockCryptor, pkt fatchoy.IPacket) error {
-	buf, err := MarshalV2(pkt, encrypt)
-	if err != nil {
-		return err
-	}
-	if _, err := w.Write(buf); err != nil {
-		return err
-	}
-	return nil
+func WritePacketV2(w io.Writer, encrypt cipher.BlockCryptor, pkt fatchoy.IPacket) (int, error) {
+	return MarshalV2(w, pkt, encrypt)
 }

@@ -31,7 +31,7 @@ type V2Header []byte
 
 // 长度包含头部和body
 func (h V2Header) Len() uint32 {
-	return uint32(h[2]) | uint32(h[1])<<8 | uint32(h[0])<<16 // big endian
+	return bigEndianGet(h[:3])
 }
 
 // 类型
@@ -64,13 +64,16 @@ func (h V2Header) Command() int32 {
 
 // CRC校验码
 func (h V2Header) Checksum() uint32 {
-	return binary.BigEndian.Uint32(h[16:])
+	return binary.BigEndian.Uint32(h[V2HeaderSize-4:])
 }
 
 // 校验码包含head和body
-func (h V2Header) CalcChecksum(payload []byte) uint32 {
+func (h V2Header) CalcChecksum(refer, payload []byte) uint32 {
 	var hasher = crc32.NewIEEE()
 	hasher.Write(h[:V2HeaderSize-4])
+	if len(refer) > 0 {
+		hasher.Write(refer)
+	}
 	if len(payload) > 0 {
 		hasher.Write(payload)
 	}
@@ -82,10 +85,7 @@ func (h V2Header) SetChecksum(crc uint32) {
 }
 
 func (h V2Header) Pack(pkt fatchoy.IPacket, nRef uint8, size uint32) {
-	// big endian
-	h[0] = byte(size >> 16)
-	h[1] = byte(size >> 8)
-	h[2] = byte(size)
+	bigEndianPut(size, h[:3])
 
 	h[3] = byte(pkt.Type())
 	h[4] = byte(pkt.Flag())
@@ -97,4 +97,16 @@ func (h V2Header) Pack(pkt fatchoy.IPacket, nRef uint8, size uint32) {
 
 func (h V2Header) MD5Sum() string {
 	return md5Sum(h[:])
+}
+
+func bigEndianGet(b []byte) uint32 {
+	var buf [4]byte
+	copy(buf[1:], b[:3])
+	return binary.BigEndian.Uint32(buf[:])
+}
+
+func bigEndianPut(x uint32, b []byte) {
+	var buf [4]byte
+	binary.BigEndian.PutUint32(buf[:], x)
+	copy(b[:3], buf[1:])
 }

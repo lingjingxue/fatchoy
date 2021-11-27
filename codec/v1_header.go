@@ -53,7 +53,7 @@ func (h V1Header) Command() int32 {
 
 // CRC校验码
 func (h V1Header) Checksum() uint32 {
-	return binary.BigEndian.Uint32(h[10:])
+	return binary.BigEndian.Uint32(h[V1HeaderSize-4:])
 }
 
 // 校验码包含head和body
