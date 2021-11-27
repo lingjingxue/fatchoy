@@ -3,6 +3,7 @@
 // See accompanying files LICENSE.
 
 //go:build windows
+// +build windows
 
 package fsutil
 

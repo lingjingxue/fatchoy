@@ -14,9 +14,9 @@ import (
 
 const (
 	NodeServiceShift = 16
-	NodeServiceMask  = 0xFF00FFFF
-	NodeInstanceMask = 0xFFFF0000
 	NodeTypeShift    = 31
+	NodeServiceMask  = 0x00FF0000
+	NodeInstanceMask = 0x0000FFFF
 )
 
 // 节点ID
@@ -39,7 +39,7 @@ func MakeNodeID(service uint8, instance uint16) NodeID {
 func MustParseNodeID(s string) NodeID {
 	n, err := strconv.ParseUint(s, 16, 32)
 	if err != nil {
-		log.Panicf("MustParseNode: %v", err)
+		log.Panicf("MustParseNodeID: %v", err)
 	}
 	return NodeID(n)
 }

@@ -38,7 +38,7 @@ type MessageEndpoint interface {
 	ForceClose(error)
 	IsClosing() bool
 
-	// 自定义数据
+	// 绑定自定义数据
 	SetUserData(interface{})
 	UserData() interface{}
 }
@@ -56,7 +56,7 @@ type Endpoint interface {
 	// 开启read/write线程
 	Go(EndpointFlag)
 
-	// 加密解密
+	// 设置加解密
 	SetEncryptPair(cipher.BlockCryptor, cipher.BlockCryptor)
 }
 
