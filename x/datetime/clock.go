@@ -11,11 +11,7 @@ import (
 )
 
 const (
-	NanoPerMs   = 1000000
-	MsPerSecond = 1000
-	SecPerDay   = 86400
-
-	DefaultTickInterval = 400 // 400毫秒tick一次
+	DefaultTickInterval = 250 * time.Millisecond // 1秒tick4次
 )
 
 // Clock提供一些对壁钟时间的操作，不适用于高精度的计时场景
@@ -29,14 +25,14 @@ type Clock struct {
 	ticker   *time.Ticker  //
 }
 
-func NewClock(interval int) *Clock {
+func NewClock(interval time.Duration) *Clock {
 	if interval <= 0 {
 		interval = DefaultTickInterval
 	}
 	c := &Clock{
 		done:    make(chan struct{}),
 		nanosec: time.Now().UnixNano(),
-		ticker:  time.NewTicker(time.Duration(interval) * time.Millisecond),
+		ticker:  time.NewTicker(interval),
 	}
 	return c
 }

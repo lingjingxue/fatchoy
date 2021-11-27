@@ -18,7 +18,7 @@ var gClock *datetime.Clock
 
 // 开启时钟
 func StartClock() {
-	gClock = datetime.NewClock(0)
+	gClock = datetime.NewClock(time.Millisecond * 250)
 	gClock.Go()
 }
 
