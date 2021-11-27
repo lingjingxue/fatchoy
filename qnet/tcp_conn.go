@@ -26,12 +26,18 @@ var (
 // TCP connection
 type TcpConn struct {
 	StreamConn
-	conn net.Conn // TCP connection object
+	conn   net.Conn // TCP connection object
+	reader io.Reader
+	writer *bufio.Writer
 }
 
 func NewTcpConn(parentCtx context.Context, node fatchoy.NodeID, conn net.Conn, errChan chan error,
 	incoming chan<- fatchoy.IPacket, outsize int, stats *stats.Stats) *TcpConn {
-	tconn := &TcpConn{conn: conn}
+	tconn := &TcpConn{
+		conn:   conn,
+		writer: bufio.NewWriter(conn),
+		reader: bufio.NewReader(conn),
+	}
 	tconn.StreamConn.init(parentCtx, node, incoming, outsize, errChan, stats)
 	tconn.addr = conn.RemoteAddr().String()
 	return tconn
@@ -118,7 +124,7 @@ func (t *TcpConn) flush() {
 				break
 			}
 			if err := t.write(pkt); err != nil {
-				qlog.Errorf("%v flush message %v: %v", t.node, pkt.Command(), err)
+				qlog.Errorf("%v marshal message %v: %v", t.node, pkt.Command(), err)
 			}
 
 		default:
@@ -128,15 +134,15 @@ func (t *TcpConn) flush() {
 }
 
 func (t *TcpConn) write(pkt fatchoy.IPacket) error {
-	buf, err := codec.MarshalV2(pkt, t.encrypt)
+	nbytes, err := codec.MarshalV2(t.writer, pkt, t.encrypt)
 	if err != nil {
 		return err
 	}
-	if _, err := t.conn.Write(buf); err != nil {
+	if err := t.writer.Flush(); err != nil {
 		return err
 	}
 	t.stats.Add(StatPacketsSent, 1)
-	t.stats.Add(StatBytesSent, int64(len(buf)))
+	t.stats.Add(StatBytesSent, int64(nbytes))
 	return nil
 }
 
@@ -165,10 +171,10 @@ func (t *TcpConn) writePump() {
 	}
 }
 
-func (t *TcpConn) readFrom(reader io.Reader) (fatchoy.IPacket, error) {
+func (t *TcpConn) readPacket() (fatchoy.IPacket, error) {
 	var deadline = time.Now().Add(time.Duration(TConnReadTimeout) * time.Second)
 	t.conn.SetReadDeadline(deadline)
-	head, body, err := codec.ReadV2(reader)
+	head, body, err := codec.ReadV2(t.reader)
 	if err != nil {
 		return nil, err
 	}
@@ -190,9 +196,8 @@ func (t *TcpConn) readPump() {
 	}()
 
 	qlog.Debugf("TcpConn: node %v(%v) reader started", t.node, t.addr)
-	var reader = bufio.NewReader(t.conn)
 	for {
-		pkt, err := t.readFrom(reader)
+		pkt, err := t.readPacket()
 		if err != nil {
 			if err != io.EOF {
 				qlog.Errorf("%v read packet %v", t.node, err)

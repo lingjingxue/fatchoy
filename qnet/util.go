@@ -77,8 +77,9 @@ func ReadMessageV1(conn net.Conn, decrypt cipher.BlockCryptor, pkt fatchoy.IPack
 
 // send一条protobuf消息
 func SendMessageV1(conn io.Writer, encrypt cipher.BlockCryptor, command int32, msg proto.Message) error {
-	var pkt = packet.New(int32(command), 0, 0, msg)
-	return codec.WritePacketV1(conn, encrypt, pkt)
+	var pkt = packet.New(command, 0, 0, msg)
+	_, err := codec.WritePacketV1(conn, encrypt, pkt)
+	return err
 }
 
 // send并且立即等待recv(不加密)
