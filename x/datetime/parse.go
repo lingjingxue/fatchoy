@@ -88,7 +88,7 @@ func ParseTimeParts(s string, seg []int) error {
 		part3 = s[j+1:]
 	}
 	sec, _ := strconv.Atoi(part3)
-	if sec < 0 || sec >= 60 {
+	if sec < 0 || sec > 60 {
 		return fmt.Errorf("invalid time format '%s'", s)
 	}
 	seg[2] = sec
