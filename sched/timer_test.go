@@ -2,8 +2,6 @@
 // Distributed under the terms and conditions of the BSD License.
 // See accompanying files LICENSE.
 
-//go:build !ignore
-
 package sched
 
 import (
@@ -32,17 +30,18 @@ func newTestRunner(interval int) *testRunner {
 	}
 }
 
-func (r *testRunner) Run() error {
+func (r *testRunner) Run(ctx context.Context) error {
 	r.lastFireTime = time.Now()
 	r.fireCount++
 	return nil
 }
 
 func TestScheduler_RunAfter(t *testing.T) {
-	var sched = NewTimeoutScheduler(context.Background())
+	var sched = NewTimeoutScheduler(0)
 	sched.Start()
 	defer sched.Shutdown()
 
+	var ctx = context.Background()
 	var interval = 1200 // 1.2s
 	var runner = newTestRunner(interval)
 
@@ -51,7 +50,7 @@ func TestScheduler_RunAfter(t *testing.T) {
 	for runner.fireCount == 0 {
 		select {
 		case r := <-sched.C:
-			r.R.Run()
+			r.R.Run(ctx)
 			t.Logf("timer fired at %v", runner.lastFireTime)
 			duration := runner.lastFireTime.Sub(runner.startTime)
 			if duration < time.Duration(interval)*time.Millisecond {
@@ -63,7 +62,7 @@ func TestScheduler_RunAfter(t *testing.T) {
 }
 
 func TestScheduler_RunEvery(t *testing.T) {
-	var sched = NewTimeoutScheduler(context.Background())
+	var sched = NewTimeoutScheduler(0)
 	sched.Start()
 	defer sched.Shutdown()
 
@@ -71,10 +70,12 @@ func TestScheduler_RunEvery(t *testing.T) {
 	var runner = newTestRunner(interval)
 	sched.RunEvery(interval, runner)
 
+	var ctx = context.Background()
+
 	for runner.fireCount < 5 {
 		select {
 		case r := <-sched.C:
-			r.R.Run()
+			r.R.Run(ctx)
 			t.Logf("timer fired at %v", runner.lastFireTime)
 			duration := runner.lastFireTime.Sub(runner.startTime).Milliseconds()
 			deviation := duration - int64(interval)

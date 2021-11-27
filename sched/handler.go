@@ -14,57 +14,55 @@ import (
 
 // 消息派发
 type MessageHandlers struct {
-	fns map[int32][]fatchoy.PacketHandler
+	handlers map[int32][]fatchoy.PacketHandler
 }
 
 func NewMsgHandlers() MessageHandlers {
 	return MessageHandlers{
-		fns: make(map[int32][]fatchoy.PacketHandler),
+		handlers: make(map[int32][]fatchoy.PacketHandler),
 	}
 }
 
 var defH = NewMsgHandlers()
 
-func MsgHandlers() MessageHandlers {
+func MessageDispatcher() MessageHandlers {
 	return defH
 }
 
 // 注册一个
 func (d *MessageHandlers) Register(msgId int32, handler fatchoy.PacketHandler) {
-	d.fns[msgId] = append(d.fns[msgId], handler)
+	d.handlers[msgId] = append(d.handlers[msgId], handler)
 }
 
 // 取消所有
 func (d *MessageHandlers) DeregisterAll(msgId int32) {
-	delete(d.fns, msgId)
+	delete(d.handlers, msgId)
 }
 
 // 取消单个注册
 func (d *MessageHandlers) DeregisterOne(msgId int32, handler fatchoy.PacketHandler) {
 	var pointer = reflect.ValueOf(handler).Pointer()
 	var retain []fatchoy.PacketHandler
-	for _, h := range d.fns[msgId] {
+	for _, h := range d.handlers[msgId] {
 		if reflect.ValueOf(h).Pointer() != pointer {
 			retain = append(retain, h)
 		}
 	}
-	d.fns[msgId] = retain
+	d.handlers[msgId] = retain
 }
 
 func (d *MessageHandlers) Dispatch(pkt fatchoy.IPacket) error {
-	var cnt = 0
-	var err error
 	var msgId = pkt.Command()
-	var handlers = d.fns[msgId]
+	var handlers = d.handlers[msgId]
+	if len(handlers) == 0 {
+		return fmt.Errorf("no handlers executed for msg %v", msgId)
+	}
+	var err error
 	for _, h := range handlers {
-		cnt++
 		if er := h(pkt); er != nil {
 			err = er
 			qlog.Errorf("execute handler for msg %d: %v", msgId, er)
 		}
-	}
-	if cnt == 0 {
-		return fmt.Errorf("no handlers executed for msg %v", msgId)
 	}
 	return err
 }

@@ -9,8 +9,8 @@ import (
 	"errors"
 	"fmt"
 	"os"
+	"sync"
 	"sync/atomic"
-	"time"
 
 	"qchen.fun/fatchoy/debug"
 	"qchen.fun/fatchoy/qlog"
@@ -25,6 +25,7 @@ var (
 // 执行器
 type Executor struct {
 	closing   int32              //
+	wg        sync.WaitGroup     //
 	ctx       context.Context    //
 	cancel    context.CancelFunc //
 	workerCnt int                // 并发数量
@@ -54,7 +55,7 @@ func (e *Executor) Init(parentCtx context.Context, concurrency, queueSize int) {
 
 func (e *Executor) Start() {
 	if e.workerCnt > 0 {
-		//e.wg.Add(e.concurrency)
+		e.wg.Add(e.workerCnt)
 		for i := 1; i <= e.workerCnt; i++ {
 			go e.serve(i)
 		}
@@ -71,13 +72,7 @@ func (e *Executor) Stop() {
 
 func (e *Executor) StopAndWait() {
 	e.cancel()
-	timer := time.NewTimer(time.Second * 5)
-	select {
-	case <-timer.C:
-		return
-	case <-e.ctx.Done():
-		return
-	}
+	e.wg.Wait()
 }
 
 //
@@ -117,12 +112,13 @@ func (e *Executor) run(r Runner) (err error) {
 		}
 	}()
 
-	err = r.Run()
+	err = r.Run(e.ctx)
 	return
 }
 
 func (e *Executor) serve(idx int) {
 	qlog.Debugf("executor worker #%d start serving", idx)
+	defer e.wg.Done()
 	for {
 		select {
 		case r, ok := <-e.bus:

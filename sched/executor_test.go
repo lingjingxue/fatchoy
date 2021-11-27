@@ -2,8 +2,6 @@
 // Distributed under the terms and conditions of the BSD License.
 // See accompanying files LICENSE.
 
-//go:build !ignore
-
 package sched
 
 import (
@@ -26,7 +24,7 @@ func newTestRunner2(n int32) *testRunner2 {
 	}
 }
 
-func (r *testRunner2) Run() error {
+func (r *testRunner2) Run(ctx context.Context) error {
 	r.guard.Lock()
 	r.count++
 	if r.count >= r.expect {

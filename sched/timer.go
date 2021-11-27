@@ -6,7 +6,6 @@ package sched
 
 import (
 	"container/heap"
-	"context"
 	"math"
 	"sync"
 	"sync/atomic"
@@ -18,63 +17,49 @@ import (
 const (
 	TimerPrecision    = 50   // 精度为50ms
 	TimerChanCapacity = 1000 //
-	TimerCapacity     = 64
+	TimerCapacity     = 32
 )
 
 // 最小堆定时器
 type TimeoutScheduler struct {
-	ctx     context.Context    //
-	cancel  context.CancelFunc //
-	ticker  *time.Ticker       // 精度ticker
-	ticks   int64              //
-	guard   sync.Mutex         // 多线程guard
-	timers  TimerHeap          // timer heap
-	nextId  int                // time id生成
-	ref     map[int]*timerNode // O(1)查找
-	C       chan *timerNode    // 到期的定时器
-	expires []*timerNode
+	done     chan struct{}
+	wg       sync.WaitGroup     //
+	ticker   *time.Ticker       // 精度ticker
+	duration time.Duration      //
+	ticks    int64              //
+	guard    sync.Mutex         // 多线程guard
+	timers   TimerHeap          // timer heap
+	nextId   int                // time id生成
+	ref      map[int]*timerNode // O(1)查找
+	C        chan *timerNode    // 到期的定时器
 }
 
-func NewTimeoutScheduler(parentCtx context.Context) *TimeoutScheduler {
-	t := &TimeoutScheduler{}
-	t.Init(parentCtx)
-	return t
+func NewTimeoutScheduler(duration time.Duration) *TimeoutScheduler {
+	if duration < TimerPrecision {
+		duration = TimerPrecision
+	}
+	return &TimeoutScheduler{
+		duration: duration,
+		done:     make(chan struct{}, 1),
+		timers:   make(TimerHeap, 0, TimerCapacity),
+		ref:      make(map[int]*timerNode, TimerCapacity),
+		C:        make(chan *timerNode, TimerChanCapacity),
+	}
 }
 
 func currentMilliSec() int64 {
 	return time.Now().UnixNano() / 1000_000 // to millisecond
 }
 
-func (s *TimeoutScheduler) Init(parentCtx context.Context) {
-	s.nextId = 1
-	ctx, cancel := context.WithCancel(parentCtx)
-	s.ctx = ctx
-	s.cancel = cancel
-	s.ticker = time.NewTicker(TimerPrecision * time.Millisecond)
-	s.timers = make(TimerHeap, 0, TimerCapacity)
-	s.ref = make(map[int]*timerNode, TimerCapacity)
-	s.C = make(chan *timerNode, TimerChanCapacity)
-	s.expires = make([]*timerNode, 0, 4)
-}
-
 func (s *TimeoutScheduler) Start() {
+	s.ticker = time.NewTicker(s.duration)
+	s.wg.Add(1)
 	go s.serve()
 }
 
-func (s *TimeoutScheduler) StopAndWait() {
-	s.ticker.Stop()
-	s.cancel()
-	timer := time.NewTimer(time.Second * 5)
-	select {
-	case <-timer.C:
-		return
-	case <-s.ctx.Done():
-		return
-	}
-}
-
 func (s *TimeoutScheduler) Shutdown() {
-	s.StopAndWait()
+	s.ticker.Stop()
+
 	close(s.C)
 	s.C = nil
 	s.ticker = nil
@@ -84,12 +69,17 @@ func (s *TimeoutScheduler) Shutdown() {
 
 func (s *TimeoutScheduler) serve() {
 	qlog.Debugf("scheduler start serving")
+	defer s.wg.Done()
+
 	for {
 		select {
-		case now := <-s.ticker.C:
+		case now, ok := <-s.ticker.C:
+			if !ok {
+				return
+			}
 			s.update(now)
 
-		case <-s.ctx.Done():
+		case <-s.done:
 			return
 		}
 	}
@@ -97,31 +87,25 @@ func (s *TimeoutScheduler) serve() {
 
 func (s *TimeoutScheduler) update(now time.Time) {
 	atomic.AddInt64(&s.ticks, 1)
-	s.guard.Lock()
-	s.trigger(now)
-	s.guard.Unlock()
 
-	if len(s.expires) == 0 {
-		return
-	}
-	for _, timer := range s.expires {
-		s.C <- timer
-	}
-	if len(s.expires) > TimerCapacity {
-		s.expires = make([]*timerNode, 0, 4)
-	} else {
-		s.expires = s.expires[:0]
+	s.guard.Lock()
+	defer s.guard.Unlock()
+
+	var expires = s.trigger(now)
+	for _, node := range expires {
+		s.C <- node
 	}
 }
 
 // 返回触发的timer列表
-func (s *TimeoutScheduler) trigger(now time.Time) {
+func (s *TimeoutScheduler) trigger(now time.Time) []*timerNode {
 	var ts = now.UnixNano() / 1000_000 // to millisecond
 	var maxId = s.nextId
+	var expires []*timerNode
 	for s.timers.Len() > 0 {
 		var node = s.timers[0] // peek first item of heap
 		if ts < node.priority {
-			return // no timer expired
+			break // no new timer expired
 		}
 		// make sure we don't process timer created by timer events
 		if node.id > maxId {
@@ -136,8 +120,9 @@ func (s *TimeoutScheduler) trigger(now time.Time) {
 			heap.Pop(&s.timers)
 			delete(s.ref, node.id)
 		}
-		s.expires = append(s.expires, node)
+		expires = append(expires, node)
 	}
+	return expires
 }
 
 func (s *TimeoutScheduler) schedule(ts int64, interval uint32, repeat bool, r Runner) int {
@@ -188,6 +173,7 @@ func (s *TimeoutScheduler) RunEvery(interval int, r Runner) int {
 func (s *TimeoutScheduler) Cancel(id int) bool {
 	s.guard.Lock()
 	defer s.guard.Unlock()
+
 	if timer, found := s.ref[id]; found {
 		delete(s.ref, id)
 		heap.Remove(&s.timers, timer.index)
