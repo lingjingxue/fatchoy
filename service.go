@@ -22,22 +22,20 @@ type Service interface {
 	Context() *ServiceContext
 
 	Init(*ServiceContext) error
-	Startup() error
+	Startup(context.Context) error
 }
 
 // 服务的上下文
 type ServiceContext struct {
 	done      chan struct{}     // 同步等待
-	workCtx   context.Context   // 用于执行业务
 	instance  Service           // service实例
 	queue     chan IPacket      // 消息队列
 	registrar *discovery.Client // etcd注册
 	runId     string            //
 }
 
-func NewServiceContext(ctx context.Context, srv Service, queueSize int) *ServiceContext {
+func NewServiceContext(srv Service, queueSize int) *ServiceContext {
 	return &ServiceContext{
-		workCtx:  ctx,
 		instance: srv,
 		runId:    uuid.NextGUID(),
 		done:     make(chan struct{}, 1),
@@ -52,11 +50,6 @@ func (c *ServiceContext) InitRegistrar(hostAddr, namespace string) error {
 		return err
 	}
 	return nil
-}
-
-// 业务context
-func (c *ServiceContext) WorkCtx() context.Context {
-	return c.workCtx
 }
 
 // 唯一运行ID
