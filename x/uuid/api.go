@@ -6,6 +6,8 @@ package uuid
 
 import (
 	"log"
+
+	gouuid "github.com/google/uuid"
 )
 
 // 分布式UUID
@@ -36,10 +38,5 @@ func NextUUID() int64 {
 
 // 生成GUID
 func NextGUID() string {
-	if u, err := NewV4(); err != nil {
-		log.Panicf("uuid.NewV4: %v", err)
-		return ""
-	} else {
-		return u.String()
-	}
+	return gouuid.NewString()
 }
