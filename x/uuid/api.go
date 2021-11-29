@@ -5,8 +5,6 @@
 package uuid
 
 import (
-	"log"
-
 	gouuid "github.com/google/uuid"
 )
 
