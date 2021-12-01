@@ -57,18 +57,18 @@ func createCryptor(method string) (cipher.BlockCryptor, error) {
 	return encrypt, nil
 }
 
-func testProtoCodec(t *testing.T, size int, msgSent fatchoy.IPacket) {
+func testProtoCodec(t *testing.T, size int, msgSent fatchoy.IPacket, c Codec) {
 	encrypt, _ := createCryptor("aes-192")
 	decrypt := cipher.NewCrypt("aes-192", encrypt.Key(), encrypt.IV())
 	// 如果加密方式是原地加密，会导致packet的body是加密后的内容
 	clone := append([]byte(nil), msgSent.BodyToBytes()...)
 	var w bytes.Buffer
-	if _, err := MarshalV2(&w, msgSent, encrypt); err != nil {
+	if _, err := c.WritePacket(&w, encrypt, msgSent); err != nil {
 		t.Fatalf("Encode with size %d: %v", size, err)
 	}
 	msgSent.SetBody(nil)
 	var msgRecv testPacket
-	if err := ReadPacketV2(&w, decrypt, &msgRecv); err != nil {
+	if err := c.ReadPacket(&w, decrypt, &msgRecv); err != nil {
 		t.Fatalf("Decode with size %d: %v", size, err)
 	}
 	msgSent.SetBody(clone)
@@ -81,7 +81,7 @@ func TestCodecEncode(t *testing.T) {
 	var sizeList = []int{404, 1012, 2014, 4018, 8012, 40487, 1024 * 31} //
 	for _, n := range sizeList {
 		var pkt = newTestPacket(n)
-		testProtoCodec(t, n, pkt)
+		testProtoCodec(t, n, pkt, NewCodecV2(0))
 	}
 }
 
@@ -93,7 +93,8 @@ func BenchmarkCodecMarshal(b *testing.B) {
 	b.StartTimer()
 
 	var w bytes.Buffer
-	if _, err := MarshalV1(&w,msg, nil); err != nil {
+	var c = NewCodecV1(0)
+	if _, err := c.WritePacket(&w, nil, msg); err != nil {
 		b.Logf("Encode: %v", err)
 	}
 	w.Reset()

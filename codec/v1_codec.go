@@ -12,11 +12,23 @@ import (
 	"qchen.fun/fatchoy/x/cipher"
 )
 
-var V1CompressThreshold = 4096 // 默认压缩阈值，4K
+// V1格式编码
+type V1Codec struct {
+	threshold int
+}
 
-// 内部除了flag不应该修改pkt的其它字段
-func MarshalV1(w io.Writer, pkt fatchoy.IPacket, encryptor cipher.BlockCryptor) (int, error) {
-	body, err := marshalPacketBody(pkt, V1CompressThreshold, encryptor)
+func NewCodecV1(threshold int) Codec {
+	if threshold <= 0 {
+		threshold = 4096 // 默认压缩阈值，4K
+	}
+	return &V1Codec{
+		threshold: threshold,
+	}
+}
+
+// 把`pkt`编码到`w`，内部除了flag不应该修改pkt的其它字段
+func (c *V1Codec) WritePacket(w io.Writer, encrypt cipher.BlockCryptor, pkt fatchoy.IPacket) (int, error) {
+	body, err := marshalPacketBody(pkt, c.threshold, encrypt)
 	if err != nil {
 		return 0, err
 	}
@@ -39,18 +51,49 @@ func MarshalV1(w io.Writer, pkt fatchoy.IPacket, encryptor cipher.BlockCryptor) 
 	return nbytes, nil
 }
 
-// 解码消息到pkt
-func UnmarshalV1(head V1Header, payload []byte, decrypt cipher.BlockCryptor, pkt fatchoy.IPacket) error {
+// 按V1协议格式读取head和body
+func (V1Codec) ReadHeadBody(r io.Reader) ([]byte, []byte, error) {
+	var buf [V1HeaderSize]byte
+	if _, err := io.ReadFull(r, buf[:]); err != nil {
+		return nil, nil, err
+	}
+	var head = V1Header(buf[:])
+	var length = head.Len()
+	if length > V1MaxPayloadBytes {
+		return nil, nil, fmt.Errorf("payload size %d overflow", length)
+	}
+	var payload = make([]byte, length-V1HeaderSize)
+	if _, err := io.ReadFull(r, payload); err != nil {
+		return nil, nil, err
+	}
+	return head, payload, nil
+}
+
+// 解码消息到`pkt`
+func (V1Codec) UnmarshalPacket(header, body []byte, decrypt cipher.BlockCryptor, pkt fatchoy.IPacket) error {
+	var head = V1Header(header)
 	pkt.SetFlag(fatchoy.PacketFlag(head.Flag()))
 	pkt.SetSeq(head.Seq())
 	pkt.SetCommand(head.Command())
 
 	var checksum = head.Checksum()
-	if crc := head.CalcChecksum(payload); crc != checksum {
+	if crc := head.CalcChecksum(body); crc != checksum {
 		return fmt.Errorf("packet %v checksum mismatch %x != %x", pkt.Command(), checksum, crc)
 	}
-	if len(payload) > 0 {
-		return unmarshalPacketBody(payload, decrypt, pkt)
+	if len(body) > 0 {
+		return unmarshalPacketBody(body, decrypt, pkt)
+	}
+	return nil
+}
+
+// 从`r`里读取消息到`pkt`
+func (c *V1Codec) ReadPacket(r io.Reader, decrypt cipher.BlockCryptor, pkt fatchoy.IPacket) error {
+	head, body, err := c.ReadHeadBody(r)
+	if err != nil {
+		return err
+	}
+	if err := c.UnmarshalPacket(head, body, decrypt, pkt); err != nil {
+		return err
 	}
 	return nil
 }
