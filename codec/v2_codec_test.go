@@ -81,7 +81,7 @@ func TestCodecEncode(t *testing.T) {
 	var sizeList = []int{404, 1012, 2014, 4018, 8012, 40487, 1024 * 31} //
 	for _, n := range sizeList {
 		var pkt = newTestPacket(n)
-		testProtoCodec(t, n, pkt, NewCodecV2(0))
+		testProtoCodec(t, n, pkt, NewV2Encoder(0))
 	}
 }
 
@@ -93,7 +93,7 @@ func BenchmarkCodecMarshal(b *testing.B) {
 	b.StartTimer()
 
 	var w bytes.Buffer
-	var c = NewCodecV1(0)
+	var c = NewV1Encoder(0)
 	if _, err := c.WritePacket(&w, nil, msg); err != nil {
 		b.Logf("Encode: %v", err)
 	}

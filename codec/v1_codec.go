@@ -13,33 +13,33 @@ import (
 )
 
 // V1格式编码
-type V1Codec struct {
+type codecV1 struct {
 	threshold int
 }
 
-func NewCodecV1(threshold int) Encoder {
+func NewV1Encoder(threshold int) Encoder {
 	if threshold <= 0 {
 		threshold = 4096 // 默认压缩阈值，4K
 	}
-	return &V1Codec{
+	return &codecV1{
 		threshold: threshold,
 	}
 }
 
 func init() {
-	Register(NewCodecV1(0))
+	Register(NewV1Encoder(0))
 }
 
-func (c *V1Codec) Name() string {
+func (c *codecV1) Name() string {
 	return "V1"
 }
 
-func (c *V1Codec) Version() int {
+func (c *codecV1) Version() int {
 	return VersionV1
 }
 
 // 把`pkt`编码到`w`，内部除了flag不应该修改pkt的其它字段
-func (c *V1Codec) WritePacket(w io.Writer, encrypt cipher.BlockCryptor, pkt fatchoy.IPacket) (int, error) {
+func (c *codecV1) WritePacket(w io.Writer, encrypt cipher.BlockCryptor, pkt fatchoy.IPacket) (int, error) {
 	body, err := marshalPacketBody(pkt, c.threshold, encrypt)
 	if err != nil {
 		return 0, err
@@ -64,7 +64,7 @@ func (c *V1Codec) WritePacket(w io.Writer, encrypt cipher.BlockCryptor, pkt fatc
 }
 
 // 按V1协议格式读取head和body
-func (V1Codec) ReadHeadBody(r io.Reader) ([]byte, []byte, error) {
+func (codecV1) ReadHeadBody(r io.Reader) ([]byte, []byte, error) {
 	var buf [V1HeaderSize]byte
 	if _, err := io.ReadFull(r, buf[:]); err != nil {
 		return nil, nil, err
@@ -82,7 +82,7 @@ func (V1Codec) ReadHeadBody(r io.Reader) ([]byte, []byte, error) {
 }
 
 // 解码消息到`pkt`
-func (V1Codec) UnmarshalPacket(header, body []byte, decrypt cipher.BlockCryptor, pkt fatchoy.IPacket) error {
+func (codecV1) UnmarshalPacket(header, body []byte, decrypt cipher.BlockCryptor, pkt fatchoy.IPacket) error {
 	var head = V1Header(header)
 	pkt.SetFlag(fatchoy.PacketFlag(head.Flag()))
 	pkt.SetSeq(head.Seq())
@@ -99,7 +99,7 @@ func (V1Codec) UnmarshalPacket(header, body []byte, decrypt cipher.BlockCryptor,
 }
 
 // 从`r`里读取消息到`pkt`
-func (c *V1Codec) ReadPacket(r io.Reader, decrypt cipher.BlockCryptor, pkt fatchoy.IPacket) error {
+func (c *codecV1) ReadPacket(r io.Reader, decrypt cipher.BlockCryptor, pkt fatchoy.IPacket) error {
 	head, body, err := c.ReadHeadBody(r)
 	if err != nil {
 		return err

@@ -15,33 +15,33 @@ import (
 )
 
 // V2格式编码
-type V2Codec struct {
+type codecV2 struct {
 	threshold int
 }
 
-func NewCodecV2(threshold int) Encoder {
+func NewV2Encoder(threshold int) Encoder {
 	if threshold <= 0 {
 		threshold = 8192 // 默认压缩阈值，8K
 	}
-	return &V2Codec{
+	return &codecV2{
 		threshold: threshold,
 	}
 }
 
 func init() {
-	Register(NewCodecV2(0))
+	Register(NewV2Encoder(0))
 }
 
-func (c *V2Codec) Name() string {
+func (c *codecV2) Name() string {
 	return "V2"
 }
 
-func (c *V2Codec) Version() int {
+func (c *codecV2) Version() int {
 	return VersionV2
 }
 
 // 把`pkt`编码到`w`，内部除了flag不应该修改pkt的其它字段
-func (c *V2Codec) WritePacket(w io.Writer, encrypt cipher.BlockCryptor, pkt fatchoy.IPacket) (int, error) {
+func (c *codecV2) WritePacket(w io.Writer, encrypt cipher.BlockCryptor, pkt fatchoy.IPacket) (int, error) {
 	var refers = pkt.Refers()
 	if n := len(refers); n > math.MaxUint8 {
 		return 0, fmt.Errorf("packet %d refer count #%d overflow", pkt.Command(), n)
@@ -79,7 +79,7 @@ func (c *V2Codec) WritePacket(w io.Writer, encrypt cipher.BlockCryptor, pkt fatc
 }
 
 // 按V2协议格式读取head和body
-func (V2Codec) ReadHeadBody(r io.Reader) ([]byte, []byte, error) {
+func (codecV2) ReadHeadBody(r io.Reader) ([]byte, []byte, error) {
 	var buf [V2HeaderSize]byte
 	if _, err := io.ReadFull(r, buf[:]); err != nil {
 		return nil, nil, err
@@ -97,7 +97,7 @@ func (V2Codec) ReadHeadBody(r io.Reader) ([]byte, []byte, error) {
 }
 
 // 解码消息到`pkt`
-func (V2Codec) UnmarshalPacket(header, body []byte, decrypt cipher.BlockCryptor, pkt fatchoy.IPacket) error {
+func (codecV2) UnmarshalPacket(header, body []byte, decrypt cipher.BlockCryptor, pkt fatchoy.IPacket) error {
 	var head = V2Header(header)
 	pkt.SetFlag(fatchoy.PacketFlag(head.Flag()))
 	pkt.SetType(fatchoy.PacketType(head.Type()))
@@ -130,7 +130,7 @@ func (V2Codec) UnmarshalPacket(header, body []byte, decrypt cipher.BlockCryptor,
 }
 
 // 从`r`里读取消息到`pkt`
-func (c *V2Codec) ReadPacket(r io.Reader, decrypt cipher.BlockCryptor, pkt fatchoy.IPacket) error {
+func (c *codecV2) ReadPacket(r io.Reader, decrypt cipher.BlockCryptor, pkt fatchoy.IPacket) error {
 	head, body, err := c.ReadHeadBody(r)
 	if err != nil {
 		return err
