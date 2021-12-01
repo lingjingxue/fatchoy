@@ -34,12 +34,12 @@ type WsConn struct {
 	conn *websocket.Conn // websocket conn
 }
 
-func NewWsConn(node fatchoy.NodeID, conn *websocket.Conn, errChan chan error,
+func NewWsConn(node fatchoy.NodeID, conn *websocket.Conn, enc codec.Encoder, errChan chan error,
 	incoming chan<- fatchoy.IPacket, outsize int, stat *stats.Stats) *WsConn {
 	wsconn := &WsConn{
 		conn: conn,
 	}
-	wsconn.StreamConn.init(node, incoming, outsize, errChan, stat)
+	wsconn.StreamConn.init(node, enc, incoming, outsize, errChan, stat)
 	wsconn.addr = conn.RemoteAddr().String()
 	conn.SetReadLimit(WSCONN_MAX_PAYLOAD)
 	conn.SetPingHandler(wsconn.handlePing)
@@ -177,7 +177,7 @@ func (c *WsConn) ReadPacket(pkt fatchoy.IPacket) error {
 		}
 
 	case websocket.BinaryMessage:
-		return codec.ReadPacketV1(bytes.NewReader(data), c.decrypt, pkt)
+		return c.enc.ReadPacket(bytes.NewReader(data), c.decrypt, pkt)
 
 	case websocket.PingMessage, websocket.PongMessage:
 		qlog.Debugf("recv %v: %v", msgType, data)

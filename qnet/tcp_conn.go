@@ -30,14 +30,14 @@ type TcpConn struct {
 	writer *bufio.Writer
 }
 
-func NewTcpConn(node fatchoy.NodeID, conn net.Conn, errChan chan error,
+func NewTcpConn(node fatchoy.NodeID, conn net.Conn, enc codec.Encoder, errChan chan error,
 	incoming chan<- fatchoy.IPacket, outsize int, stats *stats.Stats) *TcpConn {
 	tconn := &TcpConn{
 		conn:   conn,
 		writer: bufio.NewWriter(conn),
 		reader: bufio.NewReader(conn),
 	}
-	tconn.StreamConn.init(node, incoming, outsize, errChan, stats)
+	tconn.StreamConn.init(node, enc, incoming, outsize, errChan, stats)
 	tconn.addr = conn.RemoteAddr().String()
 	return tconn
 }
@@ -133,7 +133,7 @@ func (t *TcpConn) flush() {
 }
 
 func (t *TcpConn) write(pkt fatchoy.IPacket) error {
-	nbytes, err := codec.MarshalV2(t.writer, pkt, t.encrypt)
+	nbytes, err := t.enc.WritePacket(t.writer, t.encrypt, pkt)
 	if err != nil {
 		return err
 	}
@@ -173,12 +173,12 @@ func (t *TcpConn) writePump() {
 func (t *TcpConn) readPacket() (fatchoy.IPacket, error) {
 	var deadline = time.Now().Add(time.Duration(TConnReadTimeout) * time.Second)
 	t.conn.SetReadDeadline(deadline)
-	head, body, err := codec.ReadV2(t.reader)
+	head, body, err := t.enc.ReadHeadBody(t.reader)
 	if err != nil {
 		return nil, err
 	}
 	var pkt = packet.Make()
-	if err := codec.UnmarshalV2(head, body, t.decrypt, pkt); err != nil {
+	if err := t.enc.UnmarshalPacket(head, body, t.decrypt, pkt); err != nil {
 		return nil, err
 	}
 	var nbytes = len(head) + len(body)

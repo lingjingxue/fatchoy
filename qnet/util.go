@@ -60,10 +60,10 @@ func RequestLenMessage(conn net.Conn, req, ack proto.Message) error {
 }
 
 // 读取一条消息
-func ReadMessageV1(conn net.Conn, decrypt cipher.BlockCryptor, pkt fatchoy.IPacket, msg proto.Message) error {
+func ReadProtoMessage(conn net.Conn, enc codec.Encoder, decrypt cipher.BlockCryptor, pkt fatchoy.IPacket, msg proto.Message) error {
 	var deadline = time.Now().Add(time.Duration(RequestReadTimeout) * time.Second)
 	conn.SetReadDeadline(deadline)
-	if err := codec.ReadPacketV1(conn, decrypt, pkt); err != nil {
+	if err := enc.ReadPacket(conn, decrypt, pkt); err != nil {
 		return err
 	}
 	if ec := pkt.Errno(); ec > 0 {
@@ -76,19 +76,19 @@ func ReadMessageV1(conn net.Conn, decrypt cipher.BlockCryptor, pkt fatchoy.IPack
 }
 
 // send一条protobuf消息
-func SendMessageV1(conn io.Writer, encrypt cipher.BlockCryptor, command int32, msg proto.Message) error {
+func SendProtoMessage(conn io.Writer, enc codec.Encoder, encrypt cipher.BlockCryptor, command int32, msg proto.Message) error {
 	var pkt = packet.New(command, 0, 0, msg)
-	_, err := codec.WritePacketV1(conn, encrypt, pkt)
+	_, err := enc.WritePacket(conn, encrypt, pkt)
 	return err
 }
 
 // send并且立即等待recv(不加密)
-func RequestMessageV1(conn net.Conn, cmd int32, req, resp proto.Message) error {
-	if err := SendMessageV1(conn, nil, cmd, req); err != nil {
+func RequestProtoMessage(conn net.Conn, enc codec.Encoder, command int32, req, resp proto.Message) error {
+	if err := SendProtoMessage(conn, enc, nil, command, req); err != nil {
 		return err
 	}
 	var pkt = packet.Make()
-	if err := ReadMessageV1(conn, nil, pkt, resp); err != nil {
+	if err := ReadProtoMessage(conn, enc, nil, pkt, resp); err != nil {
 		return err
 	}
 	return nil

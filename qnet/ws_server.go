@@ -11,6 +11,7 @@ import (
 
 	"github.com/gorilla/websocket"
 	"qchen.fun/fatchoy"
+	"qchen.fun/fatchoy/codec"
 	"qchen.fun/fatchoy/qlog"
 	"qchen.fun/fatchoy/x/stats"
 )
@@ -19,8 +20,9 @@ import (
 type WsServer struct {
 	server   *http.Server
 	upgrader *websocket.Upgrader  //
-	pending  chan *WsConn         //
-	errChan  chan error           //
+	pending  chan *WsConn         // pending connections
+	enc      codec.Encoder        // message encode/decode
+	errChan  chan error           // error signal
 	inbound  chan fatchoy.IPacket // incoming message queue
 	outsize  int                  // outgoing queue size
 }
@@ -57,7 +59,7 @@ func (s *WsServer) onRequest(w http.ResponseWriter, r *http.Request) {
 		qlog.Errorf("WebSocket upgrade %s, %v", r.RemoteAddr, err)
 		return
 	}
-	wsconn := NewWsConn(0, conn, s.errChan, s.inbound, s.outsize, stats.New(NumStat))
+	wsconn := NewWsConn(0, conn, s.enc, s.errChan, s.inbound, s.outsize, stats.New(NumStat))
 	qlog.Infof("websocket connection %s established", wsconn.RemoteAddr())
 	defer wsconn.Close()
 	wsconn.Go(fatchoy.EndpointWriter)

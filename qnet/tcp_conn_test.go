@@ -21,15 +21,15 @@ const (
 	maxPingPong   = 1000
 )
 
-func handleConn(conn net.Conn) {
+func handleConn(conn net.Conn, enc codec.Encoder) {
 	var count = 0
-	tconn := NewTcpConn(0, conn, nil, nil, 1000, nil)
+	tconn := NewTcpConn(0, conn, enc, nil, nil, 1000, nil)
 	tconn.Go(fatchoy.EndpointWriter)
 	defer tconn.Close()
 	for {
 		conn.SetReadDeadline(time.Now().Add(time.Minute))
 		var pkt = packet.Make()
-		if err := codec.ReadPacketV2(conn, nil, pkt); err != nil {
+		if err := enc.ReadPacket(conn, nil, pkt); err != nil {
 			fmt.Printf("Decode: %v\n", err)
 			break
 		}
@@ -47,14 +47,14 @@ func handleConn(conn net.Conn) {
 	fmt.Printf("sent %d packets, %s\n", stats.Get(StatPacketsSent), strutil.PrettyBytes(stats.Get(StatBytesSent)))
 }
 
-func startMyServer(t *testing.T, ln net.Listener) {
+func startMyServer(t *testing.T, ln net.Listener, enc codec.Encoder) {
 	for {
 		conn, err := ln.Accept()
 		if err != nil {
 			//t.Logf("Listener: Accept %v", err)
 			return
 		}
-		go handleConn(conn)
+		go handleConn(conn, enc)
 	}
 }
 
@@ -85,16 +85,16 @@ func TestExampleTcpConn(t *testing.T) {
 	}
 	defer ln.Close()
 
-	go startMyServer(t, ln)
+	enc := codec.NewV1Encoder(0)
+	go startMyServer(t, ln, enc)
 
 	conn, err := net.Dial("tcp", testTcpAddress)
 	if err != nil {
 		t.Fatalf("Dial: %v", err)
 	}
-
 	inbound := make(chan fatchoy.IPacket, 1000)
 	errchan := make(chan error, 4)
-	tconn := NewTcpConn(0, conn, errchan, inbound, 1000, nil)
+	tconn := NewTcpConn(0, conn, enc, errchan, inbound, 1000, nil)
 	tconn.SetNodeID(fatchoy.NodeID(0x12345))
 	tconn.Go(fatchoy.EndpointReadWriter)
 	defer tconn.Close()

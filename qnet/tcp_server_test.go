@@ -26,20 +26,21 @@ func startRawClient(t *testing.T, id int, address string, msgCount int) {
 	}
 	defer conn.Close()
 
+	var enc = codec.NewV1Encoder(0)
 	var pkt = packet.Make()
 	for i := 1; i <= msgCount; i++ {
 		pkt.SetCommand(int32(i))
 		pkt.SetSeq(uint16(i))
 		pkt.SetBody("ping")
 		var buf bytes.Buffer
-		if _, err := codec.MarshalV2(&buf, pkt, nil); err != nil {
+		if _, err := enc.WritePacket(&buf, nil, pkt); err != nil {
 			t.Fatalf("Encode: %v", err)
 		}
 		if _, err := buf.WriteTo(conn); err != nil {
 			t.Fatalf("Write: %v", err)
 		}
 		var resp = packet.Make()
-		if err := codec.ReadPacketV2(conn, nil, resp); err != nil {
+		if err := enc.ReadPacket(conn, nil, resp); err != nil {
 			t.Fatalf("Decode: %v", err)
 		}
 		if resp.Seq() != pkt.Seq() {
@@ -54,8 +55,9 @@ func startRawClient(t *testing.T, id int, address string, msgCount int) {
 }
 
 func startServeRawClient(t *testing.T, ctx context.Context, cancel context.CancelFunc, address string, ready chan struct{}) {
+	var enc = codec.NewV1Encoder(0)
 	var incoming = make(chan fatchoy.IPacket, 1000)
-	var server = NewTcpServer(incoming, 100)
+	var server = NewTcpServer(enc, incoming, 100)
 	if err := server.Listen(address); err != nil {
 		t.Fatalf("Listen: %s %v", address, err)
 	}

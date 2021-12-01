@@ -9,6 +9,7 @@ import (
 	"sync/atomic"
 
 	"qchen.fun/fatchoy"
+	"qchen.fun/fatchoy/codec"
 	"qchen.fun/fatchoy/x/cipher"
 	"qchen.fun/fatchoy/x/stats"
 )
@@ -23,13 +24,14 @@ type StreamConn struct {
 	userdata interface{}            // user data
 	encrypt  cipher.BlockCryptor    // message encryption
 	decrypt  cipher.BlockCryptor    // message decryption
+	enc      codec.Encoder          // message encode/decode
 	inbound  chan<- fatchoy.IPacket // inbound message queue
 	outbound chan fatchoy.IPacket   // outbound message queue
 	stats    *stats.Stats           // message stats
 	errChan  chan error             // error signal
 }
 
-func (c *StreamConn) init(node fatchoy.NodeID, inbound chan<- fatchoy.IPacket,
+func (c *StreamConn) init(node fatchoy.NodeID, enc codec.Encoder, inbound chan<- fatchoy.IPacket,
 	outsize int, errChan chan error, stat *stats.Stats) {
 	if stat == nil {
 		stat = stats.New(NumStat)
@@ -37,6 +39,7 @@ func (c *StreamConn) init(node fatchoy.NodeID, inbound chan<- fatchoy.IPacket,
 	c.node = node
 	c.stats = stat
 	c.inbound = inbound
+	c.enc = enc
 	c.errChan = errChan
 	c.outbound = make(chan fatchoy.IPacket, outsize)
 	c.done = make(chan struct{})

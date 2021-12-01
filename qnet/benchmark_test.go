@@ -25,7 +25,8 @@ const (
 
 func serveBench(t *testing.T, ctx context.Context, addr string, ready chan struct{}) {
 	var incoming = make(chan fatchoy.IPacket, totalBenchMsgCount)
-	var listener = NewTcpServer(incoming, totalBenchMsgCount)
+	var enc = codec.NewV2Encoder(0)
+	var listener = NewTcpServer(enc, incoming, totalBenchMsgCount)
 	if err := listener.Listen(addr); err != nil {
 		t.Fatalf("Listen: %s %v", addr, err)
 	}
@@ -69,10 +70,11 @@ func startBenchClient(t *testing.T, address string, msgCount int, ready chan str
 	case <-ready:
 	}
 
+	var enc = codec.NewV2Encoder(0)
 	for i := 0; i < msgCount; i++ {
 		var buf bytes.Buffer
 		var pkt = packet.New(int32(i), 0, 0, "ping")
-		if _, err := codec.MarshalV2(&buf, pkt, nil); err != nil {
+		if _, err := enc.WritePacket(&buf, nil, pkt); err != nil {
 			t.Fatalf("Encode: %v", err)
 		}
 		if _, err := buf.WriteTo(conn); err != nil {
@@ -81,7 +83,7 @@ func startBenchClient(t *testing.T, address string, msgCount int, ready chan str
 	}
 	for i := 0; i < msgCount; i++ {
 		var resp = packet.Make()
-		if err := codec.ReadPacketV2(conn, nil, resp); err != nil {
+		if err := enc.ReadPacket(conn, nil, resp); err != nil {
 			t.Fatalf("Decode: %v", err)
 		}
 		respChan <- 1
