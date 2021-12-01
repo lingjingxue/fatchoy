@@ -15,7 +15,10 @@ import (
 )
 
 // 消息编/解码接口
-type Codec interface {
+type Encoder interface {
+	Name() string
+	Version() int
+
 	// 把`pkt`编码到`w`，内部除了flag不应该修改pkt的其它字段
 	WritePacket(w io.Writer, encrypt cipher.BlockCryptor, pkt fatchoy.IPacket) (int, error)
 

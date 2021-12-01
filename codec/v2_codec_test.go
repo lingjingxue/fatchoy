@@ -57,7 +57,7 @@ func createCryptor(method string) (cipher.BlockCryptor, error) {
 	return encrypt, nil
 }
 
-func testProtoCodec(t *testing.T, size int, msgSent fatchoy.IPacket, c Codec) {
+func testProtoCodec(t *testing.T, size int, msgSent fatchoy.IPacket, c Encoder) {
 	encrypt, _ := createCryptor("aes-192")
 	decrypt := cipher.NewCrypt("aes-192", encrypt.Key(), encrypt.IV())
 	// 如果加密方式是原地加密，会导致packet的body是加密后的内容

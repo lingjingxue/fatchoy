@@ -19,13 +19,25 @@ type V2Codec struct {
 	threshold int
 }
 
-func NewCodecV2(threshold int) Codec {
+func NewCodecV2(threshold int) Encoder {
 	if threshold <= 0 {
 		threshold = 8192 // 默认压缩阈值，8K
 	}
 	return &V2Codec{
 		threshold: threshold,
 	}
+}
+
+func init() {
+	Register(NewCodecV2(0))
+}
+
+func (c *V2Codec) Name() string {
+	return "V2"
+}
+
+func (c *V2Codec) Version() int {
+	return VersionV2
 }
 
 // 把`pkt`编码到`w`，内部除了flag不应该修改pkt的其它字段
