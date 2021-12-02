@@ -12,22 +12,15 @@ import (
 	"time"
 )
 
-// 一个64位SnowflakeID由以下组成
-//      1 bit sign
-//     37 bits time units in centi-seconds(10 msec)
-//      1 bit time backwards mask
-//     15 bits machine id
-//     10 bits sequence number
-
 const (
-	SequenceBits   = 10
-	MachineIDBits  = 15
-	TimeUnitBits   = 37
-	MaxSeqID       = (1 << SequenceBits) - 1
-	MachineIDMask  = 0x7fff
-	TimestampShift = MachineIDBits + SequenceBits
-	MaxTimeUnits   = (1 << TimeUnitBits) - 1
-	BackwardsMask  = 1 << (MachineIDBits + SequenceBits)
+	SequenceBits       = 10
+	MachineIDBits      = 14
+	TimeUnitBits       = 37
+	MaxSeqID           = (1 << SequenceBits) - 1
+	MachineIDMask      = 0x3FFFF
+	TimestampShift     = MachineIDBits + SequenceBits
+	MaxTimeUnits       = (1 << TimeUnitBits) - 1
+	BackwardsMaskShift = TimeUnitBits + MachineIDBits + SequenceBits
 
 	TimeUnit    = int64(time.Second / 100)        // 厘秒（10毫秒）
 	CustomEpoch = int64(1577836800 * time.Second) // 起始纪元 2020-01-01 00:00:00 UTC
@@ -40,12 +33,9 @@ var (
 )
 
 // UUID的生成依赖系统时钟，如果系统时钟被回拨，会有潜在的生成重复ID的情况
-// 	1，系统时钟被人为回拨
-// 	2，开启了NTP同步且当前系统时钟快了，则NTP会回拨时钟
-//  3，UTC闰秒, https://en.wikipedia.org/wiki/Leap_second
-//
+// 	1，系统时钟被人为回拨（目前已经有`timeOffset`提供逻辑时钟机制）
+// 	2，NTP同步和UTC闰秒(https://en.wikipedia.org/wiki/Leap_second)
 // 设计中增加了时钟回拨标记位，可以让系统在时钟被回拨时仍正确工作
-// 如果需要支持更多的回拨次数，增加此位长度
 func currentTimeUnit() int64 {
 	return (time.Now().UTC().UnixNano() - CustomEpoch) / TimeUnit // to centi-seconds
 }
@@ -61,14 +51,19 @@ func waitUntilNextTimeUnit(ts int64) int64 {
 	}
 }
 
-// 雪花ID生成器
+// 一个64位UUID由以下部分组成
+//	  1位符号位
+//	 2位时钟回拨标记，支持时钟被回拨3次
+//	 37位时间戳（厘秒），可以表示到2063-07-21
+//	 14位服务器ID
+//	 10位序列号，单个时间单位的最大分配数量
 type Snowflake struct {
-	machineID     int64      // id of this machine(process)
-	guard         sync.Mutex //
-	seq           int64      // last sequence ID
-	lastTimeUnit  int64      // last time unit
-	lastID        int64      // last generated id
-	backwardsMask int64      // 允许时钟被回拨一次
+	machineID      int64      // id of this machine(process)
+	guard          sync.Mutex //
+	seq            int64      // last sequence ID
+	lastTimeUnit   int64      // last time unit
+	lastID         int64      // last generated id
+	backwardsCount int64      // 允许时钟被回拨3次
 }
 
 func NewSnowflake(machineId uint16) *Snowflake {
@@ -88,30 +83,31 @@ func (sf *Snowflake) Next() (int64, error) {
 	sf.guard.Lock()
 	defer sf.guard.Unlock()
 
-	var ts = currentTimeUnit()
-	if ts > MaxTimeUnits {
+	var currentTs = currentTimeUnit()
+	if currentTs > MaxTimeUnits {
 		log.Printf("Snowflake: time unit overflow")
 		return 0, ErrTimeUnitOverflow
 	}
-	if ts < sf.lastTimeUnit {
+	if currentTs < sf.lastTimeUnit {
 		log.Printf("Snowflake: time has gone backwards")
-		if sf.backwardsMask > 0 {
+		if sf.backwardsCount > 3 {
 			return 0, ErrClockGoneBackwards
 		}
-		sf.backwardsMask = BackwardsMask
+		sf.backwardsCount++
 	}
-	if ts == sf.lastTimeUnit {
+	if currentTs == sf.lastTimeUnit {
 		sf.seq++
 		if sf.seq > MaxSeqID {
 			sf.seq = 0
-			ts = waitUntilNextTimeUnit(ts)
+			currentTs = waitUntilNextTimeUnit(currentTs)
 		}
 	} else {
 		sf.seq = 0
 	}
-	sf.lastTimeUnit = ts
 
-	var uuid = (ts << TimestampShift) | (sf.machineID << SequenceBits) | sf.seq
+	sf.lastTimeUnit = currentTs
+	var backwardsMask = sf.backwardsCount << BackwardsMaskShift
+	var uuid = backwardsMask | (currentTs << TimestampShift) | (sf.machineID << SequenceBits) | sf.seq
 	if uuid <= sf.lastID {
 		log.Printf("Snowflake: uuid int64 overflow")
 		return 0, ErrUUIDIntOverflow

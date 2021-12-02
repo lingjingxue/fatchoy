@@ -58,7 +58,7 @@ func newSnowflakeIDWorker(t *testing.T, sf *Snowflake, wg *sync.WaitGroup, gid i
 	//t.Logf("snowflake worker %d done", gid)
 }
 
-// 开启N个goroutine，测试NewID的并发性
+// 开启N个goroutine，测试UUID的并发性
 func TestSnowflakeConcurrent(t *testing.T) {
 	var gcount = 20
 	var eachCnt = 100000
