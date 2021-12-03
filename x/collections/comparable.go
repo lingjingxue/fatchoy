@@ -4,9 +4,9 @@
 
 package collections
 
-// 丐版java.lang.Comparable
-// https://github.com/openjdk/jdk/blob/master/src/java.base/share/classes/java/lang/Comparable.java
+// 模仿java的丐版Comparable
 type Comparable interface {
+
 	// a.CompareTo(b) < 0 表明a < b
 	// a.CompareTo(b) > 0 表明a > b
 	// a.CompareTo(b) == 0 表明a == b
