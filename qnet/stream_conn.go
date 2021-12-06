@@ -31,7 +31,7 @@ type StreamConn struct {
 	errChan  chan error             // error signal
 }
 
-func (c *StreamConn) init(node fatchoy.NodeID, enc codec.Encoder, inbound chan<- fatchoy.IPacket,
+func (c *StreamConn) Init(node fatchoy.NodeID, enc codec.Encoder, inbound chan<- fatchoy.IPacket,
 	outsize int, errChan chan error, stat *stats.Stats) {
 	if stat == nil {
 		stat = stats.New(NumStat)

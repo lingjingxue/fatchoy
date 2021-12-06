@@ -37,7 +37,7 @@ func NewTcpConn(node fatchoy.NodeID, conn net.Conn, enc codec.Encoder, errChan c
 		writer: bufio.NewWriter(conn),
 		reader: bufio.NewReader(conn),
 	}
-	tconn.StreamConn.init(node, enc, incoming, outsize, errChan, stats)
+	tconn.StreamConn.Init(node, enc, incoming, outsize, errChan, stats)
 	tconn.addr = conn.RemoteAddr().String()
 	return tconn
 }
