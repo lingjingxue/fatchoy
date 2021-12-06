@@ -14,7 +14,7 @@ import (
 	"qchen.fun/fatchoy/x/stats"
 )
 
-// TcpConn和WsConn的公共基类
+// stream connection
 type StreamConn struct {
 	done     chan struct{}
 	wg       sync.WaitGroup         // wait group

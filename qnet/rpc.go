@@ -10,7 +10,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/golang/protobuf/proto"
+	"google.golang.org/protobuf/proto"
 
 	"qchen.fun/fatchoy"
 	"qchen.fun/fatchoy/codes"

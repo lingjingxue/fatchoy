@@ -10,8 +10,8 @@ import (
 	"math"
 	"strconv"
 
-	"github.com/golang/protobuf/jsonpb"
-	"github.com/golang/protobuf/proto"
+	"google.golang.org/protobuf/encoding/protojson"
+	"google.golang.org/protobuf/proto"
 	"qchen.fun/fatchoy/qlog"
 )
 
@@ -201,11 +201,10 @@ func (m *Packet) Decode() error {
 }
 
 func MessageToString(msg proto.Message) string {
-	var m jsonpb.Marshaler
-	if s, err := m.MarshalToString(msg); err != nil {
+	if b, err := protojson.Marshal(msg); err != nil {
 		qlog.Errorf("marshal %T: %v", msg, err)
 	} else {
-		return s
+		return string(b)
 	}
-	return msg.String()
+	return ""
 }

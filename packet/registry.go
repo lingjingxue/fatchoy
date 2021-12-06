@@ -10,7 +10,7 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/golang/protobuf/proto"
+	"google.golang.org/protobuf/proto"
 	"google.golang.org/protobuf/reflect/protoreflect"
 	"google.golang.org/protobuf/reflect/protoregistry"
 )
@@ -97,7 +97,7 @@ func registerByExtension(fd protoreflect.FileDescriptor, xtName protoreflect.Ful
 		if err != nil {
 			continue
 		}
-		rtype := reflect.TypeOf(proto.MessageV1(mt.Zero().Interface()))
+		rtype := reflect.TypeOf(mt.Zero().Interface())
 		if s, found := msgIdNames[msgId]; found {
 			log.Panicf("duplicate message hash %s %s, %d", s, fullname, msgId)
 		}

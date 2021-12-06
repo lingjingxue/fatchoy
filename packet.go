@@ -5,7 +5,7 @@
 package fatchoy
 
 import (
-	"github.com/golang/protobuf/proto"
+	"google.golang.org/protobuf/proto"
 )
 
 // 消息标志位

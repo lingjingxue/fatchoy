@@ -16,7 +16,7 @@ import (
 	"qchen.fun/fatchoy/packet"
 	"qchen.fun/fatchoy/x/cipher"
 
-	"github.com/golang/protobuf/proto"
+	"google.golang.org/protobuf/proto"
 )
 
 var (

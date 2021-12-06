@@ -10,7 +10,7 @@ import (
 	"encoding/gob"
 	"fmt"
 
-	"github.com/golang/protobuf/proto"
+	"google.golang.org/protobuf/proto"
 	"qchen.fun/fatchoy"
 )
 
