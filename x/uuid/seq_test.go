@@ -1,4 +1,4 @@
-// Copyright © 2020-present ichenq@outlook.com All rights reserved.
+// Copyright © 2020-present simon@qchen.fun All rights reserved.
 // Distributed under the terms and conditions of the BSD License.
 // See accompanying files LICENSE.
 

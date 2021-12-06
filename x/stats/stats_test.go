@@ -1,4 +1,4 @@
-// Copyright © 2016-present ichenq@outlook.com. All Rights Reserved.
+// Copyright © 2016-present simon@qchen.fun. All Rights Reserved.
 //
 // Any redistribution or reproduction of part or all of the contents in any form
 // is prohibited.
