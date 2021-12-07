@@ -90,7 +90,7 @@ func (sf *Snowflake) Next() (int64, error) {
 	}
 	if currentTs < sf.lastTimeUnit {
 		log.Printf("Snowflake: time has gone backwards")
-		if sf.backwardsCount > 3 {
+		if sf.backwardsCount >= 3 {
 			return 0, ErrClockGoneBackwards
 		}
 		sf.backwardsCount++
