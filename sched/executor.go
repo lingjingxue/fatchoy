@@ -13,7 +13,7 @@ import (
 	"sync/atomic"
 
 	"qchen.fun/fatchoy/debug"
-	"qchen.fun/fatchoy/qlog"
+	"qchen.fun/fatchoy/l0g"
 	"qchen.fun/fatchoy/x/stats"
 )
 
@@ -77,7 +77,7 @@ func (e *Executor) StopAndWait() {
 
 //
 func (e *Executor) Shutdown() {
-	qlog.Debugf("start shutting down executor")
+	l0g.Debugf("start shutting down executor")
 	if !atomic.CompareAndSwapInt32(&e.closing, 0, 1) {
 		return
 	}
@@ -117,7 +117,7 @@ func (e *Executor) run(r Runner) (err error) {
 }
 
 func (e *Executor) serve(idx int) {
-	qlog.Debugf("executor worker #%d start serving", idx)
+	l0g.Debugf("executor worker #%d start serving", idx)
 	defer e.wg.Done()
 	for {
 		select {
@@ -126,7 +126,7 @@ func (e *Executor) serve(idx int) {
 				return
 			}
 			if err := e.run(r); err != nil {
-				qlog.Warnf("execute %T: %v", r, err)
+				l0g.Warnf("execute %T: %v", r, err)
 			}
 
 		case <-e.ctx.Done():

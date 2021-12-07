@@ -37,7 +37,7 @@ func (r *testRunner) Run(ctx context.Context) error {
 }
 
 func TestScheduler_RunAfter(t *testing.T) {
-	var sched = NewTimeoutScheduler(0)
+	var sched = NewHeapTimer()
 	sched.Start()
 	defer sched.Shutdown()
 
@@ -62,7 +62,7 @@ func TestScheduler_RunAfter(t *testing.T) {
 }
 
 func TestScheduler_RunEvery(t *testing.T) {
-	var sched = NewTimeoutScheduler(0)
+	var sched = NewHeapTimer()
 	sched.Start()
 	defer sched.Shutdown()
 
