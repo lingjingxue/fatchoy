@@ -4,7 +4,7 @@
 
 //go:build linux
 
-package qlog
+package l0g
 
 import (
 	"fmt"
