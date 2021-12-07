@@ -11,7 +11,7 @@ import (
 	"sync/atomic"
 	"time"
 
-	"qchen.fun/fatchoy/qlog"
+	"qchen.fun/fatchoy/l0g"
 )
 
 const (
@@ -63,7 +63,7 @@ func (s *HeapTimer) Shutdown() {
 }
 
 func (s *HeapTimer) serve() {
-	qlog.Debugf("scheduler start serving")
+	l0g.Debugf("scheduler start serving")
 	defer s.wg.Done()
 
 	for {

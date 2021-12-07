@@ -10,7 +10,7 @@ import (
 	"sync"
 
 	"qchen.fun/fatchoy"
-	"qchen.fun/fatchoy/qlog"
+	"qchen.fun/fatchoy/l0g"
 )
 
 var (
@@ -26,10 +26,10 @@ func Register(service fatchoy.Service) {
 	var name = strings.ToUpper(service.Name())
 	var typ = service.Type()
 	if _, dup := serviceRegistry[name]; dup {
-		qlog.Panicf("duplicate registration of service %x", name)
+		l0g.Panicf("duplicate registration of service %x", name)
 	}
 	if _, dup := serviceIdMap[typ]; dup {
-		qlog.Panicf("duplicate service type of service %x", typ)
+		l0g.Panicf("duplicate service type of service %x", typ)
 	}
 	serviceRegistry[name] = service
 	serviceIdMap[typ] = name
