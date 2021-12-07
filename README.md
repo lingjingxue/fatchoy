@@ -3,9 +3,7 @@
 Gung Hay Fat Choy(恭喜發財)
 
 
-用于开发游戏服务器的Golang组件
-
-Game Server Kit for Golang
+A set of libraries to create online game server.
 
 `go get -u -v qchen.fun/fatchoy`
 
@@ -18,7 +16,7 @@ codes       | 错误码
 debug       | 调试API
 discovery   | 服务发现
 packet      | 消息结构
-qlog         | 日志
+l0g         | 日志
 qnet        | 网络通信
 sched       | 执行器
 x           | 工具包
