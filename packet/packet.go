@@ -15,7 +15,7 @@ import (
 type Packet struct {
 	Cmd      int32                   `json:"cmd"`            // 协议ID
 	Seq_     uint16                  `json:"seq"`            // 序列号
-	Type_    fatchoy.PacketType      `json:"typ,omitempty"`  // 类型
+	Type_    fatchoy.PacketType      `json:"typ"`            // 类型
 	Flg      fatchoy.PacketFlag      `json:"flg,omitempty"`  // 标志位
 	Node_    fatchoy.NodeID          `json:"node,omitempty"` // 源/目标节点
 	Body_    interface{}             `json:"body,omitempty"` // 消息内容，int64/float64/string/bytes/proto.Message

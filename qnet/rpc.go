@@ -14,8 +14,8 @@ import (
 
 	"qchen.fun/fatchoy"
 	"qchen.fun/fatchoy/codes"
+	"qchen.fun/fatchoy/l0g"
 	"qchen.fun/fatchoy/packet"
-	"qchen.fun/fatchoy/qlog"
 )
 
 type RpcHandler func(proto.Message, int32) error
@@ -44,7 +44,7 @@ func (r *RpcContext) DecodeAck() (proto.Message, error) {
 		return nil, fmt.Errorf("%v", codes.Code(ec))
 	}
 	if err := pkt.Decode(); err != nil {
-		qlog.Errorf("decode rpc %d response %v", pkt.Command(), err)
+		l0g.Errorf("decode rpc %d response %v", pkt.Command(), err)
 		return nil, err
 	}
 	var ack = pkt.Body().(proto.Message)
@@ -72,7 +72,7 @@ func (r *RpcContext) run(pkt fatchoy.IPacket) error {
 			return r.cb(nil, ec)
 		}
 		if ack, err := r.DecodeAck(); err != nil {
-			qlog.Errorf("decode rpc %d response %v", pkt.Command(), err)
+			l0g.Errorf("decode rpc %d response %v", pkt.Command(), err)
 			return r.cb(nil, int32(codes.InternalError))
 		} else {
 			return r.cb(ack, 0)
@@ -173,7 +173,7 @@ func (c *RpcClient) ReapTimeout() int{
 		pkt.SetType(fatchoy.PTypePacket)
 		pkt.SetErrno(int32(codes.RequestTimeout))
 		if err := ctx.run(pkt); err != nil {
-			qlog.Errorf("rpc %d timed-out done: %v", ackMsgID, err)
+			l0g.Errorf("rpc %d timed-out done: %v", ackMsgID, err)
 		}
 	}
 	return n
