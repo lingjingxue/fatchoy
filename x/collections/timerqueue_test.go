@@ -36,7 +36,6 @@ func (r *testTimerContext) Run() {
 
 func TestScheduler_RunAfter(t *testing.T) {
 	var sched = NewTimerQueue()
-	sched.Start()
 	defer sched.Shutdown()
 
 	var interval = 1200 // 1.2s
@@ -60,7 +59,6 @@ func TestScheduler_RunAfter(t *testing.T) {
 
 func TestScheduler_RunEvery(t *testing.T) {
 	var sched = NewTimerQueue()
-	sched.Start()
 	defer sched.Shutdown()
 
 	var interval = 700 // 0.7s

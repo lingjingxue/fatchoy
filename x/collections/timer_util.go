@@ -13,15 +13,21 @@ const (
 	CustomEpoch = int64(1577836800 * time.Second) // 起始纪元 2020-01-01 00:00:00 UTC
 )
 
+const (
+	WorkerInit     = 0
+	WorkerStarted  = 1
+	WorkerShutdown = 2
+)
+
 // 定时器回调函数
 type TimerTask func()
 
 // 当前毫秒
 func currentMs() int64 {
-	return (time.Now().UTC().UnixNano() - CustomEpoch) / int64(time.Millisecond)
+	return time.Now().UnixNano() / int64(time.Millisecond)
 }
 
 // 转为当前毫秒
-func nowMs(now time.Time) int64 {
-	return (now.UTC().UnixNano() - CustomEpoch) / int64(time.Millisecond)
+func timeMs(t time.Time) int64 {
+	return t.UnixNano() / int64(time.Millisecond)
 }

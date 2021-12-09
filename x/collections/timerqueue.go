@@ -17,14 +17,16 @@ import (
 // 标准库的四叉堆实现的time.Timer已经可以满足大多数高精度的定时需求
 // 这个实现主要是为了在大量timer的场景，把timer的压力从runtime放到应用上
 type TimerQueue struct {
-	done   chan struct{}
-	wg     sync.WaitGroup          //
-	ticks  int64                   //
-	guard  sync.Mutex              // 多线程
-	timers timerHeap               // 二叉最小堆
-	lastId int                     // id生成
-	refer  map[int]*timerQueueNode // O(1)查找
-	C      chan TimerTask          // 到期的定时器
+	done      chan struct{}
+	wg        sync.WaitGroup          //
+	state     int32                   // worker state
+	ticks     int64                   //
+	guard     sync.Mutex              // 多线程
+	timers    timerHeap               // 二叉最小堆
+	lastId    int                     // id生成
+	refer     map[int]*timerQueueNode // O(1)查找
+	C         chan TimerTask          // 到期的定时器
+	startedAt int64                   //
 }
 
 func NewTimerQueue() *TimerQueue {
@@ -37,21 +39,21 @@ func NewTimerQueue() *TimerQueue {
 }
 
 func (s *TimerQueue) Size() int {
-	return len(s.timers)
-}
-
-func (s *TimerQueue) Start() {
-	s.wg.Add(1)
-	go s.serve()
+	s.guard.Lock()
+	var n = len(s.timers)
+	s.guard.Unlock()
+	return n
 }
 
 func (s *TimerQueue) Shutdown() {
 	close(s.done)
 	s.wg.Wait()
 
+	s.guard.Lock()
 	s.C = nil
 	s.refer = nil
 	s.timers = nil
+	s.guard.Unlock()
 }
 
 // 创建一个定时器，在`ts`毫秒时间戳运行`cb`
@@ -103,10 +105,36 @@ func (s *TimerQueue) Cancel(id int) bool {
 	return false
 }
 
-func (s *TimerQueue) serve() {
-	defer s.wg.Done()
+// Starts the background thread explicitly
+func (s *TimerQueue) start() {
+	var state = atomic.LoadInt32(&s.state)
+	switch state {
+	case WorkerInit:
+		if atomic.CompareAndSwapInt32(&s.state, WorkerInit, WorkerStarted) {
+			var ready = make(chan struct{}, 1)
+			s.wg.Add(1)
+			go s.worker(ready)
+			<-ready
+		}
+	case WorkerStarted:
+		return
+
+	default:
+		log.Panicf("invalid worker state %v", state)
+	}
+}
+
+func (s *TimerQueue) worker(ready chan struct{}) {
+	defer func() {
+		atomic.StoreInt32(&s.state, WorkerShutdown)
+		s.wg.Done()
+	}()
+
 	var ticker = time.NewTicker(TimeUnit)
 	defer ticker.Stop()
+
+	s.startedAt = currentMs()
+	ready <- struct{}{}
 
 	for {
 		select {
@@ -122,9 +150,9 @@ func (s *TimerQueue) serve() {
 	}
 }
 
-func (s *TimerQueue) tick(now time.Time) {
+func (s *TimerQueue) tick(deadline time.Time) {
 	s.guard.Lock()
-	var expires = s.trigger(now)
+	var expires = s.trigger(deadline)
 	s.guard.Unlock()
 
 	for _, node := range expires {
@@ -135,13 +163,13 @@ func (s *TimerQueue) tick(now time.Time) {
 }
 
 // 返回触发的timer列表
-func (s *TimerQueue) trigger(now time.Time) []*timerQueueNode {
-	var ts = nowMs(now)
+func (s *TimerQueue) trigger(t time.Time) []*timerQueueNode {
+	var deadline = timeMs(t)
 	var maxId = s.lastId
 	var expires []*timerQueueNode
 	for len(s.timers) > 0 {
 		var node = s.timers[0] // peek first item of heap
-		if ts < node.expiry {
+		if deadline < node.expiry {
 			break // no new timer expired
 		}
 		// make sure we don't process timer created by timer events
@@ -151,7 +179,7 @@ func (s *TimerQueue) trigger(now time.Time) []*timerQueueNode {
 
 		// 如果timer需要重复执行，只修正heap，id保持不变
 		if node.repeatable {
-			node.expiry = ts + int64(node.interval)
+			node.expiry = deadline + int64(node.interval)
 			heap.Fix(&s.timers, node.index)
 		} else {
 			heap.Pop(&s.timers)
@@ -179,6 +207,8 @@ func (s *TimerQueue) nextID() int {
 }
 
 func (s *TimerQueue) schedule(ts int64, interval int32, repeat bool, cb TimerTask) int {
+	s.start()
+
 	s.guard.Lock()
 	defer s.guard.Unlock()
 
