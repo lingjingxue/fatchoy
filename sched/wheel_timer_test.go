@@ -1,4 +1,4 @@
-// Copyright © 2020 simon@qchen.fun All rights reserved.
+// Copyright © 2021-present simon@qchen.fun All rights reserved.
 // Distributed under the terms and conditions of the BSD License.
 // See accompanying files LICENSE.
 
@@ -14,9 +14,10 @@ func TestNewHashedWheelTimer(t *testing.T) {
 	var timer = NewHashedWheelTimer()
 	defer timer.Shutdown()
 
-	var task = NewTask(func()  {
+	var task = NewTask(func() error {
 		var now = time.Now()
 		fmt.Printf("timeout at %v", now.Format(time.RFC3339))
+		return nil
 	})
 
 	var timeout = timer.CreateTimeout(1200, task)

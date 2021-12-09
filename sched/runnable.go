@@ -6,18 +6,18 @@ package sched
 
 // Runner是一个可执行对象
 type Runnable interface {
-	Run()
+	Run() error
 }
 
 type Task struct {
-	F func()
+	F func() error
 }
 
-func (r *Task) Run() {
-	r.F()
+func (r *Task) Run() error {
+	return r.F()
 }
 
-func NewTask(f func()) *Task {
+func NewTask(f func() error) *Task {
 	return &Task{
 		F: f,
 	}

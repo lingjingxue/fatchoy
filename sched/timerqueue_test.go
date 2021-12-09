@@ -29,9 +29,10 @@ func newTestTimerContext(interval int) *testTimerContext {
 	}
 }
 
-func (r *testTimerContext) Run() {
+func (r *testTimerContext) Run() error {
 	r.lastFireTime = time.Now()
 	r.fireCount++
+	return nil
 }
 
 func TestScheduler_RunAfter(t *testing.T) {
