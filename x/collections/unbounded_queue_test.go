@@ -10,7 +10,7 @@ import (
 )
 
 func TestNewQueueShouldReturnInitiazedInstanceOfQueue(t *testing.T) {
-	q := NewQueue()
+	q := NewUnboundedQueue()
 
 	if q == nil {
 		t.Error("Expected: new instance of queue; Got: nil")
@@ -18,7 +18,7 @@ func TestNewQueueShouldReturnInitiazedInstanceOfQueue(t *testing.T) {
 }
 
 func TestQueueWithZeroValueShouldReturnReadyToUseQueue(t *testing.T) {
-	var q Queue
+	var q UnboundedQueue
 	q.Push(1)
 	q.Push(2)
 
@@ -37,7 +37,7 @@ func TestQueueWithZeroValueShouldReturnReadyToUseQueue(t *testing.T) {
 }
 
 func TestQueueWithZeroValueAndEmptyShouldReturnAsEmpty(t *testing.T) {
-	var q Queue
+	var q UnboundedQueue
 	if _, ok := q.Front(); ok {
 		t.Error("Expected: false as the queue is empty; Got: true")
 	}
@@ -50,7 +50,7 @@ func TestQueueWithZeroValueAndEmptyShouldReturnAsEmpty(t *testing.T) {
 }
 
 func TestQueueInitShouldReturnAEmptyQueue(t *testing.T) {
-	var q Queue
+	var q UnboundedQueue
 	q.Push(1)
 
 	q.Init()
@@ -67,7 +67,7 @@ func TestQueueInitShouldReturnAEmptyQueue(t *testing.T) {
 }
 
 func TestQueueWithNilValuesShouldReturnAllValuesInOrder(t *testing.T) {
-	q := NewQueue()
+	q := NewUnboundedQueue()
 	q.Push(1)
 	q.Push(nil)
 	q.Push(2)
@@ -140,7 +140,7 @@ func TestQueuePushPopFrontShouldRetrieveAllElementsInOrder(t *testing.T) {
 
 	for name, test := range tests {
 		t.Run(name, func(t *testing.T) {
-			q := NewQueue()
+			q := NewUnboundedQueue()
 			lastPut := 0
 			lastGet := 0
 			var ok bool
@@ -238,7 +238,7 @@ func BenchmarkQueueMaxFirstSliceSize(b *testing.B) {
 		b.Run(strconv.Itoa(test.size), func(b *testing.B) {
 			for n := 0; n < b.N; n++ {
 				maxFirstSliceSize = test.size
-				q := NewQueue()
+				q := NewUnboundedQueue()
 
 				for i := 0; i < count; i++ {
 					q.Push(n)
@@ -283,7 +283,7 @@ func BenchmarkQueueMaxSubsequentSliceSize(b *testing.B) {
 		b.Run(strconv.Itoa(test.size), func(b *testing.B) {
 			for n := 0; n < b.N; n++ {
 				maxInternalSliceSize = test.size
-				q := NewQueue()
+				q := NewUnboundedQueue()
 
 				for i := 0; i < count; i++ {
 					q.Push(n)

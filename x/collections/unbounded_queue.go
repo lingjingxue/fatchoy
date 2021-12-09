@@ -18,25 +18,25 @@ var (
 
 // queueNode represents a queue node.
 // Each node holds a slice of user managed values.
-type queueNode struct {
-	val  []interface{} // v holds the list of user added values in this node.
-	next *queueNode    // n points to the next node in the linked list.
+type queueArrayNode struct {
+	val  []interface{}   // v holds the list of user added values in this node.
+	next *queueArrayNode // n points to the next node in the linked list.
 }
 
 // newQueueNode returns an initialized node.
-func newQueueNode(capacity int) *queueNode {
-	return &queueNode{
+func newQueueArrayNode(capacity int) *queueArrayNode {
+	return &queueArrayNode{
 		val: make([]interface{}, 0, capacity),
 	}
 }
 
-// Queue represents an unbounded, dynamically growing FIFO queue.
+// UnboundedQueue represents an unbounded, dynamically growing FIFO queue.
 // The zero value for queue is an empty queue ready to use.
 // see https://github.com/golang/go/issues/27935
-type Queue struct {
+type UnboundedQueue struct {
 	// In an empty queue, head and tail points to the same node.
-	head *queueNode
-	tail *queueNode
+	head *queueArrayNode
+	tail *queueArrayNode
 
 	hp  int // index pointing to the current first element in the queue
 	len int // Len holds the current queue values length.
@@ -44,12 +44,12 @@ type Queue struct {
 	lastSliceSize int // lastSliceSize holds the size of the last created internal slice.
 }
 
-func NewQueue() *Queue {
-	return new(Queue).Init()
+func NewUnboundedQueue() *UnboundedQueue {
+	return new(UnboundedQueue).Init()
 }
 
 // Init initializes or clears queue q.
-func (q *Queue) Init() *Queue {
+func (q *UnboundedQueue) Init() *UnboundedQueue {
 	q.head = nil
 	q.tail = nil
 	q.hp = 0
@@ -57,7 +57,7 @@ func (q *Queue) Init() *Queue {
 	return q
 }
 
-func (q *Queue) Len() int {
+func (q *UnboundedQueue) Len() int {
 	return q.len
 }
 
@@ -65,7 +65,7 @@ func (q *Queue) Len() int {
 // The second, bool result indicates whether a valid value was returned;
 //   if the queue is empty, false will be returned.
 // The complexity is O(1).
-func (q *Queue) Front() (interface{}, bool) {
+func (q *UnboundedQueue) Front() (interface{}, bool) {
 	if q.head == nil {
 		return nil, false
 	}
@@ -74,14 +74,14 @@ func (q *Queue) Front() (interface{}, bool) {
 
 // Push adds a value to the queue.
 // The complexity is O(1).
-func (q *Queue) Push(v interface{}) {
+func (q *UnboundedQueue) Push(v interface{}) {
 	if q.head == nil {
-		h := newQueueNode(firstSliceSize)
+		h := newQueueArrayNode(firstSliceSize)
 		q.head = h
 		q.tail = h
 		q.lastSliceSize = maxFirstSliceSize
 	} else if len(q.tail.val) >= q.lastSliceSize {
-		n := newQueueNode(maxInternalSliceSize)
+		n := newQueueArrayNode(maxInternalSliceSize)
 		q.tail.next = n
 		q.tail = n
 		q.lastSliceSize = maxInternalSliceSize
@@ -95,7 +95,7 @@ func (q *Queue) Push(v interface{}) {
 // The second, bool result indicates whether a valid value was returned;
 // 	if the queue is empty, false will be returned.
 // The complexity is O(1).
-func (q *Queue) Pop() (interface{}, bool) {
+func (q *UnboundedQueue) Pop() (interface{}, bool) {
 	if q.head == nil {
 		return nil, false
 	}
