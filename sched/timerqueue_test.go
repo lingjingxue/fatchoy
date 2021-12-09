@@ -2,7 +2,7 @@
 // Distributed under the terms and conditions of the BSD License.
 // See accompanying files LICENSE.
 
-package collections
+package sched
 
 import (
 	"math"
@@ -41,12 +41,12 @@ func TestScheduler_RunAfter(t *testing.T) {
 	var interval = 1200 // 1.2s
 	var ctx = newTestTimerContext(interval)
 
-	sched.RunAfter(interval, func() { ctx.Run() })
+	sched.RunAfter(interval, ctx)
 
 	for ctx.fireCount == 0 {
 		select {
-		case cb := <-sched.C:
-			cb()
+		case task := <-sched.C:
+			task.Run()
 			duration := ctx.lastFireTime.Sub(ctx.startTime)
 			t.Logf("timer fired after %v at %s", duration, ctx.lastFireTime.Format(time.RFC3339))
 			if duration < time.Duration(interval)*time.Millisecond {
@@ -63,12 +63,12 @@ func TestScheduler_RunEvery(t *testing.T) {
 
 	var interval = 700 // 0.7s
 	var ctx = newTestTimerContext(interval)
-	sched.RunEvery(interval, func() { ctx.Run() })
+	sched.RunEvery(interval, ctx)
 
 	for ctx.fireCount < 5 {
 		select {
-		case cb := <-sched.C:
-			cb()
+		case task := <-sched.C:
+			task.Run()
 			duration := ctx.lastFireTime.Sub(ctx.startTime)
 			t.Logf("timer fired after %v at %s", duration, ctx.lastFireTime.Format(time.RFC3339))
 			deviation := duration.Milliseconds() - int64(interval)

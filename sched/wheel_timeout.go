@@ -2,7 +2,7 @@
 // Distributed under the terms and conditions of the BSD License.
 // See accompanying files LICENSE.
 
-package collections
+package sched
 
 import (
 	"fmt"
@@ -30,12 +30,12 @@ type HashedWheelTimeout struct {
 	// remainingRounds will be calculated and set before added to the correct HashedWheelBucket
 	remainingRounds int32
 
-	Task     TimerTask // 到期触发任务
+	Task     Runnable // 到期触发任务
 	Id       int64     // 唯一ID
 	Deadline int64     // 到期时间
 }
 
-func NewHashedWheelTimeout(timer *HashedWheelTimer, id, deadline int64, task TimerTask) *HashedWheelTimeout {
+func NewHashedWheelTimeout(timer *HashedWheelTimer, id, deadline int64, task Runnable) *HashedWheelTimeout {
 	return &HashedWheelTimeout{
 		state:    TimeoutStateInit,
 		Id:       id,
@@ -67,7 +67,7 @@ func (m *HashedWheelTimeout) Cancel() bool {
 	return true
 }
 
-func (m *HashedWheelTimeout) Expire(bus chan<- TimerTask) {
+func (m *HashedWheelTimeout) Expire(bus chan<- Runnable) {
 	if !atomic.CompareAndSwapInt32(&m.state, TimeoutStateInit, TimeoutStateExpired) {
 		return
 	}

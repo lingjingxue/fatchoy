@@ -2,7 +2,7 @@
 // Distributed under the terms and conditions of the BSD License.
 // See accompanying files LICENSE.
 
-package collections
+package sched
 
 import (
 	"log"
@@ -32,7 +32,7 @@ func (b *HashedWheelBucket) AddTimeout(timeout *HashedWheelTimeout) {
 }
 
 // Expire all HashedWheelTimeouts for the given deadline.
-func (b *HashedWheelBucket) ExpireTimeouts(bus chan<- TimerTask, deadline int64) {
+func (b *HashedWheelBucket) ExpireTimeouts(bus chan<- Runnable, deadline int64) {
 	var timeout = b.head
 	for timeout != nil {
 		var next = timeout.next

@@ -2,7 +2,7 @@
 // Distributed under the terms and conditions of the BSD License.
 // See accompanying files LICENSE.
 
-package collections
+package sched
 
 import (
 	"log"
@@ -10,6 +10,8 @@ import (
 	"sync"
 	"sync/atomic"
 	"time"
+
+	"qchen.fun/fatchoy/x/collections"
 )
 
 const (
@@ -27,14 +29,15 @@ type HashedWheelTimer struct {
 	done               chan struct{}
 	wg                 sync.WaitGroup
 	state              int32
-	wheel              []HashedWheelBucket      // wheel buckets
-	C                  <-chan TimerTask         // 到期的定时器
-	timeouts           UnboundedConcurrentQueue // all timeout
-	cancelledTimeouts  UnboundedConcurrentQueue //
-	pendingTimeouts    int32                    // maximum number of pending timeouts
-	maxPendingTimeouts int32                    //
-	lastId             int64                    //
-	startedAt          int64                    //
+	wheel              []HashedWheelBucket                  // wheel buckets
+	C                  <-chan Runnable                        // 到期的定时器
+	timeouts           collections.UnboundedConcurrentQueue // all timeout
+	cancelledTimeouts  collections.UnboundedConcurrentQueue //
+	pendingTimeouts    int32                                // maximum number of pending timeouts
+	maxPendingTimeouts int32                                //
+	ticks              int                                  //
+	lastId             int64                                //
+	startedAt          int64                                //
 }
 
 func NewHashedWheelTimer() *HashedWheelTimer {
@@ -50,9 +53,15 @@ func (t *HashedWheelTimer) Shutdown() {
 	t.wheel = nil
 }
 
-func (t *HashedWheelTimer) CreateTimeout(delay int64, task TimerTask) *HashedWheelTimeout {
+func (t *HashedWheelTimer) CreateTimeout(delay int64, task Runnable) *HashedWheelTimeout {
 	// Starts the background thread explicitly.
 	t.start()
+
+	var pendingCount = atomic.AddInt32(&t.pendingTimeouts, 1)
+	if t.maxPendingTimeouts > 0 && pendingCount > t.maxPendingTimeouts {
+		log.Panicf("number of pending timeouts greater than maximum allowed")
+		return nil
+	}
 
 	if delay < 0 {
 		delay = 0
@@ -99,16 +108,15 @@ func (t *HashedWheelTimer) worker(ready chan struct{}) {
 	var ticker = time.NewTicker(TickDuration)
 	defer ticker.Stop()
 
-	var bus = make(chan TimerTask, 1000)
+	var bus = make(chan Runnable, 1000)
 	t.startedAt = currentMs()
 	t.C = bus
 	ready <- struct{}{}
 
-	var ticks = 0
 	for {
 		select {
 		case now := <-ticker.C:
-			t.tick(bus, timeMs(now), ticks)
+			t.tick(bus, timeMs(now))
 
 		case <-t.done:
 			t.finalize()
@@ -136,7 +144,7 @@ func (t *HashedWheelTimer) processCancelledTasks() {
 	}
 }
 
-func (t *HashedWheelTimer) transferTimeoutToBuckets(nowTick int) {
+func (t *HashedWheelTimer) transferTimeoutToBuckets() {
 	// transfer only max. 100000 timeouts per tick to prevent a thread
 	// to stale when it just  adds new timeouts in a loop.
 	for i := 0; i <= 1e5; i++ {
@@ -148,22 +156,23 @@ func (t *HashedWheelTimer) transferTimeoutToBuckets(nowTick int) {
 		if timeout.IsCanceled() {
 			continue
 		}
-		var calculated = int(timeout.Deadline / int64(TickDuration))
-		timeout.remainingRounds = int32((calculated - nowTick) / len(t.wheel))
+		var calculated = int(timeout.Deadline-t.startedAt) / int(TickDuration)
+		timeout.remainingRounds = int32((calculated - t.ticks) / len(t.wheel))
 		// Ensure we don't schedule for past.
 		var ticks = calculated
-		if ticks < nowTick {
-			ticks = nowTick
+		if ticks < t.ticks {
+			ticks = t.ticks
 		}
 		var stopIndex = ticks & WheelMask
 		t.wheel[stopIndex].AddTimeout(timeout)
 	}
 }
 
-func (t *HashedWheelTimer) tick(bus chan<- TimerTask, deadline int64, ticks int) {
-	var idx = ticks & WheelMask
+func (t *HashedWheelTimer) tick(bus chan<- Runnable, deadline int64) {
+	var idx = t.ticks & WheelMask
 	t.processCancelledTasks()
 	var bucket = t.wheel[idx]
-	t.transferTimeoutToBuckets(ticks)
+	t.transferTimeoutToBuckets()
 	bucket.ExpireTimeouts(bus, deadline)
+	t.ticks++
 }

@@ -2,7 +2,7 @@
 // Distributed under the terms and conditions of the BSD License.
 // See accompanying files LICENSE.
 
-package collections
+package sched
 
 import (
 	"container/heap"
@@ -25,7 +25,7 @@ type TimerQueue struct {
 	timers    timerHeap               // 二叉最小堆
 	lastId    int                     // id生成
 	refer     map[int]*timerQueueNode // O(1)查找
-	C         <-chan TimerTask        // 到期的定时器
+	C         <-chan Runnable         // 到期的定时器
 	startedAt int64                   //
 }
 
@@ -55,17 +55,17 @@ func (s *TimerQueue) Shutdown() {
 	s.guard.Unlock()
 }
 
-// 创建一个定时器，在`ts`毫秒时间戳运行`cb`
-func (s *TimerQueue) RunAt(ts int64, cb TimerTask) int {
+// 创建一个定时器，在`ts`毫秒时间戳运行`task`
+func (s *TimerQueue) RunAt(ts int64, task Runnable) int {
 	var now = currentMs()
 	if ts < now {
 		ts = now
 	}
-	return s.schedule(ts, 0, false, cb)
+	return s.schedule(ts, 0, false, task)
 }
 
-// 创建一个定时器，在`interval`毫秒后运行`cb`
-func (s *TimerQueue) RunAfter(interval int, cb TimerTask) int {
+// 创建一个定时器，在`interval`毫秒后运行`task`
+func (s *TimerQueue) RunAfter(interval int, task Runnable) int {
 	if interval >= math.MaxInt32 {
 		log.Panicf("interval %d out of range", interval)
 		return -1
@@ -74,11 +74,11 @@ func (s *TimerQueue) RunAfter(interval int, cb TimerTask) int {
 		interval = 0
 	}
 	var ts = currentMs() + int64(interval)
-	return s.schedule(ts, 0, false, cb)
+	return s.schedule(ts, 0, false, task)
 }
 
-// 创建一个定时器，每隔`interval`毫秒运行一次`cb`
-func (s *TimerQueue) RunEvery(interval int, cb TimerTask) int {
+// 创建一个定时器，每隔`interval`毫秒运行一次`task`
+func (s *TimerQueue) RunEvery(interval int, task Runnable) int {
 	if interval >= math.MaxInt32 {
 		log.Panicf("interval %d out of range", interval)
 		return -1
@@ -87,7 +87,7 @@ func (s *TimerQueue) RunEvery(interval int, cb TimerTask) int {
 		interval = int(TimeUnit)
 	}
 	var ts = currentMs() + int64(interval)
-	return s.schedule(ts, int32(interval), true, cb)
+	return s.schedule(ts, int32(interval), true, task)
 }
 
 // 取消一个timer
@@ -98,7 +98,7 @@ func (s *TimerQueue) Cancel(id int) bool {
 	if node, found := s.refer[id]; found {
 		delete(s.refer, id)
 		heap.Remove(&s.timers, node.index)
-		node.cb = nil
+		node.task = nil
 		return true
 	}
 	return false
@@ -132,7 +132,7 @@ func (s *TimerQueue) worker(ready chan struct{}) {
 	var ticker = time.NewTicker(TimeUnit)
 	defer ticker.Stop()
 
-	var bus = make(chan TimerTask, 1000)
+	var bus = make(chan Runnable, 1000)
 	s.startedAt = currentMs()
 	s.C = bus
 	ready <- struct{}{}
@@ -151,14 +151,14 @@ func (s *TimerQueue) worker(ready chan struct{}) {
 	}
 }
 
-func (s *TimerQueue) tick(deadline time.Time, bus chan<- TimerTask) {
+func (s *TimerQueue) tick(deadline time.Time, bus chan<- Runnable) {
 	s.guard.Lock()
 	var expires = s.trigger(deadline)
 	s.guard.Unlock()
 
 	for _, node := range expires {
-		if node.cb != nil {
-			bus <- node.cb
+		if node.task != nil {
+			bus <- node.task
 		}
 	}
 }
@@ -207,7 +207,7 @@ func (s *TimerQueue) nextID() int {
 	return newId
 }
 
-func (s *TimerQueue) schedule(ts int64, interval int32, repeat bool, cb TimerTask) int {
+func (s *TimerQueue) schedule(ts int64, interval int32, repeat bool, task Runnable) int {
 	s.start()
 
 	s.guard.Lock()
@@ -219,7 +219,7 @@ func (s *TimerQueue) schedule(ts int64, interval int32, repeat bool, cb TimerTas
 		interval:   interval,
 		repeatable: repeat,
 		id:         id,
-		cb:         cb,
+		task:       task,
 	}
 	heap.Push(&s.timers, node)
 	s.refer[id] = node
@@ -228,12 +228,12 @@ func (s *TimerQueue) schedule(ts int64, interval int32, repeat bool, cb TimerTas
 
 // 二叉堆节点
 type timerQueueNode struct {
-	id         int       // 唯一ID
-	index      int       // 数组索引
-	expiry     int64     // 到期时间
-	interval   int32     // 间隔（毫秒)，最多24.8天
-	repeatable bool      // 是否重复
-	cb         TimerTask // 超时回调函数
+	id         int      // 唯一ID
+	index      int      // 数组索引
+	expiry     int64    // 到期时间
+	interval   int32    // 间隔（毫秒)，最多24.8天
+	repeatable bool     // 是否重复
+	task       Runnable // 触发任务
 }
 
 type timerHeap []*timerQueueNode

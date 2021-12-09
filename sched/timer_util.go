@@ -2,7 +2,7 @@
 // Distributed under the terms and conditions of the BSD License.
 // See accompanying files LICENSE.
 
-package collections
+package sched
 
 import (
 	"time"
@@ -18,9 +18,6 @@ const (
 	WorkerStarted  = 1
 	WorkerShutdown = 2
 )
-
-// 定时器回调函数
-type TimerTask func()
 
 // 当前毫秒
 func currentMs() int64 {
