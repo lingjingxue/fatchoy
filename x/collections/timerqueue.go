@@ -25,7 +25,7 @@ type TimerQueue struct {
 	timers    timerHeap               // 二叉最小堆
 	lastId    int                     // id生成
 	refer     map[int]*timerQueueNode // O(1)查找
-	C         chan TimerTask          // 到期的定时器
+	C         <-chan TimerTask        // 到期的定时器
 	startedAt int64                   //
 }
 
@@ -34,7 +34,6 @@ func NewTimerQueue() *TimerQueue {
 		done:   make(chan struct{}, 1),
 		timers: make(timerHeap, 0, 64),
 		refer:  make(map[int]*timerQueueNode, 64),
-		C:      make(chan TimerTask, 1000),
 	}
 }
 
@@ -133,7 +132,9 @@ func (s *TimerQueue) worker(ready chan struct{}) {
 	var ticker = time.NewTicker(TimeUnit)
 	defer ticker.Stop()
 
+	var bus = make(chan TimerTask, 1000)
 	s.startedAt = currentMs()
+	s.C = bus
 	ready <- struct{}{}
 
 	for {
@@ -141,7 +142,7 @@ func (s *TimerQueue) worker(ready chan struct{}) {
 		case now, ok := <-ticker.C:
 			if ok {
 				atomic.AddInt64(&s.ticks, 1)
-				s.tick(now)
+				s.tick(now, bus)
 			}
 
 		case <-s.done:
@@ -150,14 +151,14 @@ func (s *TimerQueue) worker(ready chan struct{}) {
 	}
 }
 
-func (s *TimerQueue) tick(deadline time.Time) {
+func (s *TimerQueue) tick(deadline time.Time, bus chan<- TimerTask) {
 	s.guard.Lock()
 	var expires = s.trigger(deadline)
 	s.guard.Unlock()
 
 	for _, node := range expires {
 		if node.cb != nil {
-			s.C <- node.cb
+			bus <- node.cb
 		}
 	}
 }
