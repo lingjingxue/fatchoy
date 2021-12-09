@@ -2,7 +2,7 @@
 // Distributed under the terms and conditions of the BSD License.
 // See accompanying files LICENSE.
 
-package xtimer
+package collections
 
 import (
 	"container/heap"
@@ -11,14 +11,9 @@ import (
 	"sync"
 	"sync/atomic"
 	"time"
-
-	"qchen.fun/fatchoy/l0g"
 )
 
-const (
-	TimeUnit    = 10 * time.Millisecond           //
-	CustomEpoch = int64(1577836800 * time.Second) // 起始纪元 2020-01-01 00:00:00 UTC
-)
+
 
 // 定时器回调函数
 type TimerHandle func()
@@ -28,22 +23,26 @@ type TimerHandle func()
 // 这个实现主要是为了在大量timer的场景，把timer的压力从runtime放到应用上
 type TimerQueue struct {
 	done   chan struct{}
-	wg     sync.WaitGroup     //
-	ticks  int64              //
-	guard  sync.Mutex         // 多线程
-	timers timerHeap          // 二叉最小堆
-	nextId int                // id生成
-	ref    map[int]*queueNode // O(1)查找
-	C      chan TimerHandle   // 到期的定时器
+	wg     sync.WaitGroup          //
+	ticks  int64                   //
+	guard  sync.Mutex              // 多线程
+	timers timerHeap               // 二叉最小堆
+	lastId int                     // id生成
+	refer  map[int]*timerQueueNode // O(1)查找
+	C      chan TimerHandle        // 到期的定时器
 }
 
 func NewTimerQueue() *TimerQueue {
 	return &TimerQueue{
 		done:   make(chan struct{}, 1),
 		timers: make(timerHeap, 0, 64),
-		ref:    make(map[int]*queueNode, 64),
+		refer:  make(map[int]*timerQueueNode, 64),
 		C:      make(chan TimerHandle, 1000),
 	}
+}
+
+func (s *TimerQueue) Size() int {
+	return len(s.timers)
 }
 
 func (s *TimerQueue) Start() {
@@ -51,97 +50,13 @@ func (s *TimerQueue) Start() {
 	go s.serve()
 }
 
-func (s *TimerQueue) Size() int {
-	return len(s.timers)
-}
-
 func (s *TimerQueue) Shutdown() {
 	close(s.done)
 	s.wg.Wait()
 
 	s.C = nil
-	s.ref = nil
+	s.refer = nil
 	s.timers = nil
-}
-
-func (s *TimerQueue) serve() {
-	l0g.Debugf("scheduler start serving")
-	defer s.wg.Done()
-	var ticker = time.NewTicker(TimeUnit)
-	defer ticker.Stop()
-
-	for {
-		select {
-		case now, ok := <-ticker.C:
-			if ok {
-				s.update(now)
-			}
-
-		case <-s.done:
-			return
-		}
-	}
-}
-
-func (s *TimerQueue) update(now time.Time) {
-	atomic.AddInt64(&s.ticks, 1)
-
-	s.guard.Lock()
-	defer s.guard.Unlock()
-
-	var expires = s.trigger(now)
-	for _, node := range expires {
-		if node.cb != nil {
-			s.C <- node.cb
-		}
-	}
-}
-
-// 返回触发的timer列表
-func (s *TimerQueue) trigger(now time.Time) []*queueNode {
-	var ts = nowMs(now)
-	var maxId = s.nextId
-	var expires []*queueNode
-	for len(s.timers) > 0 {
-		var node = s.timers[0] // peek first item of heap
-		if ts < node.expiry {
-			break // no new timer expired
-		}
-		// make sure we don't process timer created by timer events
-		if node.id > maxId {
-			continue
-		}
-
-		// 如果timer需要重复执行，只修正heap，id保持不变
-		if node.repeatable {
-			node.expiry = ts + int64(node.interval)
-			heap.Fix(&s.timers, node.index)
-		} else {
-			heap.Pop(&s.timers)
-			delete(s.ref, node.id)
-		}
-		expires = append(expires, node)
-	}
-	return expires
-}
-
-func (s *TimerQueue) schedule(ts int64, interval int32, repeat bool, cb TimerHandle) int {
-	s.guard.Lock()
-	defer s.guard.Unlock()
-
-	var id = s.nextId
-	s.nextId++ // 假设ID一直自增不会溢出
-
-	var node = &queueNode{
-		expiry:     ts,
-		interval:   interval,
-		repeatable: repeat,
-		id:         id,
-		cb:         cb,
-	}
-	heap.Push(&s.timers, node)
-	s.ref[id] = node
-	return id
 }
 
 // 创建一个定时器，在`ts`毫秒时间戳运行`cb`
@@ -173,19 +88,19 @@ func (s *TimerQueue) RunEvery(interval int, cb TimerHandle) int {
 		return -1
 	}
 	if interval < 0 {
-		interval = 0
+		interval = int(TimeUnit)
 	}
-
 	var ts = currentMs() + int64(interval)
 	return s.schedule(ts, int32(interval), true, cb)
 }
 
+// 取消一个timer
 func (s *TimerQueue) Cancel(id int) bool {
 	s.guard.Lock()
 	defer s.guard.Unlock()
 
-	if node, found := s.ref[id]; found {
-		delete(s.ref, id)
+	if node, found := s.refer[id]; found {
+		delete(s.refer, id)
 		heap.Remove(&s.timers, node.index)
 		node.cb = nil
 		return true
@@ -193,8 +108,100 @@ func (s *TimerQueue) Cancel(id int) bool {
 	return false
 }
 
+func (s *TimerQueue) serve() {
+	defer s.wg.Done()
+	var ticker = time.NewTicker(TimeUnit)
+	defer ticker.Stop()
+
+	for {
+		select {
+		case now, ok := <-ticker.C:
+			if ok {
+				atomic.AddInt64(&s.ticks, 1)
+				s.tick(now)
+			}
+
+		case <-s.done:
+			return
+		}
+	}
+}
+
+func (s *TimerQueue) tick(now time.Time) {
+	s.guard.Lock()
+	var expires = s.trigger(now)
+	s.guard.Unlock()
+
+	for _, node := range expires {
+		if node.cb != nil {
+			s.C <- node.cb
+		}
+	}
+}
+
+// 返回触发的timer列表
+func (s *TimerQueue) trigger(now time.Time) []*timerQueueNode {
+	var ts = nowMs(now)
+	var maxId = s.lastId
+	var expires []*timerQueueNode
+	for len(s.timers) > 0 {
+		var node = s.timers[0] // peek first item of heap
+		if ts < node.expiry {
+			break // no new timer expired
+		}
+		// make sure we don't process timer created by timer events
+		if node.id > maxId {
+			continue
+		}
+
+		// 如果timer需要重复执行，只修正heap，id保持不变
+		if node.repeatable {
+			node.expiry = ts + int64(node.interval)
+			heap.Fix(&s.timers, node.index)
+		} else {
+			heap.Pop(&s.timers)
+			delete(s.refer, node.id)
+		}
+		expires = append(expires, node)
+	}
+	return expires
+}
+
+func (s *TimerQueue) nextID() int {
+	var newId = s.lastId + 1
+	for i := 0; i < 1e4; i++ {
+		if newId <= 0 {
+			newId = 1
+		}
+		if _, found := s.refer[newId]; found {
+			newId++
+			continue
+		}
+		break
+	}
+	s.lastId = newId
+	return newId
+}
+
+func (s *TimerQueue) schedule(ts int64, interval int32, repeat bool, cb TimerHandle) int {
+	s.guard.Lock()
+	defer s.guard.Unlock()
+
+	var id = s.nextID()
+	var node = &timerQueueNode{
+		expiry:     ts,
+		interval:   interval,
+		repeatable: repeat,
+		id:         id,
+		cb:         cb,
+	}
+	heap.Push(&s.timers, node)
+	s.refer[id] = node
+	return id
+}
+
 // 二叉堆节点
-type queueNode struct {
+type timerQueueNode struct {
 	id         int         // 唯一ID
 	index      int         // 数组索引
 	expiry     int64       // 到期时间
@@ -203,7 +210,7 @@ type queueNode struct {
 	cb         TimerHandle // 超时回调函数
 }
 
-type timerHeap []*queueNode
+type timerHeap []*timerQueueNode
 
 func (q timerHeap) Len() int {
 	return len(q)
@@ -220,7 +227,7 @@ func (q timerHeap) Swap(i, j int) {
 }
 
 func (q *timerHeap) Push(x interface{}) {
-	v := x.(*queueNode)
+	v := x.(*timerQueueNode)
 	v.index = len(*q)
 	*q = append(*q, v)
 }
@@ -235,14 +242,4 @@ func (q *timerHeap) Pop() interface{} {
 		return v
 	}
 	return nil
-}
-
-// 当前毫秒
-func currentMs() int64 {
-	return (time.Now().UnixNano() - CustomEpoch) / int64(time.Millisecond)
-}
-
-// 转为当前毫秒
-func nowMs(now time.Time) int64 {
-	return (now.UnixNano() - CustomEpoch) / int64(time.Millisecond)
 }
