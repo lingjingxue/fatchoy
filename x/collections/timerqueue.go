@@ -13,11 +13,6 @@ import (
 	"time"
 )
 
-
-
-// 定时器回调函数
-type TimerHandle func()
-
 // 最小堆实现的定时器
 // 标准库的四叉堆实现的time.Timer已经可以满足大多数高精度的定时需求
 // 这个实现主要是为了在大量timer的场景，把timer的压力从runtime放到应用上
@@ -29,7 +24,7 @@ type TimerQueue struct {
 	timers timerHeap               // 二叉最小堆
 	lastId int                     // id生成
 	refer  map[int]*timerQueueNode // O(1)查找
-	C      chan TimerHandle        // 到期的定时器
+	C      chan TimerTask          // 到期的定时器
 }
 
 func NewTimerQueue() *TimerQueue {
@@ -37,7 +32,7 @@ func NewTimerQueue() *TimerQueue {
 		done:   make(chan struct{}, 1),
 		timers: make(timerHeap, 0, 64),
 		refer:  make(map[int]*timerQueueNode, 64),
-		C:      make(chan TimerHandle, 1000),
+		C:      make(chan TimerTask, 1000),
 	}
 }
 
@@ -60,7 +55,7 @@ func (s *TimerQueue) Shutdown() {
 }
 
 // 创建一个定时器，在`ts`毫秒时间戳运行`cb`
-func (s *TimerQueue) RunAt(ts int64, cb TimerHandle) int {
+func (s *TimerQueue) RunAt(ts int64, cb TimerTask) int {
 	var now = currentMs()
 	if ts < now {
 		ts = now
@@ -69,7 +64,7 @@ func (s *TimerQueue) RunAt(ts int64, cb TimerHandle) int {
 }
 
 // 创建一个定时器，在`interval`毫秒后运行`cb`
-func (s *TimerQueue) RunAfter(interval int, cb TimerHandle) int {
+func (s *TimerQueue) RunAfter(interval int, cb TimerTask) int {
 	if interval >= math.MaxInt32 {
 		log.Panicf("interval %d out of range", interval)
 		return -1
@@ -82,7 +77,7 @@ func (s *TimerQueue) RunAfter(interval int, cb TimerHandle) int {
 }
 
 // 创建一个定时器，每隔`interval`毫秒运行一次`cb`
-func (s *TimerQueue) RunEvery(interval int, cb TimerHandle) int {
+func (s *TimerQueue) RunEvery(interval int, cb TimerTask) int {
 	if interval >= math.MaxInt32 {
 		log.Panicf("interval %d out of range", interval)
 		return -1
@@ -183,7 +178,7 @@ func (s *TimerQueue) nextID() int {
 	return newId
 }
 
-func (s *TimerQueue) schedule(ts int64, interval int32, repeat bool, cb TimerHandle) int {
+func (s *TimerQueue) schedule(ts int64, interval int32, repeat bool, cb TimerTask) int {
 	s.guard.Lock()
 	defer s.guard.Unlock()
 
@@ -202,12 +197,12 @@ func (s *TimerQueue) schedule(ts int64, interval int32, repeat bool, cb TimerHan
 
 // 二叉堆节点
 type timerQueueNode struct {
-	id         int         // 唯一ID
-	index      int         // 数组索引
-	expiry     int64       // 到期时间
-	interval   int32       // 间隔（毫秒)，最多24.8天
-	repeatable bool        // 是否重复
-	cb         TimerHandle // 超时回调函数
+	id         int       // 唯一ID
+	index      int       // 数组索引
+	expiry     int64     // 到期时间
+	interval   int32     // 间隔（毫秒)，最多24.8天
+	repeatable bool      // 是否重复
+	cb         TimerTask // 超时回调函数
 }
 
 type timerHeap []*timerQueueNode
