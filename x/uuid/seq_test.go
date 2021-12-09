@@ -10,7 +10,6 @@ import (
 	"testing"
 )
 
-
 func TestSeqIDEtcdSimple(t *testing.T) {
 	runSeqIDTestSimple(t, "etcd", "/uuid/counter1")
 	// Output:

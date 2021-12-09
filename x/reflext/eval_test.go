@@ -65,7 +65,6 @@ func TestEvalView(t *testing.T) {
 		{"B.E[10]", false, nil},
 		{`D["KKK"]`, true, nil},
 		{`B.D["KKK"]`, true, nil},
-
 	}
 	for _, tc := range tests {
 		v, err := NewEvalContext(obj).View(tc.expr)

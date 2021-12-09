@@ -162,7 +162,7 @@ func (c *RpcClient) stripExpired() []*RpcContext {
 	return expired
 }
 
-func (c *RpcClient) ReapTimeout() int{
+func (c *RpcClient) ReapTimeout() int {
 	var expired = c.stripExpired()
 	var n = len(expired)
 	for _, ctx := range expired {
