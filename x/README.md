@@ -7,13 +7,11 @@
 包名        |  描述
 ------------|-----------------------------
 cipher      | 加密解密
-collections | 算法和数据结构
 datetime    | 日期相关
 fsutil      | 文件相关
 mathext     | 数学扩展
 reflext     | 反射相关
 strutil     | 字符串相关
-geom        | 几何算法
 uuid        | 分布式ID
 
 
