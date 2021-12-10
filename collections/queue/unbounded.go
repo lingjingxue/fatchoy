@@ -44,7 +44,7 @@ type UnboundedQueue struct {
 	lastSliceSize int // lastSliceSize holds the size of the last created internal slice.
 }
 
-func NewUnboundedQueue() *UnboundedQueue {
+func NewUnbounded() *UnboundedQueue {
 	return new(UnboundedQueue).Init()
 }
 
