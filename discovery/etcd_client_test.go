@@ -13,7 +13,7 @@ import (
 	"testing"
 	"time"
 
-	"qchen.fun/fatchoy/l0g"
+	"qchen.fun/fatchoy/log"
 )
 
 var (
@@ -25,7 +25,7 @@ var (
 func init() {
 	rand.Seed(time.Now().UnixNano())
 	nodeId = strconv.Itoa(rand.Int() % 100000)
-	l0g.Setup(l0g.NewConfig("debug"))
+	log.Setup(log.NewConfig("debug"))
 }
 
 func connectClient(t *testing.T) *Client {

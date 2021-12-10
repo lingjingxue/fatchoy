@@ -9,7 +9,7 @@ import (
 	"reflect"
 
 	"qchen.fun/fatchoy"
-	"qchen.fun/fatchoy/l0g"
+	"qchen.fun/fatchoy/log"
 )
 
 // 消息派发
@@ -61,7 +61,7 @@ func (d *MessageHandlers) Dispatch(pkt fatchoy.IPacket) error {
 	for _, h := range handlers {
 		if er := h(pkt); er != nil {
 			err = er
-			l0g.Errorf("execute handler for msg %d: %v", msgId, er)
+			log.Errorf("execute handler for msg %d: %v", msgId, er)
 		}
 	}
 	return err

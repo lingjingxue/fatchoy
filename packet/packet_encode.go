@@ -12,7 +12,7 @@ import (
 
 	"google.golang.org/protobuf/encoding/protojson"
 	"google.golang.org/protobuf/proto"
-	"qchen.fun/fatchoy/l0g"
+	"qchen.fun/fatchoy/log"
 )
 
 func (m *Packet) Body() interface{} {
@@ -202,7 +202,7 @@ func (m *Packet) Decode() error {
 
 func MessageToString(msg proto.Message) string {
 	if b, err := protojson.Marshal(msg); err != nil {
-		l0g.Errorf("marshal %T: %v", msg, err)
+		log.Errorf("marshal %T: %v", msg, err)
 	} else {
 		return string(b)
 	}

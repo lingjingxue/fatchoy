@@ -5,12 +5,12 @@
 package sched
 
 import (
+	"log"
 	"sort"
 	"strings"
 	"sync"
 
 	"qchen.fun/fatchoy"
-	"qchen.fun/fatchoy/l0g"
 )
 
 var (
@@ -26,10 +26,10 @@ func Register(service fatchoy.Service) {
 	var name = strings.ToUpper(service.Name())
 	var typ = service.Type()
 	if _, dup := serviceRegistry[name]; dup {
-		l0g.Panicf("duplicate registration of service %x", name)
+		log.Panicf("duplicate registration of service %x", name)
 	}
 	if _, dup := serviceIdMap[typ]; dup {
-		l0g.Panicf("duplicate service type of service %x", typ)
+		log.Panicf("duplicate service type of service %x", typ)
 	}
 	serviceRegistry[name] = service
 	serviceIdMap[typ] = name
