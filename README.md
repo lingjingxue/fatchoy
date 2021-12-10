@@ -13,6 +13,7 @@ A set of libraries to create online game server.
 ------------|------------
 codec       | 编解码
 codes       | 错误码
+collections | 数据结构
 debug       | 调试API
 discovery   | 服务发现
 packet      | 消息结构
