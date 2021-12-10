@@ -8,21 +8,34 @@ import (
 	"qchen.fun/fatchoy/collections"
 )
 
-const (
-	RED   = 0
-	BLACK = 1
-)
-
 type (
 	KeyType     collections.Comparable
 	EntryAction func(key KeyType, val interface{})
 )
 
+type Color int8
+
+const (
+	RED   Color = 0
+	BLACK Color = 1
+)
+
+func (c Color) String() string {
+	switch c {
+	case RED:
+		return "red"
+	case BLACK:
+		return "black"
+	default:
+		return "??"
+	}
+}
+
 type Entry struct {
 	left, right, parent *Entry
 	key                 KeyType
 	value               interface{}
-	color               int8
+	color               Color
 }
 
 func NewEntry(key KeyType, val interface{}, parent *Entry) *Entry {
@@ -62,7 +75,7 @@ func key(e *Entry) KeyType {
 	return nil
 }
 
-func colorOf(p *Entry) int8 {
+func colorOf(p *Entry) Color {
 	if p != nil {
 		return p.color
 	}
@@ -76,7 +89,7 @@ func parentOf(p *Entry) *Entry {
 	return nil
 }
 
-func setColor(p *Entry, color int8) {
+func setColor(p *Entry, color Color) {
 	if p != nil {
 		p.color = color
 	}

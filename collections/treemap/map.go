@@ -4,7 +4,8 @@
 
 package treemap
 
-// A Red-Black tree based map implementation based on java.util.TreeMap
+// A Red-Black tree based map implementation.
+// more details see [java.util.TreeMap](https://bit.ly/3rQWBYO)
 type Map struct {
 	root    *Entry
 	size    int
@@ -31,12 +32,12 @@ func (m *Map) Contains(key KeyType) bool {
 
 // Returns the value to which the specified key is mapped,
 // or nil if this map contains no mapping for the key.
-func (m *Map) Get(key KeyType) interface{} {
+func (m *Map) Get(key KeyType) (interface{}, bool) {
 	var p = m.getEntry(key)
 	if p != nil {
-		return p.value
+		return p.value, true
 	}
-	return nil
+	return nil, false
 }
 
 // Returns the value to which the specified key is mapped,
@@ -49,9 +50,17 @@ func (m *Map) GetOrDefault(key KeyType, defaultValue interface{}) interface{} {
 	return defaultValue
 }
 
+func (m *Map) FirstEntry() *Entry {
+	return m.getFirstEntry()
+}
+
 // Returns the first key in the TreeMap (according to the key's order)
 func (m *Map) FirstKey() KeyType {
 	return key(m.getFirstEntry())
+}
+
+func (m *Map) LastEntry() *Entry {
+	return m.getLastEntry()
 }
 
 // Returns the last key in the TreeMap (according to the key's order)
@@ -146,6 +155,26 @@ func (m *Map) Values() []interface{} {
 		values = append(values, e.value)
 	}
 	return values
+}
+
+func (m *Map) Iterator() *EntryIterator {
+	return NewEntryIterator(m, m.getFirstEntry())
+}
+
+func (m *Map) DescendingIterator() *DescendingEntryIterator {
+	return NewKeyDescendingEntryIterator(m, m.getLastEntry())
+}
+
+func (m *Map) KeyIterator() *KeyIterator {
+	return NewKeyIterator(m, m.getFirstEntry())
+}
+
+func (m *Map) DescendingKeyIterator() *DescendingKeyIterator {
+	return NewDescendingKeyIterator(m, m.getLastEntry())
+}
+
+func (m *Map) ValueIterator() *ValueIterator {
+	return NewValueIterator(m, m.getFirstEntry())
 }
 
 // Removes the mapping for this key from this TreeMap if present.
