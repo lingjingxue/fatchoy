@@ -11,7 +11,7 @@ import (
 	"sync/atomic"
 	"time"
 
-	"qchen.fun/fatchoy/x/collections"
+	"qchen.fun/fatchoy/collections/queue"
 )
 
 const (
@@ -29,15 +29,15 @@ type HashedWheelTimer struct {
 	done               chan struct{}
 	wg                 sync.WaitGroup
 	state              int32
-	wheel              []HashedWheelBucket                  // wheel buckets
-	C                  <-chan Runnable                        // 到期的定时器
-	timeouts           collections.UnboundedConcurrentQueue // all timeout
-	cancelledTimeouts  collections.UnboundedConcurrentQueue //
-	pendingTimeouts    int32                                // maximum number of pending timeouts
-	maxPendingTimeouts int32                                //
-	ticks              int                                  //
-	lastId             int64                                //
-	startedAt          int64                                //
+	wheel              []HashedWheelBucket            // wheel buckets
+	C                  <-chan Runnable                // 到期的定时器
+	timeouts           queue.UnboundedConcurrentQueue // all timeout
+	cancelledTimeouts  queue.UnboundedConcurrentQueue //
+	pendingTimeouts    int32                          // maximum number of pending timeouts
+	maxPendingTimeouts int32                          //
+	ticks              int                            //
+	lastId             int64                          //
+	startedAt          int64                          //
 }
 
 func NewHashedWheelTimer() *HashedWheelTimer {

@@ -9,7 +9,7 @@ import (
 	"log"
 	"strconv"
 
-	"qchen.fun/fatchoy/x/collections"
+	"qchen.fun/fatchoy/collections"
 )
 
 const (
