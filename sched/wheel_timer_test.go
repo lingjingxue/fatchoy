@@ -22,15 +22,17 @@ func TestNewHashedWheelTimer(t *testing.T) {
 
 	var timeout = timer.CreateTimeout(1200, task)
 
+	var C1 = time.After(time.Second * 3)
+	var C2 = time.After(time.Second * 2)
 	for {
 		select {
 		case tsk := <-timer.C:
 			tsk.Run()
 
-		case <-time.After(time.Second * 2):
+		case <-C2:
 			timeout.Cancel()
 
-		case <-time.After(time.Second * 3):
+		case <-C1:
 			return
 		}
 	}
