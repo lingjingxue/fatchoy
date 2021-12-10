@@ -7,6 +7,8 @@ package collections
 import (
 	"fmt"
 	"sort"
+
+	"qchen.fun/fatchoy/collections"
 )
 
 const (
@@ -93,6 +95,6 @@ func (c *Consistent) updateSortedHash() {
 	for k, _ := range c.circle {
 		hashes = append(hashes, k)
 	}
-	sort.Sort(Uint32Array(hashes))
+	sort.Sort(collections.Uint32Array(hashes))
 	c.sortedHash = hashes
 }

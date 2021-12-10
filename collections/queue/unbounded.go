@@ -2,7 +2,7 @@
 // Distributed under the terms and conditions of the BSD License.
 // See accompanying files LICENSE.
 
-package collections
+package queue
 
 // Keeping below as var so it is possible to run the slice size bench tests with no coding changes.
 var (

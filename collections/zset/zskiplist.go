@@ -14,13 +14,15 @@
 // https://github.com/antirez/redis/blob/3.2/src/t_zset.c
 // https://en.wikipedia.org/wiki/Skip_list
 
-package collections
+package zset
 
 import (
 	"bytes"
 	"fmt"
 	"io"
 	"math/rand"
+
+	"qchen.fun/fatchoy/collections"
 )
 
 const (
@@ -36,13 +38,13 @@ type zskipListLevel struct {
 
 // list node
 type ZSkipListNode struct {
-	Ele      Comparable
+	Ele      collections.Comparable
 	Score    int64
 	backward *ZSkipListNode
 	level    []zskipListLevel
 }
 
-func newZSkipListNode(level int, score int64, element Comparable) *ZSkipListNode {
+func newZSkipListNode(level int, score int64, element collections.Comparable) *ZSkipListNode {
 	return &ZSkipListNode{
 		Ele:   element,
 		Score: score,
@@ -112,7 +114,7 @@ func (zsl *ZSkipList) TailNode() *ZSkipListNode {
 }
 
 // 插入一个不存在的节点
-func (zsl *ZSkipList) Insert(score int64, ele Comparable) *ZSkipListNode {
+func (zsl *ZSkipList) Insert(score int64, ele collections.Comparable) *ZSkipListNode {
 	var update [ZSKIPLIST_MAXLEVEL]*ZSkipListNode
 	var rank [ZSKIPLIST_MAXLEVEL]int
 
@@ -193,7 +195,7 @@ func (zsl *ZSkipList) deleteNode(x *ZSkipListNode, update []*ZSkipListNode) {
 }
 
 // 删除对应score的节点
-func (zsl *ZSkipList) Delete(score int64, ele Comparable) *ZSkipListNode {
+func (zsl *ZSkipList) Delete(score int64, ele collections.Comparable) *ZSkipListNode {
 	var update [ZSKIPLIST_MAXLEVEL]*ZSkipListNode
 	var x = zsl.head
 	for i := zsl.level - 1; i >= 0; i-- {
@@ -220,7 +222,7 @@ func (zsl *ZSkipList) Delete(score int64, ele Comparable) *ZSkipListNode {
 }
 
 // 删除排名在[start-end]之间的节点，排名从1开始
-func (zsl *ZSkipList) DeleteRangeByRank(start, end int, dict map[Comparable]int64) int {
+func (zsl *ZSkipList) DeleteRangeByRank(start, end int, dict map[collections.Comparable]int64) int {
 	var update [ZSKIPLIST_MAXLEVEL]*ZSkipListNode
 	var traversed, removed int
 	var x = zsl.head
@@ -245,7 +247,7 @@ func (zsl *ZSkipList) DeleteRangeByRank(start, end int, dict map[Comparable]int6
 }
 
 // 删除score在[min-max]之间的节点
-func (zsl *ZSkipList) DeleteRangeByScore(min, max int64, dict map[Comparable]int64) int {
+func (zsl *ZSkipList) DeleteRangeByScore(min, max int64, dict map[collections.Comparable]int64) int {
 	var update [ZSKIPLIST_MAXLEVEL]*ZSkipListNode
 	var removed int
 	var x = zsl.head
@@ -271,7 +273,7 @@ func (zsl *ZSkipList) DeleteRangeByScore(min, max int64, dict map[Comparable]int
 }
 
 // 获取score所在的排名，排名从1开始
-func (zsl *ZSkipList) GetRank(score int64, ele Comparable) int {
+func (zsl *ZSkipList) GetRank(score int64, ele collections.Comparable) int {
 	var rank = 0
 	var x = zsl.head
 	for i := zsl.level - 1; i >= 0; i-- {

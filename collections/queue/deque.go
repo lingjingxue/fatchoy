@@ -1,4 +1,4 @@
-package collections
+package queue
 
 // Deque generalizes a queue and a stack, to efficiently add and remove items at
 // either end with O(1) performance.  Queue (FIFO) operations are supported using

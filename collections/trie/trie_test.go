@@ -2,9 +2,7 @@
 // Distributed under the terms and conditions of the BSD License.
 // See accompanying files LICENSE.
 
-//go:build !ignore
-
-package collections
+package trie
 
 import (
 	"testing"

@@ -2,30 +2,30 @@
 // Distributed under the terms and conditions of the BSD License.
 // See accompanying files LICENSE.
 
-package collections
+package lru
 
 import (
 	"container/list"
 )
 
-type LRUEntry struct {
+type Entry struct {
 	Key   string
 	Value interface{}
 }
 
 // LRU缓存
 // https://en.wikipedia.org/wiki/Cache_replacement_policies#Least_recently_used_(LRU)
-type LRUCache struct {
+type Cache struct {
 	list     *list.List
 	dict     map[string]*list.Element
 	capacity int
 }
 
-func NewLRUCache(capacity int) *LRUCache {
+func NewCache(capacity int) *Cache {
 	if capacity <= 0 {
 		panic("cache capacity out of range")
 	}
-	cache := &LRUCache{
+	cache := &Cache{
 		capacity: capacity,
 		list:     list.New(),
 		dict:     make(map[string]*list.Element, capacity),
@@ -33,16 +33,16 @@ func NewLRUCache(capacity int) *LRUCache {
 	return cache
 }
 
-func (c *LRUCache) Len() int {
+func (c *Cache) Len() int {
 	return c.list.Len()
 }
 
-func (c *LRUCache) Cap() int {
+func (c *Cache) Cap() int {
 	return c.capacity
 }
 
 // 重置cache
-func (c *LRUCache) Reset() {
+func (c *Cache) Reset() {
 	for k := range c.dict {
 		delete(c.dict, k)
 	}
@@ -50,24 +50,24 @@ func (c *LRUCache) Reset() {
 }
 
 //
-func (c *LRUCache) removeElement(e *list.Element) {
-	kv := e.Value.(*LRUEntry)
+func (c *Cache) removeElement(e *list.Element) {
+	kv := e.Value.(*Entry)
 	c.list.Remove(e)
 	delete(c.dict, kv.Key)
 }
 
 // 查看key是否存在，不移动链表
-func (c *LRUCache) Exist(key string) bool {
+func (c *Cache) Exist(key string) bool {
 	_, found := c.dict[key]
 	return found
 }
 
 // 获取key对应的值，并把其移动到链表头部
-func (c *LRUCache) Get(key string) (interface{}, bool) {
+func (c *Cache) Get(key string) (interface{}, bool) {
 	e, found := c.dict[key]
 	if found {
 		c.list.MoveToFront(e)
-		kv := e.Value.(*LRUEntry)
+		kv := e.Value.(*Entry)
 		if kv == nil {
 			return nil, false
 		}
@@ -77,34 +77,34 @@ func (c *LRUCache) Get(key string) (interface{}, bool) {
 }
 
 // 获取key对应的值，不移动链表
-func (c *LRUCache) Peek(key string) (interface{}, bool) {
+func (c *Cache) Peek(key string) (interface{}, bool) {
 	e, found := c.dict[key]
 	if found {
-		kv := e.Value.(*LRUEntry)
+		kv := e.Value.(*Entry)
 		return kv.Value, true
 	}
 	return nil, false
 }
 
 // 获取最老的值（链表尾节点）
-func (c *LRUCache) GetOldest() (key string, value interface{}, ok bool) {
+func (c *Cache) GetOldest() (key string, value interface{}, ok bool) {
 	ent := c.list.Back()
 	if ent != nil {
-		kv := ent.Value.(*LRUEntry)
+		kv := ent.Value.(*Entry)
 		return kv.Key, kv.Value, true
 	}
 	return "", nil, false
 }
 
 // 把key-value加入到cache中，并移动到链表头部
-func (c *LRUCache) Put(key string, value interface{}) bool {
+func (c *Cache) Put(key string, value interface{}) bool {
 	e, exist := c.dict[key]
 	if exist {
 		c.list.MoveToFront(e)
-		e.Value.(*LRUEntry).Value = value
+		e.Value.(*Entry).Value = value
 		return false
 	} else {
-		kv := &LRUEntry{Key: key, Value: value}
+		kv := &Entry{Key: key, Value: value}
 		e = c.list.PushFront(kv) // push entry to list front
 		c.dict[key] = e
 		if c.Len() > c.capacity {
@@ -115,7 +115,7 @@ func (c *LRUCache) Put(key string, value interface{}) bool {
 }
 
 // 把key从cache中删除
-func (c *LRUCache) Remove(key string) bool {
+func (c *Cache) Remove(key string) bool {
 	if e, ok := c.dict[key]; ok {
 		c.removeElement(e)
 		return true
@@ -124,10 +124,10 @@ func (c *LRUCache) Remove(key string) bool {
 }
 
 // 删除最老的的key-value，并返回
-func (c *LRUCache) RemoveOldest() (string, interface{}, bool) {
+func (c *Cache) RemoveOldest() (string, interface{}, bool) {
 	e := c.list.Back()
 	if e != nil {
-		kv := e.Value.(*LRUEntry)
+		kv := e.Value.(*Entry)
 		c.removeElement(e)
 		return kv.Key, kv.Value, true
 	}
@@ -135,11 +135,11 @@ func (c *LRUCache) RemoveOldest() (string, interface{}, bool) {
 }
 
 // 返回所有的key（从旧到新）
-func (c *LRUCache) Keys() []string {
+func (c *Cache) Keys() []string {
 	keys := make([]string, len(c.dict))
 	i := 0
 	for e := c.list.Back(); e != nil; e = e.Prev() {
-		keys[i] = e.Value.(*LRUEntry).Key
+		keys[i] = e.Value.(*Entry).Key
 		i++
 	}
 	return keys

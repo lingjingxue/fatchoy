@@ -2,9 +2,9 @@
 // Distributed under the terms and conditions of the BSD License.
 // See accompanying files LICENSE.
 
-//go:build !ignore
 
-package collections
+
+package zset
 
 import (
 	"fmt"
@@ -14,6 +14,8 @@ import (
 	"sort"
 	"testing"
 	"time"
+
+	"qchen.fun/fatchoy/collections"
 )
 
 var _ = os.Open
@@ -30,7 +32,7 @@ type testPlayer struct {
 	Level int16
 }
 
-func (p *testPlayer) CompareTo(other Comparable) int {
+func (p *testPlayer) CompareTo(other collections.Comparable) int {
 	var rhs = other.(*testPlayer)
 	if p.Uid > rhs.Uid {
 		return 1

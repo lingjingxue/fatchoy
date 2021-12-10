@@ -2,7 +2,7 @@
 // Distributed under the terms and conditions of the BSD License.
 // See accompanying files LICENSE.
 
-package collections
+package lru
 
 import (
 	"strconv"
@@ -10,7 +10,7 @@ import (
 )
 
 func TestLRU(t *testing.T) {
-	c := NewLRUCache(128)
+	c := NewCache(128)
 	for i := 0; i < 256; i++ {
 		key := strconv.Itoa(i)
 		c.Put(key, i)
@@ -78,7 +78,7 @@ func TestLRU(t *testing.T) {
 }
 
 func TestLRUOldest(t *testing.T) {
-	c := NewLRUCache(128)
+	c := NewCache(128)
 	for i := 0; i < 256; i++ {
 		k := strconv.Itoa(i)
 		c.Put(k, i)
@@ -109,7 +109,7 @@ func TestLRUOldest(t *testing.T) {
 }
 
 func TestLRU_Put(t *testing.T) {
-	c := NewLRUCache(1)
+	c := NewCache(1)
 
 	c.Put("1", 1)
 
@@ -137,7 +137,7 @@ func TestLRU_Put(t *testing.T) {
 }
 
 func TestLRU_Exist(t *testing.T) {
-	c := NewLRUCache(2)
+	c := NewCache(2)
 
 	c.Put("1", 1)
 	c.Put("2", 2)
@@ -153,7 +153,7 @@ func TestLRU_Exist(t *testing.T) {
 
 // Test that Peek doesn't update recent-ness
 func TestLRU_Peek(t *testing.T) {
-	c := NewLRUCache(2)
+	c := NewCache(2)
 
 	c.Put("1", 1)
 	c.Put("2", 2)
