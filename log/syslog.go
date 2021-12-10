@@ -4,7 +4,7 @@
 
 //go:build linux
 
-package l0g
+package log
 
 import (
 	"fmt"
