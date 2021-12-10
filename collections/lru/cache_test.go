@@ -10,7 +10,7 @@ import (
 )
 
 func TestLRU(t *testing.T) {
-	c := NewCache(128)
+	c := NewCache(128, nil)
 	for i := 0; i < 256; i++ {
 		key := strconv.Itoa(i)
 		c.Put(key, i)
@@ -68,7 +68,7 @@ func TestLRU(t *testing.T) {
 		}
 	}
 
-	c.Reset()
+	c.Purge()
 	if c.Len() != 0 {
 		t.Fatalf("bad len: %v", c.Len())
 	}
@@ -78,7 +78,7 @@ func TestLRU(t *testing.T) {
 }
 
 func TestLRUOldest(t *testing.T) {
-	c := NewCache(128)
+	c := NewCache(128, nil)
 	for i := 0; i < 256; i++ {
 		k := strconv.Itoa(i)
 		c.Put(k, i)
@@ -109,14 +109,14 @@ func TestLRUOldest(t *testing.T) {
 }
 
 func TestLRU_Put(t *testing.T) {
-	c := NewCache(1)
+	c := NewCache(1, nil)
 
 	c.Put("1", 1)
 
 	if c.Len() != 1 {
 		t.Errorf("bad len: %v", c.Len())
 	}
-	if !c.Exist("1") {
+	if !c.Contains("1") {
 		t.Errorf("should exist key 1")
 	}
 	if v, found := c.Get("1"); !found || v != 1 {
@@ -128,32 +128,32 @@ func TestLRU_Put(t *testing.T) {
 	if c.Len() != 1 {
 		t.Errorf("bad len: %v", c.Len())
 	}
-	if c.Exist("1") {
+	if c.Contains("1") {
 		t.Errorf("should not exist key 1")
 	}
-	if !c.Exist("2") {
+	if !c.Contains("2") {
 		t.Errorf("should exist key 2")
 	}
 }
 
 func TestLRU_Exist(t *testing.T) {
-	c := NewCache(2)
+	c := NewCache(2, nil)
 
 	c.Put("1", 1)
 	c.Put("2", 2)
-	if !c.Exist("1") {
+	if !c.Contains("1") {
 		t.Errorf("1 should be contained")
 	}
 
 	c.Put("3", 3)
-	if c.Exist("1") {
+	if c.Contains("1") {
 		t.Errorf("Contains should not have updated recent-ness of 1")
 	}
 }
 
 // Test that Peek doesn't update recent-ness
 func TestLRU_Peek(t *testing.T) {
-	c := NewCache(2)
+	c := NewCache(2, nil)
 
 	c.Put("1", 1)
 	c.Put("2", 2)
@@ -162,7 +162,7 @@ func TestLRU_Peek(t *testing.T) {
 	}
 
 	c.Put("3", 3)
-	if c.Exist("1") {
+	if c.Contains("1") {
 		t.Errorf("should not have updated recent-ness of 1")
 	}
 }
