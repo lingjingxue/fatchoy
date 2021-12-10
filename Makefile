@@ -17,12 +17,13 @@ endif
 # docker-compose up -d
 test:
 	go test -v ./x/...
+	go test -v ./collections/...
 	go test -v ./codec
 	go test -v ./codes
 	go test -v ./debug
+	go test -v ./log
 	go test -v ./packet
 	go test -v ./sched
-	go test -v ./qlog
 	go test -v ./qnet
 	go test -v ./discovery
 
