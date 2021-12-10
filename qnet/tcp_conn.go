@@ -13,7 +13,7 @@ import (
 
 	"qchen.fun/fatchoy"
 	"qchen.fun/fatchoy/codec"
-	"qchen.fun/fatchoy/l0g"
+	"qchen.fun/fatchoy/log"
 	"qchen.fun/fatchoy/packet"
 	"qchen.fun/fatchoy/x/stats"
 )
@@ -75,7 +75,7 @@ func (t *TcpConn) SendPacket(pkt fatchoy.IPacket) error {
 
 func (t *TcpConn) Close() error {
 	if !atomic.CompareAndSwapInt32(&t.closing, 0, 1) {
-		// l0g.Errorf("TcpConn: connection %v is already closed", t.node)
+		// log.Errorf("TcpConn: connection %v is already closed", t.node)
 		return nil
 	}
 	if tconn, ok := t.conn.(*net.TCPConn); ok {
@@ -89,7 +89,7 @@ func (t *TcpConn) Close() error {
 
 func (t *TcpConn) ForceClose(err error) {
 	if !atomic.CompareAndSwapInt32(&t.closing, 0, 1) {
-		// l0g.Errorf("TcpConn: connection %v is already closed", t.node)
+		// log.Errorf("TcpConn: connection %v is already closed", t.node)
 		return
 	}
 	if tconn, ok := t.conn.(*net.TCPConn); ok {
@@ -123,7 +123,7 @@ func (t *TcpConn) flush() {
 				break
 			}
 			if err := t.write(pkt); err != nil {
-				l0g.Errorf("%v marshal message %v: %v", t.node, pkt.Command(), err)
+				log.Errorf("%v marshal message %v: %v", t.node, pkt.Command(), err)
 			}
 
 		default:
@@ -149,10 +149,10 @@ func (t *TcpConn) writePump() {
 	defer func() {
 		t.flush()
 		t.wg.Done()
-		l0g.Debugf("TcpConn: node %v writer stopped", t.node)
+		log.Debugf("TcpConn: node %v writer stopped", t.node)
 	}()
 
-	l0g.Debugf("TcpConn: node %v(%v) writer started", t.node, t.addr)
+	log.Debugf("TcpConn: node %v(%v) writer started", t.node, t.addr)
 
 	for {
 		select {
@@ -161,7 +161,7 @@ func (t *TcpConn) writePump() {
 				return
 			}
 			if err := t.write(pkt); err != nil {
-				l0g.Errorf("%v write message %v: %v", t.node, pkt.Command(), err)
+				log.Errorf("%v write message %v: %v", t.node, pkt.Command(), err)
 			}
 
 		case <-t.done:
@@ -191,15 +191,15 @@ func (t *TcpConn) readPacket() (fatchoy.IPacket, error) {
 func (t *TcpConn) readPump() {
 	defer func() {
 		t.wg.Done()
-		l0g.Debugf("TcpConn: node %v reader stopped", t.node)
+		log.Debugf("TcpConn: node %v reader stopped", t.node)
 	}()
 
-	l0g.Debugf("TcpConn: node %v(%v) reader started", t.node, t.addr)
+	log.Debugf("TcpConn: node %v(%v) reader started", t.node, t.addr)
 	for {
 		pkt, err := t.readPacket()
 		if err != nil {
 			if err != io.EOF {
-				l0g.Errorf("%v read packet %v", t.node, err)
+				log.Errorf("%v read packet %v", t.node, err)
 			}
 			t.ForceClose(err) // I/O超时或者发生错误，强制关闭连接
 			return

@@ -10,7 +10,7 @@ import (
 
 	"qchen.fun/fatchoy"
 	"qchen.fun/fatchoy/codec"
-	"qchen.fun/fatchoy/l0g"
+	"qchen.fun/fatchoy/log"
 	"qchen.fun/fatchoy/x/stats"
 )
 
@@ -69,7 +69,7 @@ func (s *TcpServer) serve(ln net.Listener) {
 	for {
 		conn, err := ln.Accept()
 		if err != nil {
-			l0g.Errorf("accept error: %v", err)
+			log.Errorf("accept error: %v", err)
 			// check if we should exit
 			if s.testShouldExit() {
 				return
