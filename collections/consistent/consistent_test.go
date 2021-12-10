@@ -7,7 +7,7 @@ package collections
 import "testing"
 
 func TestConsistentExample(t *testing.T) {
-	var c = NewConsistent()
+	var c = New()
 	t.Logf("add node 1 2 3 4")
 	c.AddNode("node1")
 	c.AddNode("node2")

@@ -1,4 +1,4 @@
-// Copyright © 2020-present simon@qchen.fun All rights reserved.
+// Copyright © 2021-present simon@qchen.fun All rights reserved.
 // Distributed under the terms and conditions of the BSD License.
 // See accompanying files LICENSE.
 
@@ -22,7 +22,7 @@ type Consistent struct {
 	sortedHash []uint32          // 环hash排序
 }
 
-func NewConsistent() *Consistent {
+func New() *Consistent {
 	return &Consistent{
 		circle: make(map[uint32]string),
 		nodes:  make(map[string]bool),
