@@ -5,4 +5,4 @@
 package fatchoy
 
 // 版本号
-const VERSION = "0.1.16"
+const VERSION = "0.1.17"
