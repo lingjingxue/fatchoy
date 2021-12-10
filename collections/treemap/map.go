@@ -49,17 +49,63 @@ func (m *Map) GetOrDefault(key KeyType, defaultValue interface{}) interface{} {
 	return defaultValue
 }
 
+// Returns the first key in the TreeMap (according to the key's order)
 func (m *Map) FirstKey() KeyType {
 	return key(m.getFirstEntry())
 }
 
+// Returns the last key in the TreeMap (according to the key's order)
 func (m *Map) LastKey() KeyType {
 	return key(m.getLastEntry())
 }
 
+// Gets the entry corresponding to the specified key;
+// if no such entry exists, returns the entry for the greatest key less than the specified key;
+func (m *Map) FloorEntry(key KeyType) *Entry {
+	return m.getFloorEntry(key)
+}
+
+// Gets the specified key, returns the greatest key less than the specified key if not exist.
+func (m *Map) FloorKey(key KeyType) KeyType {
+	var entry = m.getFloorEntry(key)
+	if entry != nil {
+		return entry.key
+	}
+	return nil
+}
+
+// Gets the entry corresponding to the specified key;
+// returns the entry for the least key greater than the specified key if not exist.
+func (m *Map) CeilingEntry(key KeyType) *Entry {
+	return m.getCeilingEntry(key)
+}
+
+// Gets the specified key, return the least key greater than the specified key if not exist.
+func (m *Map) CeilingKey(key KeyType) KeyType {
+	var entry = m.getCeilingEntry(key)
+	if entry != nil {
+		return entry.key
+	}
+	return nil
+}
+
+// Gets the entry for the least key greater than the specified key
+func (m *Map) HigherEntry(key KeyType) *Entry {
+	return m.getHigherEntry(key)
+}
+
+// Returns the least key greater than the specified key
+func (m *Map) HigherKey(key KeyType) KeyType {
+	var entry = m.getHigherEntry(key)
+	if entry != nil {
+		return entry.key
+	}
+	return nil
+}
+
 // Performs the given action for each entry in this map until all entries
 // have been processed or the action panic
-func (m *Map) Foreach(action func(key KeyType, val interface{})) {
+func (m *Map) Foreach(action EntryAction) {
 	var ver = m.version
 	for e := m.getFirstEntry(); e != nil; e = successor(e) {
 		action(e.key, e.value)
@@ -67,6 +113,21 @@ func (m *Map) Foreach(action func(key KeyType, val interface{})) {
 			panic("concurrent map modification")
 		}
 	}
+}
+
+// in-order traversal
+func (m *Map) InOrderTraversal(action EntryAction) {
+	inOrderTraversal(m.root, action)
+}
+
+// pre-order traversal
+func (m *Map) PreOrderTraversal(action EntryAction) {
+	preOrderTraversal(m.root, action)
+}
+
+// post-order traversal
+func (m *Map) PostOrderTraversal(action EntryAction) {
+	postOrderTraversal(m.root, action)
 }
 
 // Return list of all keys
@@ -108,7 +169,7 @@ func (m *Map) Clear() {
 func (m *Map) Put(key KeyType, value interface{}) interface{} {
 	var t = m.root
 	if t == nil {
-		m.root = NewMapEntry(key, value, nil)
+		m.root = NewEntry(key, value, nil)
 		m.size = 1
 		m.version++
 		return nil
@@ -129,7 +190,7 @@ func (m *Map) Put(key KeyType, value interface{}) interface{} {
 			break
 		}
 	}
-	var e = NewMapEntry(key, value, parent)
+	var e = NewEntry(key, value, parent)
 	if cmp < 0 {
 		parent.left = e
 	} else {

@@ -13,7 +13,10 @@ const (
 	BLACK = 1
 )
 
-type KeyType collections.Comparable
+type (
+	KeyType     collections.Comparable
+	EntryAction func(key KeyType, val interface{})
+)
 
 type Entry struct {
 	left, right, parent *Entry
@@ -22,7 +25,7 @@ type Entry struct {
 	color               int8
 }
 
-func NewMapEntry(key KeyType, val interface{}, parent *Entry) *Entry {
+func NewEntry(key KeyType, val interface{}, parent *Entry) *Entry {
 	return &Entry{
 		key:    key,
 		value:  val,
@@ -133,4 +136,34 @@ func predecessor(t *Entry) *Entry {
 		}
 		return p
 	}
+}
+
+// in-order traversal
+func inOrderTraversal(entry *Entry, action EntryAction) {
+	if entry == nil {
+		return
+	}
+	inOrderTraversal(entry.left, action)
+	action(entry.key, entry.value)
+	inOrderTraversal(entry.right, action)
+}
+
+// pre-order traversal
+func preOrderTraversal(entry *Entry, action EntryAction) {
+	if entry == nil {
+		return
+	}
+	action(entry.key, entry.value)
+	preOrderTraversal(entry.left, action)
+	preOrderTraversal(entry.right, action)
+}
+
+// post-order traversal
+func postOrderTraversal(entry *Entry, action EntryAction) {
+	if entry == nil {
+		return
+	}
+	postOrderTraversal(entry.left, action)
+	postOrderTraversal(entry.right, action)
+	action(entry.key, entry.value)
 }
