@@ -9,21 +9,24 @@ import (
 )
 
 const (
-	StateRunning = 1
-	StateShutdown = 2
-	StateStop = 3
-	StateTidying = 4
+	StateRunning    = 1
+	StateShutdown   = 2
+	StateStop       = 3
+	StateTidying    = 4
 	StateTerminated = 5
 )
 
 type ThreadPoolExecutor struct {
-	done chan struct{}
-	wg sync.WaitGroup
+	done  chan struct{}
+	wg    sync.WaitGroup
 	queue chan Runnable // work queue
 }
 
-func NewThreadPoolExecutor() Executor {
-	return &ThreadPoolExecutor{}
+func NewThreadPoolExecutor(capacity int) Executor {
+	return &ThreadPoolExecutor{
+		done: make(chan struct{}),
+		queue: make(chan Runnable, capacity),
+	}
 }
 
 func (e *ThreadPoolExecutor) Execute(r Runnable) error {

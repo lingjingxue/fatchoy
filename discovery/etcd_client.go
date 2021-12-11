@@ -425,8 +425,10 @@ func (c *Client) WatchDir(ctx context.Context, dir string) <-chan *NodeEvent {
 				}
 
 			case <-ctx.Done():
-				if err := c.client.Watcher.Close(); err != nil {
-					log.Warnf("close watcher: %v", err)
+				if c.client != nil {
+					if err := c.client.Watcher.Close(); err != nil {
+						log.Warnf("close watcher: %v", err)
+					}
 				}
 				return
 			}

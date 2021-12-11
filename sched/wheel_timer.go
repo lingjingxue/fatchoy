@@ -15,9 +15,10 @@ import (
 )
 
 const (
-	TickDuration = 100 * time.Millisecond
-	WheelSize    = 512
-	WheelMask    = WheelSize - 1
+	TickDuration    = 100 * time.Millisecond
+	WheelSize       = 512
+	WheelMask       = WheelSize - 1
+	TimeoutCapacity = 1024
 )
 
 // A timer optimized for approximated I/O timeout scheduling.
@@ -108,7 +109,7 @@ func (t *HashedWheelTimer) worker(ready chan struct{}) {
 	var ticker = time.NewTicker(TickDuration)
 	defer ticker.Stop()
 
-	var bus = make(chan Runnable, 1000)
+	var bus = make(chan Runnable, TimeoutCapacity)
 	t.startedAt = currentMs()
 	t.C = bus
 	ready <- struct{}{}
