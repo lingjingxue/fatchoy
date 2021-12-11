@@ -6,6 +6,7 @@ package fatchoy
 
 import (
 	"context"
+	"sync/atomic"
 
 	"qchen.fun/fatchoy/discovery"
 	"qchen.fun/fatchoy/x/uuid"
@@ -98,4 +99,38 @@ func (c *ServiceContext) Close() {
 	case c.done <- struct{}{}:
 	default:
 	}
+}
+
+const (
+	StateInit       = 0
+	StateRunning    = 1
+	StateShutdown   = 2
+	StateTerminated = 3
+)
+
+// service state
+type State int32
+
+func (s *State) Get() int32 {
+	return atomic.LoadInt32((*int32)(s))
+}
+
+func (s *State) Set(n int32) {
+	atomic.StoreInt32((*int32)(s), n)
+}
+
+func (s *State) CAS(old, new int32) bool {
+	return atomic.CompareAndSwapInt32((*int32)(s), old, new)
+}
+
+func (s State) IsRunning() bool {
+	return s.Get() == StateRunning
+}
+
+func (s State) IsShuttingDown() bool {
+	return s.Get() == StateShutdown
+}
+
+func (s State) IsTerminated() bool {
+	return s.Get() == StateTerminated
 }
