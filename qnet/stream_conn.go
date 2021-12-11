@@ -6,7 +6,6 @@ package qnet
 
 import (
 	"sync"
-	"sync/atomic"
 
 	"qchen.fun/fatchoy"
 	"qchen.fun/fatchoy/codec"
@@ -16,9 +15,10 @@ import (
 
 // stream connection
 type StreamConn struct {
+	fatchoy.State
+
 	done     chan struct{}
 	wg       sync.WaitGroup         // wait group
-	closing  int32                  // closing flag
 	node     fatchoy.NodeID         // node id
 	addr     string                 // remote address
 	userdata interface{}            // user data
@@ -68,10 +68,6 @@ func (c *StreamConn) Stats() *stats.Stats {
 func (c *StreamConn) SetEncryptPair(encrypt cipher.BlockCryptor, decrypt cipher.BlockCryptor) {
 	c.encrypt = encrypt
 	c.decrypt = decrypt
-}
-
-func (c *StreamConn) IsClosing() bool {
-	return atomic.LoadInt32(&c.closing) == 1
 }
 
 func (c *StreamConn) testShouldExit() bool {

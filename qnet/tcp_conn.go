@@ -8,7 +8,6 @@ import (
 	"bufio"
 	"io"
 	"net"
-	"sync/atomic"
 	"time"
 
 	"qchen.fun/fatchoy"
@@ -51,6 +50,7 @@ func (t *TcpConn) OutboundQueue() chan fatchoy.IPacket {
 }
 
 func (t *TcpConn) Go(flag fatchoy.EndpointFlag) {
+	t.Set(fatchoy.StateRunning)
 	if (flag & fatchoy.EndpointWriter) > 0 {
 		t.wg.Add(1)
 		go t.writePump()
@@ -62,7 +62,7 @@ func (t *TcpConn) Go(flag fatchoy.EndpointFlag) {
 }
 
 func (t *TcpConn) SendPacket(pkt fatchoy.IPacket) error {
-	if t.IsClosing() {
+	if !t.IsRunning() {
 		return ErrConnIsClosing
 	}
 	select {
@@ -74,7 +74,7 @@ func (t *TcpConn) SendPacket(pkt fatchoy.IPacket) error {
 }
 
 func (t *TcpConn) Close() error {
-	if !atomic.CompareAndSwapInt32(&t.closing, 0, 1) {
+	if !t.CAS(fatchoy.StateRunning, fatchoy.StateShutdown) {
 		// log.Errorf("TcpConn: connection %v is already closed", t.node)
 		return nil
 	}
@@ -88,7 +88,7 @@ func (t *TcpConn) Close() error {
 }
 
 func (t *TcpConn) ForceClose(err error) {
-	if !atomic.CompareAndSwapInt32(&t.closing, 0, 1) {
+	if !t.CAS(fatchoy.StateRunning, fatchoy.StateShutdown) {
 		// log.Errorf("TcpConn: connection %v is already closed", t.node)
 		return
 	}
@@ -107,7 +107,7 @@ func (t *TcpConn) finally() {
 	} else {
 		t.conn.Close()
 	}
-
+	t.Set(fatchoy.StateTerminated)
 	close(t.outbound)
 	t.outbound = nil
 	t.inbound = nil
