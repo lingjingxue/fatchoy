@@ -36,6 +36,7 @@ type MessageEndpoint interface {
 	// 关闭读/写
 	Close() error
 	ForceClose(error)
+
 	IsRunning() bool
 
 	// 绑定自定义数据

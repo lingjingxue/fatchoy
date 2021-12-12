@@ -15,10 +15,9 @@ import (
 
 // stream connection
 type StreamConn struct {
-	fatchoy.State
-
 	done     chan struct{}
 	wg       sync.WaitGroup         // wait group
+	state    fatchoy.State          //
 	node     fatchoy.NodeID         // node id
 	addr     string                 // remote address
 	userdata interface{}            // user data
@@ -47,6 +46,10 @@ func (c *StreamConn) Init(node fatchoy.NodeID, enc codec.Encoder, inbound chan<-
 
 func (c *StreamConn) NodeID() fatchoy.NodeID {
 	return c.node
+}
+
+func (c *StreamConn) IsRunning() bool {
+	return c.state.IsRunning()
 }
 
 func (c *StreamConn) SetNodeID(node fatchoy.NodeID) {

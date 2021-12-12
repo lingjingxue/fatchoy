@@ -11,6 +11,7 @@ import (
 	"sync/atomic"
 	"time"
 
+	"qchen.fun/fatchoy"
 	"qchen.fun/fatchoy/collections/queue"
 )
 
@@ -29,7 +30,7 @@ const (
 type HashedWheelTimer struct {
 	done               chan struct{}
 	wg                 sync.WaitGroup
-	state              int32
+	state              fatchoy.State
 	wheel              []HashedWheelBucket            // wheel buckets
 	C                  <-chan Runnable                // 到期的定时器
 	timeouts           queue.UnboundedConcurrentQueue // all timeout
@@ -49,9 +50,13 @@ func NewHashedWheelTimer() *HashedWheelTimer {
 }
 
 func (t *HashedWheelTimer) Shutdown() {
+	if !t.state.CAS(fatchoy.StateRunning, fatchoy.StateShutdown) {
+		return
+	}
 	close(t.done)
 	t.wg.Wait()
 	t.wheel = nil
+	t.state.Set(fatchoy.StateTerminated)
 }
 
 func (t *HashedWheelTimer) CreateTimeout(delay int64, task Runnable) *HashedWheelTimeout {
@@ -83,16 +88,18 @@ func (t *HashedWheelTimer) decrementPending() int32 {
 }
 
 func (t *HashedWheelTimer) start() {
-	var state = atomic.LoadInt32(&t.state)
+	var state = t.state.Get()
 	switch state {
-	case WorkerInit:
-		if atomic.CompareAndSwapInt32(&t.state, WorkerInit, WorkerStarted) {
+	case fatchoy.StateInit:
+		if t.state.CAS(fatchoy.StateInit, fatchoy.StateStarted) {
 			var ready = make(chan struct{}, 1)
 			t.wg.Add(1)
 			go t.worker(ready)
 			<-ready
+			t.state.Set(fatchoy.StateRunning)
 		}
-	case WorkerStarted:
+
+	case fatchoy.StateRunning:
 		return
 
 	default:
@@ -101,10 +108,7 @@ func (t *HashedWheelTimer) start() {
 }
 
 func (t *HashedWheelTimer) worker(ready chan struct{}) {
-	defer func() {
-		atomic.StoreInt32(&t.state, WorkerShutdown)
-		t.wg.Done()
-	}()
+	defer t.wg.Done()
 
 	var ticker = time.NewTicker(TickDuration)
 	defer ticker.Stop()

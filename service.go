@@ -101,13 +101,6 @@ func (c *ServiceContext) Close() {
 	}
 }
 
-const (
-	StateInit       = 0
-	StateRunning    = 1
-	StateShutdown   = 2
-	StateTerminated = 3
-)
-
 // service state
 type State int32
 

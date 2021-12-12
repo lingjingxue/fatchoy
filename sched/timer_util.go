@@ -13,12 +13,6 @@ const (
 	CustomEpoch = int64(1577836800 * time.Second) // 起始纪元 2020-01-01 00:00:00 UTC
 )
 
-const (
-	WorkerInit     = 0
-	WorkerStarted  = 1
-	WorkerShutdown = 2
-)
-
 // 当前毫秒
 func currentMs() int64 {
 	return time.Now().UnixNano() / int64(time.Millisecond)

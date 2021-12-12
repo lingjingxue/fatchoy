@@ -8,3 +8,11 @@ const (
 	SERVICE_ALL  = 0xFF   // 所有服务
 	INSTANCE_ALL = 0xFFFF // 所有实例
 )
+
+const (
+	StateInit       = 0
+	StateStarted    = 1
+	StateRunning    = 2
+	StateShutdown   = 3
+	StateTerminated = 4
+)
