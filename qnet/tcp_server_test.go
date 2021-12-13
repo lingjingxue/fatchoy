@@ -83,7 +83,7 @@ func startServeRawClient(t *testing.T, ctx context.Context, cancel context.Cance
 			var ne = err.(*Error)
 			var endpoint = ne.Endpoint
 			// fmt.Printf("endpoint[%v] %v closed\n", endpoint.Node(), endpoint.RemoteAddr())
-			if !endpoint.IsClosing() {
+			if endpoint.IsRunning() {
 				endpoint.Close()
 			}
 

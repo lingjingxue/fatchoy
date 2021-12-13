@@ -45,7 +45,7 @@ func serveBench(t *testing.T, ctx context.Context, addr string, ready chan struc
 			// handle connection error
 			var ne = err.(*Error)
 			var endpoint = ne.Endpoint
-			if !endpoint.IsClosing() {
+			if endpoint.IsRunning() {
 				endpoint.Close()
 			}
 

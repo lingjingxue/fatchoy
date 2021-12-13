@@ -24,9 +24,9 @@ var (
 // TCP connection
 type TcpConn struct {
 	StreamConn
-	conn   net.Conn // TCP connection object
-	reader io.Reader
-	writer *bufio.Writer
+	conn   net.Conn      // TCP connection object
+	reader io.Reader     // buffered read
+	writer *bufio.Writer // buffered write
 }
 
 func NewTcpConn(node fatchoy.NodeID, conn net.Conn, enc codec.Encoder, errChan chan error,
@@ -50,7 +50,9 @@ func (t *TcpConn) OutboundQueue() chan fatchoy.IPacket {
 }
 
 func (t *TcpConn) Go(flag fatchoy.EndpointFlag) {
-	t.state.Set(fatchoy.StateRunning)
+	if !t.state.CAS(fatchoy.StateInit, fatchoy.StateRunning) {
+		panic("TcpConn: invalid state")
+	}
 	if (flag & fatchoy.EndpointWriter) > 0 {
 		t.wg.Add(1)
 		go t.writePump()
