@@ -11,6 +11,8 @@ import (
 	"sync"
 	"sync/atomic"
 	"time"
+
+	"qchen.fun/fatchoy"
 )
 
 // 最小堆实现的定时器
@@ -18,22 +20,22 @@ import (
 // 这个实现主要是为了在大量timer的场景，把timer的压力从runtime放到应用上
 type TimerQueue struct {
 	done      chan struct{}
-	wg        sync.WaitGroup          //
-	state     int32                   // worker state
-	ticks     int64                   //
-	guard     sync.Mutex              // 多线程
-	timers    timerHeap               // 二叉最小堆
-	lastId    int                     // id生成
-	refer     map[int]*timerQueueNode // O(1)查找
-	C         <-chan Runnable         // 到期的定时器
-	startedAt int64                   //
+	wg        sync.WaitGroup     //
+	state     fatchoy.State      //
+	ticks     int64              //
+	guard     sync.Mutex         // 多线程
+	timers    timerHeap          // 二叉最小堆
+	lastId    int                // id生成
+	refer     map[int]*timerNode // O(1)查找
+	C         <-chan Runnable    // 到期的定时器
+	startedAt int64              //
 }
 
 func NewTimerQueue() *TimerQueue {
 	return &TimerQueue{
 		done:   make(chan struct{}, 1),
 		timers: make(timerHeap, 0, 64),
-		refer:  make(map[int]*timerQueueNode, 64),
+		refer:  make(map[int]*timerNode, 64),
 	}
 }
 
@@ -45,6 +47,12 @@ func (s *TimerQueue) Size() int {
 }
 
 func (s *TimerQueue) Shutdown() {
+	switch s.state.Get() {
+	case fatchoy.StateShutdown, fatchoy.StateTerminated:
+		return
+	}
+
+	s.state.Set(fatchoy.StateShutdown)
 	close(s.done)
 	s.wg.Wait()
 
@@ -53,15 +61,8 @@ func (s *TimerQueue) Shutdown() {
 	s.refer = nil
 	s.timers = nil
 	s.guard.Unlock()
-}
 
-// 创建一个定时器，在`ts`毫秒时间戳运行`task`
-func (s *TimerQueue) RunAt(ts int64, task Runnable) int {
-	var now = currentMs()
-	if ts < now {
-		ts = now
-	}
-	return s.schedule(ts, 0, false, task)
+	s.state.Set(fatchoy.StateTerminated)
 }
 
 // 创建一个定时器，在`interval`毫秒后运行`task`
@@ -106,16 +107,17 @@ func (s *TimerQueue) Cancel(id int) bool {
 
 // Starts the background thread explicitly
 func (s *TimerQueue) start() {
-	var state = atomic.LoadInt32(&s.state)
-	switch state {
-	case WorkerInit:
-		if atomic.CompareAndSwapInt32(&s.state, WorkerInit, WorkerStarted) {
+	switch state := s.state.Get(); state {
+	case fatchoy.StateInit:
+		if s.state.CAS(fatchoy.StateInit, fatchoy.StateStarted) {
 			var ready = make(chan struct{}, 1)
 			s.wg.Add(1)
 			go s.worker(ready)
 			<-ready
+			s.state.Set(fatchoy.StateRunning)
 		}
-	case WorkerStarted:
+
+	case fatchoy.StateRunning:
 		return
 
 	default:
@@ -124,10 +126,7 @@ func (s *TimerQueue) start() {
 }
 
 func (s *TimerQueue) worker(ready chan struct{}) {
-	defer func() {
-		atomic.StoreInt32(&s.state, WorkerShutdown)
-		s.wg.Done()
-	}()
+	defer s.wg.Done()
 
 	var ticker = time.NewTicker(TimeUnit)
 	defer ticker.Stop()
@@ -164,13 +163,13 @@ func (s *TimerQueue) tick(deadline time.Time, bus chan<- Runnable) {
 }
 
 // 返回触发的timer列表
-func (s *TimerQueue) trigger(t time.Time) []*timerQueueNode {
+func (s *TimerQueue) trigger(t time.Time) []*timerNode {
 	var deadline = timeMs(t)
 	var maxId = s.lastId
-	var expires []*timerQueueNode
+	var expires []*timerNode
 	for len(s.timers) > 0 {
 		var node = s.timers[0] // peek first item of heap
-		if deadline < node.expiry {
+		if deadline < node.deadline {
 			break // no new timer expired
 		}
 		// make sure we don't process timer created by timer events
@@ -180,7 +179,7 @@ func (s *TimerQueue) trigger(t time.Time) []*timerQueueNode {
 
 		// 如果timer需要重复执行，只修正heap，id保持不变
 		if node.repeatable {
-			node.expiry = deadline + int64(node.interval)
+			node.deadline = deadline + int64(node.interval)
 			heap.Fix(&s.timers, node.index)
 		} else {
 			heap.Pop(&s.timers)
@@ -214,8 +213,8 @@ func (s *TimerQueue) schedule(ts int64, interval int32, repeat bool, task Runnab
 	defer s.guard.Unlock()
 
 	var id = s.nextID()
-	var node = &timerQueueNode{
-		expiry:     ts,
+	var node = &timerNode{
+		deadline:   ts,
 		interval:   interval,
 		repeatable: repeat,
 		id:         id,
@@ -227,23 +226,26 @@ func (s *TimerQueue) schedule(ts int64, interval int32, repeat bool, task Runnab
 }
 
 // 二叉堆节点
-type timerQueueNode struct {
+type timerNode struct {
 	id         int      // 唯一ID
 	index      int      // 数组索引
-	expiry     int64    // 到期时间
+	deadline   int64    // 到期时间
 	interval   int32    // 间隔（毫秒)，最多24.8天
 	repeatable bool     // 是否重复
 	task       Runnable // 触发任务
 }
 
-type timerHeap []*timerQueueNode
+type timerHeap []*timerNode
 
 func (q timerHeap) Len() int {
 	return len(q)
 }
 
 func (q timerHeap) Less(i, j int) bool {
-	return q[i].expiry < q[j].expiry
+	if q[i].deadline == q[j].deadline {
+		return q[i].id > q[j].id
+	}
+	return q[i].deadline < q[j].deadline
 }
 
 func (q timerHeap) Swap(i, j int) {
@@ -253,7 +255,7 @@ func (q timerHeap) Swap(i, j int) {
 }
 
 func (q *timerHeap) Push(x interface{}) {
-	v := x.(*timerQueueNode)
+	v := x.(*timerNode)
 	v.index = len(*q)
 	*q = append(*q, v)
 }
