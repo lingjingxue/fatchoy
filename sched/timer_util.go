@@ -9,7 +9,7 @@ import (
 )
 
 const (
-	TimeUnit    = 10 * time.Millisecond           //
+	TimeUnit    = 10                              // centi-seconds (10 ms)
 	CustomEpoch = int64(1577836800 * time.Second) // 起始纪元 2020-01-01 00:00:00 UTC
 )
 
@@ -21,4 +21,13 @@ func currentMs() int64 {
 // 转为当前毫秒
 func timeMs(t time.Time) int64 {
 	return t.UnixNano() / int64(time.Millisecond)
+}
+
+type Timer interface {
+	RunAfter(durationMs int, task Runnable) int
+	RunEvery(intervalMs int, task Runnable) int
+	Cancel(id int) bool
+	Chan() <-chan Runnable
+	Size() int
+	Shutdown()
 }

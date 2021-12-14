@@ -31,12 +31,14 @@ type TimerQueue struct {
 	startedAt int64              //
 }
 
-func NewTimerQueue() *TimerQueue {
-	return &TimerQueue{
+func NewTimerQueue() Timer {
+	t := &TimerQueue{
 		done:   make(chan struct{}, 1),
 		timers: make(timerHeap, 0, 64),
 		refer:  make(map[int]*timerNode, 64),
 	}
+	t.start()
+	return t
 }
 
 func (s *TimerQueue) Size() int {
@@ -44,6 +46,10 @@ func (s *TimerQueue) Size() int {
 	var n = len(s.timers)
 	s.guard.Unlock()
 	return n
+}
+
+func (s *TimerQueue) Chan() <-chan Runnable {
+	return s.C
 }
 
 func (s *TimerQueue) Shutdown() {
@@ -65,30 +71,30 @@ func (s *TimerQueue) Shutdown() {
 	s.state.Set(fatchoy.StateTerminated)
 }
 
-// 创建一个定时器，在`interval`毫秒后运行`task`
-func (s *TimerQueue) RunAfter(interval int, task Runnable) int {
-	if interval >= math.MaxInt32 {
-		log.Panicf("interval %d out of range", interval)
+// 创建一个定时器，在`durationMs`毫秒后运行`task`
+func (s *TimerQueue) RunAfter(durationMs int, task Runnable) int {
+	if durationMs >= math.MaxInt32 {
+		log.Panicf("duration %d out of range", durationMs)
 		return -1
 	}
-	if interval < 0 {
-		interval = 0
+	if durationMs < 0 {
+		durationMs = 0
 	}
-	var ts = currentMs() + int64(interval)
+	var ts = currentMs() + int64(durationMs)
 	return s.schedule(ts, 0, false, task)
 }
 
 // 创建一个定时器，每隔`interval`毫秒运行一次`task`
-func (s *TimerQueue) RunEvery(interval int, task Runnable) int {
-	if interval >= math.MaxInt32 {
-		log.Panicf("interval %d out of range", interval)
+func (s *TimerQueue) RunEvery(intervalMs int, task Runnable) int {
+	if intervalMs >= math.MaxInt32 {
+		log.Panicf("interval %d out of range", intervalMs)
 		return -1
 	}
-	if interval < 0 {
-		interval = int(TimeUnit)
+	if intervalMs < 0 {
+		intervalMs = TimeUnit
 	}
-	var ts = currentMs() + int64(interval)
-	return s.schedule(ts, int32(interval), true, task)
+	var ts = currentMs() + int64(intervalMs)
+	return s.schedule(ts, int32(intervalMs), true, task)
 }
 
 // 取消一个timer
@@ -128,12 +134,12 @@ func (s *TimerQueue) start() {
 func (s *TimerQueue) worker(ready chan struct{}) {
 	defer s.wg.Done()
 
-	var ticker = time.NewTicker(TimeUnit)
+	var ticker = time.NewTicker(TimeUnit * time.Millisecond)
 	defer ticker.Stop()
 
-	var bus = make(chan Runnable, 1000)
+	var expired = make(chan Runnable, 1000)
 	s.startedAt = currentMs()
-	s.C = bus
+	s.C = expired
 	ready <- struct{}{}
 
 	for {
@@ -141,7 +147,7 @@ func (s *TimerQueue) worker(ready chan struct{}) {
 		case now, ok := <-ticker.C:
 			if ok {
 				atomic.AddInt64(&s.ticks, 1)
-				s.tick(now, bus)
+				s.tick(now, expired)
 			}
 
 		case <-s.done:
@@ -150,14 +156,14 @@ func (s *TimerQueue) worker(ready chan struct{}) {
 	}
 }
 
-func (s *TimerQueue) tick(deadline time.Time, bus chan<- Runnable) {
+func (s *TimerQueue) tick(deadline time.Time, expired chan<- Runnable) {
 	s.guard.Lock()
 	var expires = s.trigger(deadline)
 	s.guard.Unlock()
 
 	for _, node := range expires {
 		if node.task != nil {
-			bus <- node.task
+			expired <- node.task
 		}
 	}
 }
@@ -207,8 +213,6 @@ func (s *TimerQueue) nextID() int {
 }
 
 func (s *TimerQueue) schedule(ts int64, interval int32, repeat bool, task Runnable) int {
-	s.start()
-
 	s.guard.Lock()
 	defer s.guard.Unlock()
 

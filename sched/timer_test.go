@@ -35,10 +35,7 @@ func (r *testTimerContext) Run() error {
 	return nil
 }
 
-func TestScheduler_RunAfter(t *testing.T) {
-	var sched = NewTimerQueue()
-	defer sched.Shutdown()
-
+func testTimerRunAfter(t *testing.T, sched Timer) {
 	var interval = 1200 // 1.2s
 	var ctx = newTestTimerContext(interval)
 
@@ -46,7 +43,7 @@ func TestScheduler_RunAfter(t *testing.T) {
 
 	for ctx.fireCount == 0 {
 		select {
-		case task := <-sched.C:
+		case task := <-sched.Chan():
 			task.Run()
 			duration := ctx.lastFireTime.Sub(ctx.startTime)
 			t.Logf("timer fired after %v at %s", duration, ctx.lastFireTime.Format(time.RFC3339))
@@ -58,17 +55,14 @@ func TestScheduler_RunAfter(t *testing.T) {
 	}
 }
 
-func TestScheduler_RunEvery(t *testing.T) {
-	var sched = NewTimerQueue()
-	defer sched.Shutdown()
-
+func testTimerRunEvery(t *testing.T, sched Timer) {
 	var interval = 700 // 0.7s
 	var ctx = newTestTimerContext(interval)
 	sched.RunEvery(interval, ctx)
 
 	for ctx.fireCount < 5 {
 		select {
-		case task := <-sched.C:
+		case task := <-sched.Chan():
 			task.Run()
 			duration := ctx.lastFireTime.Sub(ctx.startTime)
 			t.Logf("timer fired after %v at %s", duration, ctx.lastFireTime.Format(time.RFC3339))
@@ -79,4 +73,28 @@ func TestScheduler_RunEvery(t *testing.T) {
 			ctx.startTime = ctx.lastFireTime
 		}
 	}
+}
+
+func TestTimerQueue_RunAfter(t *testing.T) {
+	var timer = NewTimerQueue()
+	defer timer.Shutdown()
+	testTimerRunAfter(t, timer)
+}
+
+func TestTimerQueue_RunEvery(t *testing.T) {
+	var timer = NewTimerQueue()
+	defer timer.Shutdown()
+	testTimerRunEvery(t, timer)
+}
+
+func TestHHWheel_RunAfter(t *testing.T) {
+	var timer = NewHHWheelTimer()
+	defer timer.Shutdown()
+	testTimerRunAfter(t, timer)
+}
+
+func TestHHWheel_RunEvery(t *testing.T) {
+	var timer = NewHHWheelTimer()
+	defer timer.Shutdown()
+	testTimerRunEvery(t, timer)
 }
