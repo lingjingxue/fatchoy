@@ -5,6 +5,7 @@
 package sched
 
 import (
+	"fmt"
 	"log"
 	"math"
 	"sync"
@@ -171,8 +172,8 @@ func (t *HHWheelTimer) worker(ready chan struct{}) {
 
 	for {
 		select {
-		case <-ticker.C:
-			t.tick(expireChan)
+		case now := <-ticker.C:
+			t.tick(timeMs(now), expireChan)
 
 		case node := <-t.addQueue:
 			t.addTimer(node)
@@ -229,7 +230,7 @@ func (t *HHWheelTimer) cascade(level int) uint32 {
 	return uint32(idx)
 }
 
-func (t *HHWheelTimer) tick(expireChan chan<- Runnable) {
+func (t *HHWheelTimer) tick(now int64, expireChan chan<- Runnable) {
 	var idx = t.currTick & TVR_MASK
 	if idx == 0 &&
 		t.cascade(1) == 0 &&
@@ -240,6 +241,9 @@ func (t *HHWheelTimer) tick(expireChan chan<- Runnable) {
 	for node != nil {
 		var next = node.next
 		node.unchain()
+		if node.deadline > now {
+			panic("timeout node deadline")
+		}
 		expireChan <- node.task // trigger
 		if node.repeatable {
 			node.deadline += int64(node.interval)
@@ -262,6 +266,7 @@ type WheelTimerNode struct {
 }
 
 func (n *WheelTimerNode) unchain() {
+	fmt.Printf("nil node %d and its bucket %p\n", n.id, n.bucket)
 	n.next = nil
 	n.prev = nil
 	n.bucket = nil
@@ -273,6 +278,7 @@ type WheelTimerBucket struct {
 }
 
 func (b *WheelTimerBucket) addNode(node *WheelTimerNode) {
+	fmt.Printf("add node %d to bucket %p\n", node.id, b)
 	if node.bucket != nil {
 		panic("wheel node bucket is not nil")
 	}

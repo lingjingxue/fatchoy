@@ -3,6 +3,7 @@
 // See accompanying files LICENSE.
 
 //go:build linux || darwin
+//+build linux darwin
 
 package fsutil
 
