@@ -5,8 +5,8 @@
 package sched
 
 const (
-	PendingQueueCapacity = 1024 //
-	TimeoutQueueCapacity = 1024
+	PendingQueueCapacity = 128 // pending add/delete
+	TimeoutQueueCapacity = 512 // pending timed-out
 )
 
 // 定时器

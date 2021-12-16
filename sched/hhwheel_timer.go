@@ -41,6 +41,8 @@ type HHWheelTimer struct {
 	tickInterval time.Duration // tick间隔时长
 	timeUnit     time.Duration // 时间单位
 	startAt      int64         // 启动时间(timeunit)
+	lastTime     int64         //
+	tickTime     int64         //
 
 	guard  sync.Mutex              // 多线程
 	refer  map[int]*WheelTimerNode // O(1)查找
@@ -50,7 +52,7 @@ type HHWheelTimer struct {
 	pendingDel chan *WheelTimerNode // 待删除
 	C          chan Runnable        // 到期的定时器
 
-	currTick uint32                                  // 当前tick（时间指针）
+	currTick int64                                   // 当前tick（时间指针）
 	near     [TVR_SIZE]WheelTimerBucket              // 最近的时间轮
 	tvec     [WHEEL_LEVEL][TVR_SIZE]WheelTimerBucket // 层级时间轮
 }
@@ -66,7 +68,6 @@ func NewHHWheelTimer(tickInterval, timeUnit time.Duration) Timer {
 func (t *HHWheelTimer) init(tickInterval, timeUnit time.Duration) *HHWheelTimer {
 	t.tickInterval = tickInterval
 	t.timeUnit = timeUnit
-	t.startAt = t.currentTimeUnit()
 	t.done = make(chan struct{})
 	t.refer = make(map[int]*WheelTimerNode)
 	t.C = make(chan Runnable, PendingQueueCapacity)
@@ -97,6 +98,7 @@ func (t *HHWheelTimer) Start() {
 	switch state := t.state.Get(); state {
 	case fatchoy.StateInit:
 		if t.state.CAS(fatchoy.StateInit, fatchoy.StateStarted) {
+			t.startAt = t.currentTimeUnit()
 			var ready = make(chan struct{}, 1)
 			t.wg.Add(1)
 			go t.worker(ready)
@@ -204,23 +206,15 @@ func (t *HHWheelTimer) worker(ready chan struct{}) {
 
 	var ticker = time.NewTicker(t.tickInterval)
 	defer ticker.Stop()
-	var lastTime = t.currentTimeUnit()
+	t.lastTime = t.currentTimeUnit()
+	t.tickTime = t.lastTime
 	ready <- struct{}{}
 
 	for {
 		select {
 		case now := <-ticker.C:
-			var ts = t.convTimeUnit(now)
-			if ts < lastTime {
-				log.Printf("time gone backwards %d -> %d", lastTime, ts)
-				lastTime = ts
-			} else if ts > lastTime {
-				var diff = ts - lastTime
-				for i := 0; i < int(diff); i++ {
-					t.tick(lastTime+int64(i))
-				}
-				lastTime = ts
-			}
+			var current = t.convTimeUnit(now)
+			t.update(current)
 
 		case node := <-t.pendingAdd:
 			t.addNode(node)
@@ -234,70 +228,89 @@ func (t *HHWheelTimer) worker(ready chan struct{}) {
 	}
 }
 
+func (t *HHWheelTimer) update(current int64) {
+	if current < t.lastTime {
+		log.Printf("time gone backwards %d -> %d", t.lastTime, current)
+		t.lastTime = current
+		return
+	}
+	if current > t.lastTime {
+		var diff = current - t.lastTime
+		for i := 0; i < int(diff); i++ {
+			t.tick()
+		}
+		t.lastTime = current
+	}
+}
+
+func (t *HHWheelTimer) tick() {
+	var index = int(t.currTick & TVR_MASK)
+	if index == 0 {
+		if t.cascade(0) == 0 &&
+			t.cascade(1) == 0 &&
+			t.cascade(2) == 0 {
+			t.cascade(3)
+		}
+	}
+	t.currTick++
+	t.tickTime++
+	t.expireNear(index)
+}
+
 func (t *HHWheelTimer) addNode(node *WheelTimerNode) {
-	var ticks = node.deadline - t.startAt
+	var ticks = node.deadline - t.tickTime
 	if ticks < 0 {
 		ticks = 0
 	}
-	if ticks < TVR_SIZE {
-		var i = ticks & TVR_MASK
-		t.near[i].addNode(node)
-		return
+	var idx = t.currTick + ticks
+	var bucket *WheelTimerBucket
+	if idx < TVR_SIZE {
+		var i = idx & TVR_MASK
+		log.Printf("timer %d tick %d add to near %d\n", node.id, idx, i)
+		bucket = &t.near[i]
+	} else if ticks < 1<<(TVR_BITS+TVN_BITS) {
+		idx = (idx >> (TVR_BITS)) & TVN_MASK
+		bucket = &t.tvec[0][idx]
+	} else if ticks < 1<<(TVR_BITS+2*TVN_BITS) {
+		idx = (idx >> (TVR_BITS + TVN_BITS)) & TVN_MASK
+		bucket = &t.tvec[1][idx]
+	} else if ticks < 1<<(TVR_BITS+3*TVN_BITS) {
+		idx = (idx >> (TVR_BITS + 2*TVN_BITS)) & TVN_MASK
+		bucket = &t.tvec[2][idx]
+	} else {
+		idx = (idx >> (TVR_BITS + 3*TVN_BITS)) & TVN_MASK
+		bucket = &t.tvec[3][idx]
 	}
-	for level := 0; level < WHEEL_LEVEL; level++ {
-		var n = int64(1 << (TVR_BITS + (level+1)*TVN_BITS))
-		if ticks < n {
-			var i = (ticks >> (TVR_BITS + (level)*TVN_BITS)) & TVN_MASK
-			t.tvec[level][i].addNode(node)
-			break
-		}
-	}
+	bucket.addNode(node)
 }
 
 func (t *HHWheelTimer) delTimer(node *WheelTimerNode) {
 	node.bucket.removeNode(node)
 }
 
-func (t *HHWheelTimer) cascade(level int, idx int) {
-	var node = t.tvec[level][idx].splice()
+func (t *HHWheelTimer) cascade(n int) uint32 {
+	var idx = uint32(t.currTick>>(TVR_BITS+n*TVN_BITS)) & TVN_MASK
+	var node = t.tvec[n][idx].replaceInit()
 	for node != nil {
 		var next = node.next
 		node.unchain()
 		t.addNode(node)
 		node = next
 	}
+	return idx
 }
 
-func (t *HHWheelTimer) tick(current int64) {
-	var index = t.currTick & TVR_MASK
-	if index == 0 {
-		var level = 0
-		var idx = 0
-		for ok := true; ok; ok = idx == 0 && level < WHEEL_LEVEL {
-			idx = int(t.currTick>>(TVR_BITS+level*TVN_BITS)) & TVN_MASK
-			t.cascade(level, idx)
-			level++
-		}
-	}
-
-	var node = t.near[index].splice()
-	t.trigger(current, node)
-	t.currTick++
-}
-
-func (t *HHWheelTimer) trigger(current int64, node *WheelTimerNode) {
+func (t *HHWheelTimer) expireNear(index int) {
+	var node = t.near[index].replaceInit()
 	for node != nil {
 		var next = node.next
 		node.unchain()
-		if node.deadline > current {
-			log.Panicf("timeout node %d deadline %d < %d", node.id, current, node.deadline)
-		}
 
 		t.C <- node.r // trigger
 
 		// schedule again
 		if node.period > 0 {
-			node.deadline = current + node.period
+			node.deadline = t.currentTimeUnit() + node.period
 			t.addNode(node)
 		} else {
 			t.guard.Lock()
@@ -306,7 +319,6 @@ func (t *HHWheelTimer) trigger(current int64, node *WheelTimerNode) {
 		}
 		node = next
 	}
-
 }
 
 type WheelTimerNode struct {
@@ -383,7 +395,7 @@ func (b *WheelTimerBucket) removeNode(node *WheelTimerNode) *WheelTimerNode {
 	return next
 }
 
-func (b *WheelTimerBucket) splice() *WheelTimerNode {
+func (b *WheelTimerBucket) replaceInit() *WheelTimerNode {
 	var node = b.head
 	b.head = nil
 	b.tail = nil

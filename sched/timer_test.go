@@ -54,7 +54,7 @@ func testTimerCancel(t *testing.T, sched Timer) {
 }
 
 func testTimerRunAfter(t *testing.T, sched Timer, interval int) {
-	ctx, cancel := context.WithTimeout(context.Background(), time.Second*30)
+	ctx, cancel := context.WithTimeout(context.Background(), time.Second*60)
 	defer cancel()
 
 	var timerCtx = newTimerContext(interval)
@@ -68,7 +68,7 @@ func testTimerRunAfter(t *testing.T, sched Timer, interval int) {
 			duration := timerCtx.lastFireTime.Sub(timerCtx.startTime)
 			t.Logf("timer fired after %v at %s", duration, timerCtx.lastFireTime.Format(time.RFC3339))
 			if duration < time.Duration(interval)*time.Millisecond {
-				t.Fatalf("invalid fire duration: %v != %v", duration, interval)
+				t.Fatalf("fired too early %v != %v", duration, interval)
 			}
 			timerCtx.startTime = time.Now()
 
@@ -80,7 +80,7 @@ func testTimerRunAfter(t *testing.T, sched Timer, interval int) {
 }
 
 func testTimerRunEvery(t *testing.T, sched Timer, interval int) {
-	ctx, cancel := context.WithTimeout(context.Background(), time.Second*30)
+	ctx, cancel := context.WithTimeout(context.Background(), time.Second*60)
 	defer cancel()
 
 	var timerCtx = newTimerContext(interval)
@@ -112,7 +112,9 @@ func TestTimerQueue_RunAfter(t *testing.T) {
 	defer timer.Shutdown()
 
 	testTimerCancel(t, timer)
-	testTimerRunAfter(t, timer, 300)
+	for i := 100; i <= 1000; i+= 100 {
+		testTimerRunAfter(t, timer, i)
+	}
 }
 
 func TestTimerQueue_RunEvery(t *testing.T) {
@@ -129,7 +131,9 @@ func TestHHWheel_RunAfter(t *testing.T) {
 	defer timer.Shutdown()
 
 	testTimerCancel(t, timer)
-	testTimerRunAfter(t, timer, 300)
+	for i := 100; i <= 1000; i+= 100 {
+		testTimerRunAfter(t, timer, i)
+	}
 }
 
 func TestHHWheel_RunEvery(t *testing.T) {
