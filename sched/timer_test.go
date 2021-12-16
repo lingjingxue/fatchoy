@@ -5,7 +5,7 @@
 package sched
 
 import (
-	"math"
+	"context"
 	"math/rand"
 	"testing"
 	"time"
@@ -15,86 +15,127 @@ func init() {
 	rand.Seed(time.Now().UnixNano())
 }
 
-type testTimerContext struct {
+type timerContext struct {
 	interval     int
 	fireCount    int
 	startTime    time.Time
 	lastFireTime time.Time
 }
 
-func newTestTimerContext(interval int) *testTimerContext {
-	return &testTimerContext{
+func newTimerContext(interval int) *timerContext {
+	return &timerContext{
 		interval:  interval,
 		startTime: time.Now(),
 	}
 }
 
-func (r *testTimerContext) Run() error {
+func (r *timerContext) Run() error {
 	r.lastFireTime = time.Now()
 	r.fireCount++
 	return nil
 }
 
-func testTimerRunAfter(t *testing.T, sched Timer) {
-	var interval = 1200 // 1.2s
-	var ctx = newTestTimerContext(interval)
+func testTimerCancel(t *testing.T, sched Timer) {
+	const interval = 1000 // 1s
+	var timerCtx = newTimerContext(interval)
 
-	sched.RunAfter(interval, ctx)
+	var timerId = sched.RunAfter(interval, timerCtx)
+	time.Sleep(time.Millisecond) // wait for worker
+	if n := sched.Size(); n != 1 {
+		t.Fatalf("timer size unexpected %d", n)
+	}
+	sched.Cancel(timerId)
+	if n := sched.Size(); n != 0 {
+		t.Fatalf("timer size unexpected %d", n)
+	}
+	if timerCtx.fireCount > 0 {
+		t.Fatalf("timeout %d unexpectly triggered", timerId)
+	}
+}
 
-	for ctx.fireCount == 0 {
+func testTimerRunAfter(t *testing.T, sched Timer, interval int) {
+	ctx, cancel := context.WithTimeout(context.Background(), time.Second*30)
+	defer cancel()
+
+	var timerCtx = newTimerContext(interval)
+
+	sched.RunAfter(interval, timerCtx)
+
+	for timerCtx.fireCount == 0 {
 		select {
 		case task := <-sched.Chan():
 			task.Run()
-			duration := ctx.lastFireTime.Sub(ctx.startTime)
-			t.Logf("timer fired after %v at %s", duration, ctx.lastFireTime.Format(time.RFC3339))
+			duration := timerCtx.lastFireTime.Sub(timerCtx.startTime)
+			t.Logf("timer fired after %v at %s", duration, timerCtx.lastFireTime.Format(time.RFC3339))
 			if duration < time.Duration(interval)*time.Millisecond {
 				t.Fatalf("invalid fire duration: %v != %v", duration, interval)
 			}
-			ctx.startTime = ctx.lastFireTime
+			timerCtx.startTime = time.Now()
+
+		case <-ctx.Done():
+			t.Fatalf("test deadline exceeded")
+			return
 		}
 	}
 }
 
-func testTimerRunEvery(t *testing.T, sched Timer) {
-	var interval = 700 // 0.7s
-	var ctx = newTestTimerContext(interval)
-	sched.RunEvery(interval, ctx)
+func testTimerRunEvery(t *testing.T, sched Timer, interval int) {
+	ctx, cancel := context.WithTimeout(context.Background(), time.Second*30)
+	defer cancel()
 
-	for ctx.fireCount < 5 {
+	var timerCtx = newTimerContext(interval)
+	sched.RunEvery(interval, timerCtx)
+
+	t.Logf("timer fired start at %s", timerCtx.startTime.Format(time.RFC3339))
+
+	for timerCtx.fireCount < 20 {
 		select {
 		case task := <-sched.Chan():
 			task.Run()
-			duration := ctx.lastFireTime.Sub(ctx.startTime)
-			t.Logf("timer fired after %v at %s", duration, ctx.lastFireTime.Format(time.RFC3339))
-			deviation := duration.Milliseconds() - int64(interval)
-			if math.Abs(float64(deviation)) > float64(TimeUnit) {
-				t.Fatalf("invalid fire duration: %v != %v", duration, interval)
+			var duration = timerCtx.lastFireTime.Sub(timerCtx.startTime)
+			t.Logf("timer fired after %v at %s", duration, timerCtx.lastFireTime.Format(time.RFC3339))
+			if d := duration.Milliseconds(); d < int64(interval) {
+				t.Errorf("timeout too early %d < %d", d, interval)
 			}
-			ctx.startTime = ctx.lastFireTime
+			timerCtx.startTime = timerCtx.lastFireTime
+
+		case <-ctx.Done():
+			t.Fatalf("test deadline exceeded")
+			return
 		}
 	}
 }
 
 func TestTimerQueue_RunAfter(t *testing.T) {
 	var timer = NewDefaultTimerQueue()
+	timer.Start()
 	defer timer.Shutdown()
-	testTimerRunAfter(t, timer)
+
+	testTimerCancel(t, timer)
+	testTimerRunAfter(t, timer, 300)
 }
 
 func TestTimerQueue_RunEvery(t *testing.T) {
 	var timer = NewDefaultTimerQueue()
+	timer.Start()
 	defer timer.Shutdown()
-	testTimerRunEvery(t, timer)
+
+	testTimerRunEvery(t, timer, 300)
 }
 
 func TestHHWheel_RunAfter(t *testing.T) {
-	var timer = NewHHWheelTimer()
+	var timer = NewDefaultHHWheelTimer()
+	timer.Start()
 	defer timer.Shutdown()
-	testTimerRunAfter(t, timer)
+
+	testTimerCancel(t, timer)
+	testTimerRunAfter(t, timer, 300)
 }
 
 func TestHHWheel_RunEvery(t *testing.T) {
-	var timer = NewHHWheelTimer()
+	var timer = NewDefaultHHWheelTimer()
+	timer.Start()
 	defer timer.Shutdown()
-	testTimerRunEvery(t, timer)
+
+	testTimerRunEvery(t, timer, 300)
 }

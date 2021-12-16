@@ -17,19 +17,21 @@ import (
 // 标准库的四叉堆实现的time.Timer已经可以满足大多数高精度的定时需求
 // 这个实现主要是为了在大量timer的场景，把timer的压力从runtime放到应用上
 type TimerQueue struct {
-	done         chan struct{}
-	wg           sync.WaitGroup     //
-	state        fatchoy.State      //
-	tickInterval time.Duration      // tick间隔
-	timeUnit     time.Duration      // 时间单位
-	guard        sync.Mutex         // 多线程(lastId和refer)
-	lastId       int                // id生成
-	refer        map[int]*timerNode // O(1)查找
-	pendingAdd   chan *timerNode    // 待添加
-	pendingDel   chan *timerNode    // 待删除
-	timers       timerHeap          // 仅在worker中操作堆
-	C            <-chan Runnable    // 到期的定时器
-	startedAt    int64              //
+	done  chan struct{}
+	wg    sync.WaitGroup //
+	state fatchoy.State  //
+
+	tickInterval time.Duration // tick间隔
+	timeUnit     time.Duration // 时间单位
+
+	guard  sync.Mutex         // 多线程(lastId和refer)
+	nextId int                // id生成
+	refer  map[int]*timerNode // O(1)查找
+
+	pendingAdd chan *timerNode // 待添加
+	pendingDel chan *timerNode // 待删除
+	timers     timerHeap       // 仅在worker中操作堆
+	C          chan Runnable   // 到期的定时器
 }
 
 func NewDefaultTimerQueue() Timer {
@@ -37,17 +39,16 @@ func NewDefaultTimerQueue() Timer {
 }
 
 func NewTimerQueue(tickInterval, timeUnit time.Duration) Timer {
-	t := &TimerQueue{
+	return &TimerQueue{
 		tickInterval: tickInterval,
 		timeUnit:     timeUnit,
 		done:         make(chan struct{}),
 		timers:       make(timerHeap, 0, 64),
 		refer:        make(map[int]*timerNode, 64),
+		C:            make(chan Runnable, TimeoutQueueCapacity),
 		pendingAdd:   make(chan *timerNode, PendingQueueCapacity),
 		pendingDel:   make(chan *timerNode, PendingQueueCapacity),
 	}
-	t.start()
-	return t
 }
 
 func (s *TimerQueue) Size() int {
@@ -68,6 +69,26 @@ func (s *TimerQueue) IsScheduled(id int) bool {
 	return node != nil
 }
 
+// Starts the background thread explicitly
+func (s *TimerQueue) Start() {
+	switch state := s.state.Get(); state {
+	case fatchoy.StateInit:
+		if s.state.CAS(fatchoy.StateInit, fatchoy.StateStarted) {
+			var ready = make(chan struct{}, 1)
+			s.wg.Add(1)
+			go s.worker(ready)
+			<-ready
+			s.state.Set(fatchoy.StateRunning)
+		}
+
+	case fatchoy.StateRunning:
+		return
+
+	default:
+		log.Panicf("invalid worker state %v", state)
+	}
+}
+
 func (s *TimerQueue) Shutdown() {
 	switch s.state.Get() {
 	case fatchoy.StateShutdown, fatchoy.StateTerminated:
@@ -85,15 +106,6 @@ func (s *TimerQueue) Shutdown() {
 	s.guard.Unlock()
 
 	s.state.Set(fatchoy.StateTerminated)
-}
-
-// 当前时间
-func (s *TimerQueue) currentTimeUnit() int64 {
-	return time.Now().UnixNano() / int64(s.timeUnit)
-}
-
-func (s *TimerQueue) convTimeUnit(t time.Time) int64 {
-	return t.UnixNano() / int64(s.timeUnit)
 }
 
 // 创建一个定时器，在`timeUnits`时间后运行`r`
@@ -116,11 +128,12 @@ func (s *TimerQueue) RunEvery(interval int, r Runnable) int {
 
 func (s *TimerQueue) schedule(deadline, period int64, r Runnable) int {
 	s.guard.Lock()
-	var id = s.nextID()
-	s.guard.Unlock()
+	defer s.guard.Unlock()
 
+	var id = s.nextID()
 	var node = newTimerNode(id, deadline, period, r)
 	s.pendingAdd <- node
+	s.refer[id] = node
 
 	return id
 }
@@ -132,29 +145,19 @@ func (s *TimerQueue) Cancel(id int) bool {
 
 	if node, found := s.refer[id]; found {
 		s.pendingDel <- node
+		delete(s.refer, id)
 		return true
 	}
 	return false
 }
 
-// Starts the background thread explicitly
-func (s *TimerQueue) start() {
-	switch state := s.state.Get(); state {
-	case fatchoy.StateInit:
-		if s.state.CAS(fatchoy.StateInit, fatchoy.StateStarted) {
-			var ready = make(chan struct{}, 1)
-			s.wg.Add(1)
-			go s.worker(ready)
-			<-ready
-			s.state.Set(fatchoy.StateRunning)
-		}
+// 当前时间
+func (s *TimerQueue) currentTimeUnit() int64 {
+	return time.Now().UnixNano() / int64(s.timeUnit)
+}
 
-	case fatchoy.StateRunning:
-		return
-
-	default:
-		log.Panicf("invalid worker state %v", state)
-	}
+func (s *TimerQueue) convTimeUnit(t time.Time) int64 {
+	return t.UnixNano() / int64(s.timeUnit)
 }
 
 func (s *TimerQueue) worker(ready chan struct{}) {
@@ -163,22 +166,18 @@ func (s *TimerQueue) worker(ready chan struct{}) {
 	var ticker = time.NewTicker(s.tickInterval)
 	defer ticker.Stop()
 
-	var expired = make(chan Runnable, 1000)
-	s.startedAt = s.currentTimeUnit()
-	s.C = expired
 	ready <- struct{}{}
 
 	for {
 		select {
-		case now, ok := <-ticker.C:
-			if ok {
-				s.tick(now, expired)
-			}
+		case now := <-ticker.C:
+			s.tick(now)
+
 		case node := <-s.pendingAdd:
 			s.addNode(node)
 
 		case node := <-s.pendingDel:
-			s.delNode(node, true)
+			s.delNode(node)
 
 		case <-s.done:
 			return
@@ -194,34 +193,27 @@ func (s *TimerQueue) addNode(node *timerNode) {
 	heap.Push(&s.timers, node)
 }
 
-func (s *TimerQueue) delNode(node *timerNode, modHeap bool) {
-	s.guard.Lock()
-	delete(s.refer, node.id)
-	s.guard.Unlock()
-
-	if modHeap {
-		heap.Remove(&s.timers, node.index)
-	}
-	node.r = nil
+func (s *TimerQueue) delNode(node *timerNode) {
+	heap.Remove(&s.timers, node.index)
 }
 
-func (s *TimerQueue) tick(deadline time.Time, expired chan<- Runnable) {
+func (s *TimerQueue) tick(t time.Time) {
+	var deadline = s.convTimeUnit(t)
 	var expires = s.trigger(deadline)
 	for _, node := range expires {
 		if node.r != nil {
-			expired <- node.r
+			s.C <- node.r
 		}
 	}
 }
 
 // 返回触发的timer列表
-func (s *TimerQueue) trigger(t time.Time) []*timerNode {
-	var deadline = s.convTimeUnit(t)
-	var maxId = s.lastId
+func (s *TimerQueue) trigger(now int64) []*timerNode {
+	var maxId = s.nextId
 	var expires []*timerNode
 	for len(s.timers) > 0 {
 		var node = s.timers[0] // peek first item of heap
-		if deadline < node.deadline {
+		if now < node.deadline {
 			break // no new timer expired
 		}
 		// make sure we don't process timer created by timer events
@@ -231,11 +223,13 @@ func (s *TimerQueue) trigger(t time.Time) []*timerNode {
 
 		// 如果timer需要重复执行，只修正heap，id保持不变
 		if node.period > 0 {
-			node.deadline = deadline + node.period
+			node.deadline = now + node.period
 			heap.Fix(&s.timers, node.index)
 		} else {
 			heap.Pop(&s.timers)
-			s.delNode(node, false)
+			s.guard.Lock()
+			delete(s.refer, node.id)
+			s.guard.Unlock()
 		}
 		expires = append(expires, node)
 	}
@@ -243,7 +237,7 @@ func (s *TimerQueue) trigger(t time.Time) []*timerNode {
 }
 
 func (s *TimerQueue) nextID() int {
-	var newId = s.lastId + 1
+	var newId = s.nextId + 1
 	for i := 0; i < 1e4; i++ {
 		if newId <= 0 {
 			newId = 1
@@ -254,7 +248,7 @@ func (s *TimerQueue) nextID() int {
 		}
 		break
 	}
-	s.lastId = newId
+	s.nextId = newId
 	return newId
 }
 

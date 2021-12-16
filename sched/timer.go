@@ -4,22 +4,33 @@
 
 package sched
 
-import (
-	"time"
-)
-
 const (
-	TimeUnit             = 10                              // centi-seconds (10 ms)
-	PendingQueueCapacity = 1000                            //
-	CustomEpoch          = int64(1577836800 * time.Second) // 起始纪元 2020-01-01 00:00:00 UTC
+	PendingQueueCapacity = 1024 //
+	TimeoutQueueCapacity = 1024
 )
 
+// 定时器
 type Timer interface {
-	RunAfter(durationMs int, task Runnable) int
-	RunEvery(intervalMs int, task Runnable) int
-	Cancel(id int) bool
-	IsScheduled(id int) bool
-	Chan() <-chan Runnable
-	Size() int
+	Start()
+
+	// 关闭定时器
 	Shutdown()
+
+	// 在`timeUnits`时间后执行`r`
+	RunAfter(timeUnits int, r Runnable) int
+
+	// 每隔`interval`时间执行`r`
+	RunEvery(interval int, r Runnable) int
+
+	// 取消一个timer
+	Cancel(id int) bool
+
+	// 判断timer是否在计划中
+	IsScheduled(id int) bool
+
+	// 超时的待执行runner
+	Chan() <-chan Runnable
+
+	// timer数量
+	Size() int
 }
