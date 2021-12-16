@@ -76,13 +76,13 @@ func testTimerRunEvery(t *testing.T, sched Timer) {
 }
 
 func TestTimerQueue_RunAfter(t *testing.T) {
-	var timer = NewTimerQueue()
+	var timer = NewDefaultTimerQueue()
 	defer timer.Shutdown()
 	testTimerRunAfter(t, timer)
 }
 
 func TestTimerQueue_RunEvery(t *testing.T) {
-	var timer = NewTimerQueue()
+	var timer = NewDefaultTimerQueue()
 	defer timer.Shutdown()
 	testTimerRunEvery(t, timer)
 }
