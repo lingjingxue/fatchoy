@@ -95,6 +95,6 @@ func (c *Consistent) updateSortedHash() {
 	for k, _ := range c.circle {
 		hashes = append(hashes, k)
 	}
-	sort.Sort(collections.Uint32Array(hashes))
+	sort.Sort(collections.Uint32Slice(hashes))
 	c.sortedHash = hashes
 }
