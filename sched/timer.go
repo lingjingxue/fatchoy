@@ -9,8 +9,9 @@ import (
 )
 
 const (
-	TimeUnit    = 10                              // centi-seconds (10 ms)
-	CustomEpoch = int64(1577836800 * time.Second) // 起始纪元 2020-01-01 00:00:00 UTC
+	TimeUnit             = 10                              // centi-seconds (10 ms)
+	PendingQueueCapacity = 1000                            //
+	CustomEpoch          = int64(1577836800 * time.Second) // 起始纪元 2020-01-01 00:00:00 UTC
 )
 
 type Timer interface {
