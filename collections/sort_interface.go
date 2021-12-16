@@ -5,83 +5,84 @@
 package collections
 
 //
-// 基本数值类型的sort.Interface实现
+// 常用基本类型的sort.Interface wrapper
+// hand-made generics，全手工打造
 //
 
-type Int8Array []int8
+type Int8Slice []int8
 
-func (x Int8Array) Len() int           { return len(x) }
-func (x Int8Array) Less(i, j int) bool { return x[i] < x[j] }
-func (x Int8Array) Swap(i, j int)      { x[i], x[j] = x[j], x[i] }
+func (x Int8Slice) Len() int           { return len(x) }
+func (x Int8Slice) Less(i, j int) bool { return x[i] < x[j] }
+func (x Int8Slice) Swap(i, j int)      { x[i], x[j] = x[j], x[i] }
 
-type Uint8Array []uint8
+type Uint8Slice []uint8
 
-func (x Uint8Array) Len() int           { return len(x) }
-func (x Uint8Array) Less(i, j int) bool { return x[i] < x[j] }
-func (x Uint8Array) Swap(i, j int)      { x[i], x[j] = x[j], x[i] }
+func (x Uint8Slice) Len() int           { return len(x) }
+func (x Uint8Slice) Less(i, j int) bool { return x[i] < x[j] }
+func (x Uint8Slice) Swap(i, j int)      { x[i], x[j] = x[j], x[i] }
 
-type Int16Array []uint16
+type Int16Slice []uint16
 
-func (x Int16Array) Len() int           { return len(x) }
-func (x Int16Array) Less(i, j int) bool { return x[i] < x[j] }
-func (x Int16Array) Swap(i, j int)      { x[i], x[j] = x[j], x[i] }
+func (x Int16Slice) Len() int           { return len(x) }
+func (x Int16Slice) Less(i, j int) bool { return x[i] < x[j] }
+func (x Int16Slice) Swap(i, j int)      { x[i], x[j] = x[j], x[i] }
 
-type Uint16Array []uint16
+type Uint16Slice []uint16
 
-func (x Uint16Array) Len() int           { return len(x) }
-func (x Uint16Array) Less(i, j int) bool { return x[i] < x[j] }
-func (x Uint16Array) Swap(i, j int)      { x[i], x[j] = x[j], x[i] }
+func (x Uint16Slice) Len() int           { return len(x) }
+func (x Uint16Slice) Less(i, j int) bool { return x[i] < x[j] }
+func (x Uint16Slice) Swap(i, j int)      { x[i], x[j] = x[j], x[i] }
 
-type Int32Array []int32
+type Int32Slice []int32
 
-func (x Int32Array) Len() int           { return len(x) }
-func (x Int32Array) Less(i, j int) bool { return x[i] < x[j] }
-func (x Int32Array) Swap(i, j int)      { x[i], x[j] = x[j], x[i] }
+func (x Int32Slice) Len() int           { return len(x) }
+func (x Int32Slice) Less(i, j int) bool { return x[i] < x[j] }
+func (x Int32Slice) Swap(i, j int)      { x[i], x[j] = x[j], x[i] }
 
-type Uint32Array []uint32
+type Uint32Slice []uint32
 
-func (x Uint32Array) Len() int           { return len(x) }
-func (x Uint32Array) Less(i, j int) bool { return x[i] < x[j] }
-func (x Uint32Array) Swap(i, j int)      { x[i], x[j] = x[j], x[i] }
+func (x Uint32Slice) Len() int           { return len(x) }
+func (x Uint32Slice) Less(i, j int) bool { return x[i] < x[j] }
+func (x Uint32Slice) Swap(i, j int)      { x[i], x[j] = x[j], x[i] }
 
-type IntArray []int
+type IntSlice []int
 
-func (x IntArray) Len() int           { return len(x) }
-func (x IntArray) Less(i, j int) bool { return x[i] < x[j] }
-func (x IntArray) Swap(i, j int)      { x[i], x[j] = x[j], x[i] }
+func (x IntSlice) Len() int           { return len(x) }
+func (x IntSlice) Less(i, j int) bool { return x[i] < x[j] }
+func (x IntSlice) Swap(i, j int)      { x[i], x[j] = x[j], x[i] }
 
-type UintArray []uint
+type UintSlice []uint
 
-func (x UintArray) Len() int           { return len(x) }
-func (x UintArray) Less(i, j int) bool { return x[i] < x[j] }
-func (x UintArray) Swap(i, j int)      { x[i], x[j] = x[j], x[i] }
+func (x UintSlice) Len() int           { return len(x) }
+func (x UintSlice) Less(i, j int) bool { return x[i] < x[j] }
+func (x UintSlice) Swap(i, j int)      { x[i], x[j] = x[j], x[i] }
 
-type Int64Array []int64
+type Int64Slice []int64
 
-func (x Int64Array) Len() int           { return len(x) }
-func (x Int64Array) Less(i, j int) bool { return x[i] < x[j] }
-func (x Int64Array) Swap(i, j int)      { x[i], x[j] = x[j], x[i] }
+func (x Int64Slice) Len() int           { return len(x) }
+func (x Int64Slice) Less(i, j int) bool { return x[i] < x[j] }
+func (x Int64Slice) Swap(i, j int)      { x[i], x[j] = x[j], x[i] }
 
-type Uint64Array []uint64
+type Uint64Slice []uint64
 
-func (x Uint64Array) Len() int           { return len(x) }
-func (x Uint64Array) Less(i, j int) bool { return x[i] < x[j] }
-func (x Uint64Array) Swap(i, j int)      { x[i], x[j] = x[j], x[i] }
+func (x Uint64Slice) Len() int           { return len(x) }
+func (x Uint64Slice) Less(i, j int) bool { return x[i] < x[j] }
+func (x Uint64Slice) Swap(i, j int)      { x[i], x[j] = x[j], x[i] }
 
-type Float32Array []float32
+type Float32Slice []float32
 
-func (x Float32Array) Len() int           { return len(x) }
-func (x Float32Array) Less(i, j int) bool { return x[i] < x[j] }
-func (x Float32Array) Swap(i, j int)      { x[i], x[j] = x[j], x[i] }
+func (x Float32Slice) Len() int           { return len(x) }
+func (x Float32Slice) Less(i, j int) bool { return x[i] < x[j] }
+func (x Float32Slice) Swap(i, j int)      { x[i], x[j] = x[j], x[i] }
 
-type Float64Array []float64
+type Float64Slice []float64
 
-func (x Float64Array) Len() int           { return len(x) }
-func (x Float64Array) Less(i, j int) bool { return x[i] < x[j] }
-func (x Float64Array) Swap(i, j int)      { x[i], x[j] = x[j], x[i] }
+func (x Float64Slice) Len() int           { return len(x) }
+func (x Float64Slice) Less(i, j int) bool { return x[i] < x[j] }
+func (x Float64Slice) Swap(i, j int)      { x[i], x[j] = x[j], x[i] }
 
-type StringArray []string
+type StringSlice []string
 
-func (x StringArray) Len() int           { return len(x) }
-func (x StringArray) Less(i, j int) bool { return x[i] < x[j] }
-func (x StringArray) Swap(i, j int)      { x[i], x[j] = x[j], x[i] }
+func (x StringSlice) Len() int           { return len(x) }
+func (x StringSlice) Less(i, j int) bool { return x[i] < x[j] }
+func (x StringSlice) Swap(i, j int)      { x[i], x[j] = x[j], x[i] }
