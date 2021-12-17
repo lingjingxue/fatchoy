@@ -171,7 +171,7 @@ func (s *TimerQueue) worker(ready chan struct{}) {
 	for {
 		select {
 		case now := <-ticker.C:
-			s.tick(now)
+			s.expireTimeout(s.convTimeUnit(now))
 
 		case node := <-s.pendingAdd:
 			s.addNode(node)
@@ -197,30 +197,22 @@ func (s *TimerQueue) delNode(node *timerNode) {
 	heap.Remove(&s.timers, node.index)
 }
 
-func (s *TimerQueue) tick(t time.Time) {
-	var deadline = s.convTimeUnit(t)
-	var expires = s.trigger(deadline)
-	for _, node := range expires {
-		if node.r != nil {
-			s.C <- node.r
-		}
-	}
-}
-
 // 返回触发的timer列表
-func (s *TimerQueue) trigger(now int64) []*timerNode {
+func (s *TimerQueue) expireTimeout(now int64) {
 	var maxId = s.nextId
-	var expires []*timerNode
+	var expired []Runnable
 	for len(s.timers) > 0 {
 		var node = s.timers[0] // peek first item of heap
 		if now < node.deadline {
 			break // no new timer expired
 		}
-		// make sure we don't process timer created by timer events
+		// we don't process newly created timer at this tick
 		if node.id > maxId {
 			continue
 		}
-
+		if node.action != nil {
+			expired = append(expired, node.action)
+		}
 		// 如果timer需要重复执行，只修正heap，id保持不变
 		if node.period > 0 {
 			node.deadline = now + node.period
@@ -231,9 +223,10 @@ func (s *TimerQueue) trigger(now int64) []*timerNode {
 			delete(s.refer, node.id)
 			s.guard.Unlock()
 		}
-		expires = append(expires, node)
 	}
-	return expires
+	for _, action := range expired {
+		s.C <- action
+	}
 }
 
 func (s *TimerQueue) nextID() int {
@@ -256,9 +249,9 @@ func (s *TimerQueue) nextID() int {
 type timerNode struct {
 	id       int      // unique id
 	index    int      // array index of heap
-	deadline int64    // Next execution time for this task in milliseconds
-	period   int64    // Period in milliseconds for repeating tasks
-	r        Runnable //
+	deadline int64    // expiry time
+	period   int64    // Period for repeating tasks
+	action   Runnable // expiry action
 }
 
 func newTimerNode(id int, deadline, period int64, r Runnable) *timerNode {
@@ -266,7 +259,7 @@ func newTimerNode(id int, deadline, period int64, r Runnable) *timerNode {
 		id:       id,
 		deadline: deadline,
 		period:   period,
-		r:        r,
+		action:   r,
 	}
 }
 
