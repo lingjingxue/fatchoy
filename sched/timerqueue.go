@@ -62,7 +62,7 @@ func (s *TimerQueue) Chan() <-chan Runnable {
 	return s.C
 }
 
-func (s *TimerQueue) IsScheduled(id int) bool {
+func (s *TimerQueue) IsPending(id int) bool {
 	s.guard.Lock()
 	var node = s.refer[id]
 	s.guard.Unlock()

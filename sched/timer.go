@@ -26,7 +26,7 @@ type Timer interface {
 	Cancel(id int) bool
 
 	// 判断timer是否在计划中
-	IsScheduled(id int) bool
+	IsPending(id int) bool
 
 	// 超时的待执行runner
 	Chan() <-chan Runnable
