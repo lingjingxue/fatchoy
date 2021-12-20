@@ -6,8 +6,10 @@ package fatchoy
 
 import (
 	"context"
+	"sync"
 	"time"
 
+	"qchen.fun/fatchoy/debug"
 	"qchen.fun/fatchoy/discovery"
 	"qchen.fun/fatchoy/x/uuid"
 )
@@ -30,11 +32,13 @@ type Service interface {
 type ServiceContext struct {
 	quitDone  chan struct{}     // 同步等待
 	rootCtx   context.Context   //
+	runId     string            //
+	startedAt time.Time         //
+	guard     sync.Mutex        //
+	finalizer []func()          //
+	registrar *discovery.Client // etcd注册
 	instance  Service           // service实例
 	queue     chan IPacket      // 消息队列
-	registrar *discovery.Client // etcd注册
-	startedAt time.Time         //
-	runId     string            //
 }
 
 func NewServiceContext(ctx context.Context, queueSize int) *ServiceContext {
@@ -88,6 +92,12 @@ func (c *ServiceContext) MessageQueue() <-chan IPacket {
 	return c.queue
 }
 
+func (c *ServiceContext) AddFinalizer(action func()) {
+	c.guard.Lock()
+	c.finalizer = append(c.finalizer, action)
+	c.guard.Unlock()
+}
+
 func (c *ServiceContext) Run(ctx context.Context, instance Service) error {
 	c.instance = instance
 	if err := c.instance.Init(c); err != nil {
@@ -105,6 +115,20 @@ func (c *ServiceContext) Send(pkt IPacket) {
 // 等待close完成
 func (c *ServiceContext) QuitDone() <-chan struct{} {
 	return c.quitDone
+}
+
+func safeCall(action func()) {
+	defer debug.CatchPanic()
+	action()
+}
+
+func (c *ServiceContext) finally() {
+	c.guard.Lock()
+	defer c.guard.Unlock()
+	for _, action := range c.finalizer {
+		safeCall(action)
+	}
+	c.finalizer = nil
 }
 
 // 关闭context
