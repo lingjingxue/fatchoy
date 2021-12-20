@@ -4,6 +4,10 @@
 
 package sched
 
+import (
+	"qchen.fun/fatchoy/debug"
+)
+
 type ImmediateExecutor struct {
 }
 
@@ -13,7 +17,16 @@ func NewImmediateExecutor() Executor {
 	return &ImmediateExecutor{}
 }
 
+func (e *ImmediateExecutor) Start() {
+	// do nothing here
+}
+
+func (e *ImmediateExecutor) Shutdown() {
+	// do nothing here
+}
+
 func (e *ImmediateExecutor) Execute(r Runnable) error {
+	defer debug.CatchPanic()
 	return r.Run()
 }
 

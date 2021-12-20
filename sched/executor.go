@@ -11,8 +11,11 @@ import (
 var (
 	ErrExecutorClosed = errors.New("executor is closed already")
 	ErrExecutorBusy   = errors.New("executor queue is full")
+ ErrExecutorNotRunning = errors.New("executor not running")
 )
 
 type Executor interface {
+	Start()
 	Execute(r Runnable) error
+	Shutdown()
 }

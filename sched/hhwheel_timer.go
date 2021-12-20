@@ -97,7 +97,7 @@ func (t *HHWheelTimer) Chan() <-chan Runnable {
 	return t.C
 }
 
-func (t *HHWheelTimer) IsScheduled(id int) bool {
+func (t *HHWheelTimer) IsPending(id int) bool {
 	t.guard.Lock()
 	var node = t.refer[id]
 	t.guard.Unlock()

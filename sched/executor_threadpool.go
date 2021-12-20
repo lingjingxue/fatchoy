@@ -5,7 +5,6 @@
 package sched
 
 import (
-	"errors"
 	"sync"
 
 	"qchen.fun/fatchoy"
@@ -13,14 +12,12 @@ import (
 	"qchen.fun/fatchoy/log"
 )
 
-var ErrExecutorNotRunning = errors.New("executor not running")
-
 type ThreadPoolExecutor struct {
 	done    chan struct{}
-	wg      sync.WaitGroup
-	state   fatchoy.State //
-	queue   chan Runnable // work queue
-	nworker int           //
+	wg      sync.WaitGroup //
+	state   fatchoy.State  // executor state
+	queue   chan Runnable  // work queue
+	nworker int            // # of worker
 }
 
 func NewThreadPoolExecutor(nworker, capacity int) Executor {
@@ -39,7 +36,6 @@ func NewAsyncExecutor(capacity int) Executor {
 }
 
 func (e *ThreadPoolExecutor) Execute(r Runnable) error {
-	e.start()
 	if e.state.Get() != fatchoy.StateRunning {
 		return ErrExecutorNotRunning
 	}
@@ -47,17 +43,7 @@ func (e *ThreadPoolExecutor) Execute(r Runnable) error {
 	return nil
 }
 
-func (e *ThreadPoolExecutor) Shutdown() {
-	if !e.state.CAS(fatchoy.StateRunning, fatchoy.StateShutdown) {
-		return
-	}
-	close(e.done)
-	e.wg.Wait()
-	close(e.queue)
-	e.state.Set(fatchoy.StateTerminated)
-}
-
-func (e *ThreadPoolExecutor) start() {
+func (e *ThreadPoolExecutor) Start() {
 	var state = e.state.Get()
 	switch state {
 	case fatchoy.StateInit:
@@ -79,6 +65,16 @@ func (e *ThreadPoolExecutor) start() {
 	default:
 		log.Panicf("invalid executor state %v", state)
 	}
+}
+
+func (e *ThreadPoolExecutor) Shutdown() {
+	if !e.state.CAS(fatchoy.StateRunning, fatchoy.StateShutdown) {
+		return
+	}
+	close(e.done)
+	e.wg.Wait()
+	close(e.queue)
+	e.state.Set(fatchoy.StateTerminated)
 }
 
 func (e *ThreadPoolExecutor) run(r Runnable) {
