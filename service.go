@@ -6,6 +6,7 @@ package fatchoy
 
 import (
 	"context"
+	"time"
 
 	"qchen.fun/fatchoy/discovery"
 	"qchen.fun/fatchoy/x/uuid"
@@ -27,19 +28,20 @@ type Service interface {
 
 // 服务的上下文
 type ServiceContext struct {
-	done      chan struct{}     // 同步等待
+	quitDone  chan struct{}     // 同步等待
 	instance  Service           // service实例
 	queue     chan IPacket      // 消息队列
 	registrar *discovery.Client // etcd注册
+	startedAt time.Time         //
 	runId     string            //
 }
 
-func NewServiceContext(srv Service, queueSize int) *ServiceContext {
+func NewServiceContext(queueSize int) *ServiceContext {
 	return &ServiceContext{
-		instance: srv,
-		runId:    uuid.NextGUID(),
-		done:     make(chan struct{}, 1),
-		queue:    make(chan IPacket, queueSize),
+		startedAt: time.Now(),
+		runId:     uuid.NextGUID(),
+		quitDone:  make(chan struct{}, 1),
+		queue:     make(chan IPacket, queueSize),
 	}
 }
 
@@ -55,6 +57,10 @@ func (c *ServiceContext) InitRegistrar(hostAddr, namespace string) error {
 // 唯一运行ID
 func (c *ServiceContext) RunID() string {
 	return c.runId
+}
+
+func (c *ServiceContext) StartTime() time.Time {
+	return c.startedAt
 }
 
 // service实例
@@ -77,14 +83,19 @@ func (c *ServiceContext) MessageQueue() <-chan IPacket {
 	return c.queue
 }
 
+func (c *ServiceContext) Run(ctx context.Context, instance Service) error {
+	c.instance = instance
+	return c.instance.Startup(ctx)
+}
+
 // 投递一条消息到context
 func (c *ServiceContext) Send(pkt IPacket) {
 	c.queue <- pkt // block send
 }
 
 // 等待close完成
-func (c *ServiceContext) WaitDone() <-chan struct{} {
-	return c.done
+func (c *ServiceContext) QuitDone() <-chan struct{} {
+	return c.quitDone
 }
 
 // 关闭context
@@ -95,7 +106,7 @@ func (c *ServiceContext) Close() {
 	c.queue = nil
 
 	select {
-	case c.done <- struct{}{}:
+	case c.quitDone <- struct{}{}:
 	default:
 	}
 }
