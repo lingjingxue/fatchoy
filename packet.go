@@ -9,23 +9,27 @@ import (
 )
 
 // 消息标志位
-type PacketFlag uint8
+type PacketFlag uint16
 
 const (
-	PFlagCompressed PacketFlag = 0x01 // 压缩
-	PFlagEncrypted  PacketFlag = 0x02 // 加密
-	PFlagError      PacketFlag = 0x10 // 错误标记
-	PFlagRpc        PacketFlag = 0x20 // RPC标记
+	// 低8位用于表达一些传输flag
+	PFlagCompressed PacketFlag = 0x0001 // 压缩
+	PFlagEncrypted  PacketFlag = 0x0002 // 加密
+	PFlagError      PacketFlag = 0x0004 // 错误标记
+	PFlagRpc        PacketFlag = 0x0010 // RPC标记
+
+	// 高8位用于表达消息类型
+	PFlagRoute     PacketFlag = 0x0100 // 路由消息
+	PFlagMulticast PacketFlag = 0x0200 // 组播消息
 )
 
-// 消息编码类型
-type PacketType int8
+func (g PacketFlag) Has(n PacketFlag) bool {
+	return g&n != 0
+}
 
-const (
-	PTypePacket    PacketType = 0 // 应用消息
-	PTypeRoute     PacketType = 1 // 路由消息
-	PTypeMulticast PacketType = 2 // 组播消息
-)
+func (g PacketFlag) Clear(n PacketFlag) PacketFlag {
+	return g &^ n
+}
 
 // 消息处理器
 type PacketHandler func(IPacket) error
@@ -37,12 +41,8 @@ type IPacket interface {
 	SetCommand(int32)
 
 	// session序列号
-	Seq() uint16
-	SetSeq(uint16)
-
-	// 消息类型
-	Type() PacketType
-	SetType(PacketType)
+	Seq() uint32
+	SetSeq(uint32)
 
 	// 消息标记
 	Flag() PacketFlag
@@ -68,14 +68,10 @@ type IPacket interface {
 	// clone一个packet
 	Clone() IPacket
 
-	// 消息body，仅支持int64/float64/string/bytes/proto.Message类型
+	// 消息body，仅支持int32/int64/float64/string/bytes/proto.Message类型
 	Body() interface{}
 	SetBody(v interface{})
 
-	// body类型转换
-	BodyToInt() int64
-	BodyToFloat() float64
-	BodyToString() string
 	BodyToBytes() []byte
 
 	// 自动解码为pb消息
@@ -89,6 +85,6 @@ type IPacket interface {
 	Reply(ack proto.Message) error
 
 	// 响应错误码
-	RefuseWith(command, errno int32) error
+	RefuseWith(command int32, errno int32) error
 	Refuse(errno int32) error
 }
