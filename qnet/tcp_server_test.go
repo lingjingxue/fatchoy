@@ -30,7 +30,7 @@ func startRawClient(t *testing.T, id int, address string, msgCount int) {
 	var pkt = packet.Make()
 	for i := 1; i <= msgCount; i++ {
 		pkt.SetCommand(int32(i))
-		pkt.SetSeq(uint16(i))
+		pkt.SetSeq(uint32(i))
 		pkt.SetBody("ping")
 		var buf bytes.Buffer
 		if _, err := enc.WritePacket(&buf, nil, pkt); err != nil {

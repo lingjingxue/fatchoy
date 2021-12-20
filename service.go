@@ -29,6 +29,7 @@ type Service interface {
 // 服务的上下文
 type ServiceContext struct {
 	quitDone  chan struct{}     // 同步等待
+	rootCtx   context.Context   //
 	instance  Service           // service实例
 	queue     chan IPacket      // 消息队列
 	registrar *discovery.Client // etcd注册
@@ -36,7 +37,7 @@ type ServiceContext struct {
 	runId     string            //
 }
 
-func NewServiceContext(queueSize int) *ServiceContext {
+func NewServiceContext(ctx context.Context, queueSize int) *ServiceContext {
 	return &ServiceContext{
 		startedAt: time.Now(),
 		runId:     uuid.NextGUID(),
@@ -61,6 +62,10 @@ func (c *ServiceContext) RunID() string {
 
 func (c *ServiceContext) StartTime() time.Time {
 	return c.startedAt
+}
+
+func (c *ServiceContext) RootCtx() context.Context {
+	return c.rootCtx
 }
 
 // service实例
