@@ -5,7 +5,7 @@
 package qnet
 
 import (
-	"context"
+	"container/heap"
 	"fmt"
 	"sync"
 	"time"
@@ -22,20 +22,29 @@ type RpcHandler func(proto.Message, int32) error
 
 // RPC上下文
 type RpcContext struct {
+	deadline int64            // 超时
+	index    int32            // 在最小堆里的索引
+	seq      uint32           //
 	dest     fatchoy.NodeID   // 目标节点
 	req      proto.Message    // 请求消息
 	ack      fatchoy.IPacket  // 响应packet
-	deadline time.Time        // 超时
-	cb       RpcHandler       // 异步回调
+	action   RpcHandler       // 异步回调
 	done     chan *RpcContext // Strobes when RPC is completed
 }
 
-func NewRpcContext(node fatchoy.NodeID, req proto.Message, cb RpcHandler) *RpcContext {
+func NewRpcContext(node fatchoy.NodeID, req proto.Message, action RpcHandler) *RpcContext {
 	return &RpcContext{
-		dest: node,
-		req:  req,
-		cb:   cb,
+		dest:   node,
+		req:    req,
+		action: action,
 	}
+}
+
+func (r *RpcContext) nilOut() {
+	r.req = nil
+	r.ack = nil
+	r.action = nil
+	r.done = nil
 }
 
 func (r *RpcContext) DecodeAck() (proto.Message, error) {
@@ -65,39 +74,41 @@ func (r *RpcContext) notify() {
 }
 
 func (r *RpcContext) run(pkt fatchoy.IPacket) error {
+	defer r.nilOut()
 	r.ack = pkt
 	r.notify()
-	if r.cb != nil {
+	if r.action != nil {
 		if ec := pkt.Errno(); ec > 0 {
-			return r.cb(nil, ec)
+			return r.action(nil, ec)
 		}
 		if ack, err := r.DecodeAck(); err != nil {
 			log.Errorf("decode rpc %d response %v", pkt.Command(), err)
-			return r.cb(nil, int32(codes.InternalError))
+			return r.action(nil, int32(codes.InternalError))
 		} else {
-			return r.cb(ack, 0)
+			return r.action(ack, 0)
 		}
 	}
 	return nil
 }
 
-// RPC调用client
+// RPC client stub
 type RpcClient struct {
-	ctx          context.Context        //
+	done         chan struct{}
 	wg           sync.WaitGroup         //
+	state        fatchoy.State          //
 	guard        sync.Mutex             // 多线程guard
-	pendingCtx   map[uint16]*RpcContext // 待响应的RPC
+	minheap      rpcNodeHeap            // 使用最小堆减少主动检测超时节点
+	pendingCtx   map[uint32]*RpcContext // 待响应的RPC
 	pendingQueue chan fatchoy.IPacket   // 待发送消息队列
 	expired      []*RpcContext          // 超时的
-	counter      uint16                 // 序列号生成
+	counter      uint32                 // 序列号生成
 }
 
-func NewRpcClient(ctx context.Context, queueSize int) *RpcClient {
+func NewRpcClient(queueSize int) *RpcClient {
 	return &RpcClient{
-		ctx:          ctx,
-		expired:      make([]*RpcContext, 0, 8),
+		done:         make(chan struct{}),
 		pendingQueue: make(chan fatchoy.IPacket, queueSize),
-		pendingCtx:   make(map[uint16]*RpcContext),
+		pendingCtx:   make(map[uint32]*RpcContext),
 	}
 }
 
@@ -105,9 +116,40 @@ func (c *RpcClient) PendingQueue() <-chan fatchoy.IPacket {
 	return c.pendingQueue
 }
 
-func (c *RpcClient) Go() {
-	c.wg.Add(1)
-	go c.reaper()
+func (c *RpcClient) IsRunning() bool {
+	return c.state.IsRunning()
+}
+
+func (c *RpcClient) Start() {
+	switch state := c.state.Get(); state {
+	case fatchoy.StateInit:
+		if c.state.CAS(fatchoy.StateInit, fatchoy.StateStarted) {
+			var ready = make(chan struct{}, 1)
+			c.wg.Add(1)
+			go c.reaper(ready)
+			<-ready
+			c.state.Set(fatchoy.StateRunning)
+		}
+
+	case fatchoy.StateRunning:
+		return
+
+	default:
+		log.Panicf("invalid worker state %v", state)
+	}
+}
+
+func (c *RpcClient) Shutdown() {
+	switch c.state.Get() {
+	case fatchoy.StateShutdown, fatchoy.StateTerminated:
+		return
+	}
+	c.state.Set(fatchoy.StateShutdown)
+	close(c.done)
+	c.wg.Wait()
+	c.pendingCtx = nil
+	c.pendingQueue = nil
+	c.state.Set(fatchoy.StateTerminated)
 }
 
 func (c *RpcClient) AsyncCall(node fatchoy.NodeID, req proto.Message, cb RpcHandler) error {
@@ -127,28 +169,31 @@ func (c *RpcClient) makeCall(ctx *RpcContext) *RpcContext {
 	c.guard.Lock()
 	defer c.guard.Unlock()
 
-	ctx.deadline = time.Now().Add(time.Minute) // 1分钟ttl
+	ctx.deadline = time.Now().Add(time.Minute).UnixNano() / int64(time.Millisecond) // 1分钟ttl
 	c.counter++
 	if c.counter == 0 {
 		c.counter++
 	}
 	var seq = c.counter
+	ctx.seq = seq
 	c.pendingCtx[seq] = ctx
+	heap.Push(&c.minheap, ctx)
 
 	var reqMsgID = packet.GetMessageIDOf(ctx.req)
 	var pkt = packet.New(reqMsgID, seq, fatchoy.PFlagRpc, ctx.req)
-	pkt.SetType(fatchoy.PTypePacket)
 	pkt.SetNode(ctx.dest)
 	c.pendingQueue <- pkt // this may block
 
 	return ctx
 }
 
-func (c *RpcClient) stripRpcContext(seq uint16) *RpcContext {
+func (c *RpcClient) stripPending(seq uint32) *RpcContext {
 	c.guard.Lock()
 	ctx, found := c.pendingCtx[seq]
 	if found {
 		delete(c.pendingCtx, seq)
+		heap.Remove(&c.minheap, int(ctx.index))
+		ctx.index = -1
 	}
 	c.guard.Unlock()
 	return ctx
@@ -170,7 +215,6 @@ func (c *RpcClient) ReapTimeout() int {
 		var ackMsgID = packet.GetPairingAckID(reqMsgID)
 		var pkt = packet.Make()
 		packet.New(ackMsgID, 0, fatchoy.PFlagRpc, ctx.req)
-		pkt.SetType(fatchoy.PTypePacket)
 		pkt.SetErrno(int32(codes.RequestTimeout))
 		if err := ctx.run(pkt); err != nil {
 			log.Errorf("rpc %d timed-out done: %v", ackMsgID, err)
@@ -181,36 +225,77 @@ func (c *RpcClient) ReapTimeout() int {
 
 // 在主线程运行
 func (c *RpcClient) Dispatch(pkt fatchoy.IPacket) error {
-	var ctx = c.stripRpcContext(pkt.Seq())
+	var ctx = c.stripPending(pkt.Seq())
 	if ctx != nil {
 		return ctx.run(pkt)
 	}
 	return fmt.Errorf("session %d message %d rpc context not found ", pkt.Seq(), pkt.Command())
 }
 
-func (c *RpcClient) reapTimeout(now time.Time) {
+func (c *RpcClient) reapTimeout(now int64) {
 	c.guard.Lock()
 	defer c.guard.Unlock()
-	for seq, ctx := range c.pendingCtx {
-		if now.After(ctx.deadline) {
-			c.expired = append(c.expired, ctx)
-			delete(c.pendingCtx, seq)
+	for len(c.minheap) > 0 {
+		var ctx = c.minheap[0] // peek first item of heap
+		if now < ctx.deadline {
+			break // no new context expired
 		}
+		heap.Pop(&c.minheap)
+		delete(c.pendingCtx, ctx.seq)
+		ctx.index = -1
+		c.expired = append(c.expired, ctx)
 	}
 }
 
 // 处理超时
-func (c *RpcClient) reaper() {
+func (c *RpcClient) reaper(ready chan struct{}) {
 	defer c.wg.Done()
-	ticker := time.NewTicker(time.Second * 3)
+
+	var ticker = time.NewTicker(time.Second)
 	defer ticker.Stop()
+	<-ready
+
 	for {
 		select {
 		case now := <-ticker.C:
-			c.reapTimeout(now)
+			c.reapTimeout(now.UnixNano() / int64(time.Millisecond))
 
-		case <-c.ctx.Done():
+		case <-c.done:
 			return
 		}
 	}
+}
+
+type rpcNodeHeap []*RpcContext
+
+func (q rpcNodeHeap) Len() int {
+	return len(q)
+}
+
+func (q rpcNodeHeap) Less(i, j int) bool {
+	return q[i].deadline < q[j].deadline
+}
+
+func (q rpcNodeHeap) Swap(i, j int) {
+	q[i], q[j] = q[j], q[i]
+	q[i].index = int32(i)
+	q[j].index = int32(j)
+}
+
+func (q *rpcNodeHeap) Push(x interface{}) {
+	v := x.(*RpcContext)
+	v.index = int32(len(*q))
+	*q = append(*q, v)
+}
+
+func (q *rpcNodeHeap) Pop() interface{} {
+	old := *q
+	n := len(old)
+	if n > 0 {
+		v := old[n-1]
+		v.index = -1 // for safety
+		*q = old[:n-1]
+		return v
+	}
+	return nil
 }
