@@ -12,18 +12,18 @@ import (
 )
 
 const (
-	VersionV1         = 1
-	V1HeaderSize      = 14            // 包头大小
+	V1EncoderVersion  = 1
+	V1HeaderSize      = 16            // 包头大小
 	V1MaxPayloadBytes = (1 << 16) - 1 // 64K
 )
 
 // V1协议主要用于client和gateway之间的通信，设计目标主要是简单、稳定、易实现
 //
 //  V1协议头，len包含header和body
-//       ----------------------------------------
-// field | len | type | flag |  seq | cmd | crc |
-//       ----------------------------------------
-// bytes |  2  |   1  |   1  |   2  |  4  |  4  |
+//       ---------------------------------
+// field | len | flag |  seq | cmd | crc |
+//       ---------------------------------
+// bytes |  2  |   2  |   4  |  4  |  4  |
 
 type V1Header []byte
 
@@ -33,22 +33,17 @@ func (h V1Header) Len() uint16 {
 }
 
 // 标记位
-func (h V1Header) Type() uint8 {
-	return h[2]
-}
-
-// 标记位
-func (h V1Header) Flag() uint8 {
-	return h[3]
+func (h V1Header) Flag() uint16 {
+	return binary.BigEndian.Uint16(h[2:])
 }
 
 // session内的唯一序号
-func (h V1Header) Seq() uint16 {
-	return binary.BigEndian.Uint16(h[4:])
+func (h V1Header) Seq() uint32 {
+	return binary.BigEndian.Uint32(h[4:])
 }
 
 func (h V1Header) Command() int32 {
-	return int32(binary.BigEndian.Uint32(h[6:]))
+	return int32(binary.BigEndian.Uint32(h[8:]))
 }
 
 // CRC校验码
@@ -72,10 +67,9 @@ func (h V1Header) SetChecksum(crc uint32) {
 
 func (h V1Header) Pack(pkt fatchoy.IPacket, size uint16) {
 	binary.BigEndian.PutUint16(h, size)
-	h[2] = byte(pkt.Type())
-	h[3] = byte(pkt.Flag())
-	binary.BigEndian.PutUint16(h[4:], pkt.Seq())
-	binary.BigEndian.PutUint32(h[6:], uint32(pkt.Command()))
+	binary.BigEndian.PutUint16(h[2:], uint16(pkt.Flag()))
+	binary.BigEndian.PutUint32(h[4:], pkt.Seq())
+	binary.BigEndian.PutUint32(h[8:], uint32(pkt.Command()))
 }
 
 func (h V1Header) MD5Sum() string {

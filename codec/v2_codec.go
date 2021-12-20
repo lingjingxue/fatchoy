@@ -8,7 +8,6 @@ import (
 	"encoding/binary"
 	"fmt"
 	"io"
-	"math"
 
 	"qchen.fun/fatchoy"
 	"qchen.fun/fatchoy/x/cipher"
@@ -37,14 +36,14 @@ func (c *codecV2) Name() string {
 }
 
 func (c *codecV2) Version() int {
-	return VersionV2
+	return V2EncoderVersion
 }
 
 // 把`pkt`编码到`w`，内部除了flag不应该修改pkt的其它字段
 func (c *codecV2) WritePacket(w io.Writer, encrypt cipher.BlockCryptor, pkt fatchoy.IPacket) (int, error) {
 	var refers = pkt.Refers()
-	if n := len(refers); n > math.MaxUint8 {
-		return 0, fmt.Errorf("packet %d refer count #%d overflow", pkt.Command(), n)
+	if n := len(refers); n > V2MaxReferCount {
+		return 0, fmt.Errorf("packet %d refer count overflow %d/%d", pkt.Command(), n, V2MaxReferCount)
 	}
 	body, err := marshalPacketBody(pkt, c.threshold, encrypt)
 	if err != nil {
@@ -65,7 +64,7 @@ func (c *codecV2) WritePacket(w io.Writer, encrypt cipher.BlockCryptor, pkt fatc
 		}
 	}
 	var head = V2Header(headbuf[:nheader])
-	head.Pack(pkt, uint8(len(refers)), uint32(nbytes))
+	head.Pack(pkt, uint16(len(refers)), uint32(nbytes))
 	var checksum = head.CalcChecksum(headbuf[V2HeaderSize:], body)
 	head.SetChecksum(checksum)
 
@@ -100,7 +99,6 @@ func (codecV2) ReadHeadBody(r io.Reader) ([]byte, []byte, error) {
 func (codecV2) UnmarshalPacket(header, body []byte, decrypt cipher.BlockCryptor, pkt fatchoy.IPacket) error {
 	var head = V2Header(header)
 	pkt.SetFlag(fatchoy.PacketFlag(head.Flag()))
-	pkt.SetType(fatchoy.PacketType(head.Type()))
 	pkt.SetSeq(head.Seq())
 	pkt.SetCommand(head.Command())
 	pkt.SetNode(head.Node())
@@ -110,7 +108,11 @@ func (codecV2) UnmarshalPacket(header, body []byte, decrypt cipher.BlockCryptor,
 		return fmt.Errorf("packet %v checksum mismatch %x != %x", pkt.Command(), checksum, crc)
 	}
 	var pos = 0
-	if refcnt := head.RefCount(); refcnt > 0 {
+	var refcnt = head.RefCount()
+	if refcnt > V2MaxReferCount {
+		return fmt.Errorf("packet %d refer count overflow %d/%d", pkt.Command(), refcnt, V2MaxReferCount)
+	}
+	if refcnt > 0 {
 		if len(body) < int(refcnt)*4 {
 			return fmt.Errorf("packet %d refer count mismatch %d != %d", pkt.Command(), len(body)/4, refcnt)
 		}

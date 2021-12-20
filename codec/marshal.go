@@ -11,6 +11,7 @@ import (
 	"fmt"
 
 	"qchen.fun/fatchoy"
+	"qchen.fun/fatchoy/log"
 	"qchen.fun/fatchoy/x/cipher"
 	"qchen.fun/fatchoy/x/fsutil"
 )
@@ -38,26 +39,29 @@ func marshalPacketBody(pkt fatchoy.IPacket, threshold int, encryptor cipher.Bloc
 // 把字节流反序列化为packet，有解密和解压
 func unmarshalPacketBody(body []byte, decrypt cipher.BlockCryptor, pkt fatchoy.IPacket) error {
 	var flag = pkt.Flag()
-	if (flag & fatchoy.PFlagEncrypted) != 0 {
+	if flag.Has(fatchoy.PFlagEncrypted) {
 		if decrypt == nil {
 			return fmt.Errorf("packet %v must be decrypted", pkt.Command())
 		}
 		body = decrypt.Decrypt(body)
-		flag = flag &^ fatchoy.PFlagEncrypted
+		flag = flag.Clear(fatchoy.PFlagEncrypted)
 	}
-	if (flag & fatchoy.PFlagCompressed) != 0 {
+	if flag.Has(fatchoy.PFlagCompressed)  {
 		if uncompressed, err := fsutil.UncompressBytes(body); err != nil {
 			return fmt.Errorf("decompress packet %d: %w", pkt.Command(), err)
 		} else {
 			body = uncompressed
-			flag = flag &^ fatchoy.PFlagCompressed
+			flag = flag.Clear(fatchoy.PFlagCompressed)
 		}
 	}
 	pkt.SetFlag(flag)
 	// 如果有FlagError，则body是数值错误码
-	if (flag & fatchoy.PFlagError) != 0 {
-		x, _ := binary.Varint(body) // TODO: deal varint error
-		pkt.SetBody(x)
+	if flag.Has(fatchoy.PFlagError)  {
+		if len(body) == 4 {
+			pkt.SetBody(int32(binary.LittleEndian.Uint32(body)))
+		} else {
+			log.Errorf("packet %d errno invalid length %d", len(body))
+		}
 	} else {
 		pkt.SetBody(body)
 	}

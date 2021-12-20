@@ -35,7 +35,7 @@ func (c *codecV1) Name() string {
 }
 
 func (c *codecV1) Version() int {
-	return VersionV1
+	return V1EncoderVersion
 }
 
 // 把`pkt`编码到`w`，内部除了flag不应该修改pkt的其它字段

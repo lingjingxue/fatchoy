@@ -10,6 +10,7 @@ import (
 	"testing"
 
 	"qchen.fun/fatchoy"
+	"qchen.fun/fatchoy/packet"
 	"qchen.fun/fatchoy/x/cipher"
 	"qchen.fun/fatchoy/x/strutil"
 )
@@ -32,8 +33,7 @@ func isEqualPacket(t *testing.T, a, b fatchoy.IPacket) bool {
 }
 
 func newTestPacket(bodyLen int) fatchoy.IPacket {
-	var pkt testPacket
-	pkt.SetType(fatchoy.PTypePacket)
+	var pkt packet.Packet
 	pkt.SetCommand(1234)
 	pkt.SetSeq(5678)
 	pkt.SetRefers([]fatchoy.NodeID{1234567, 7654321})
@@ -67,7 +67,7 @@ func testProtoCodec(t *testing.T, size int, msgSent fatchoy.IPacket, c Encoder) 
 		t.Fatalf("Encode with size %d: %v", size, err)
 	}
 	msgSent.SetBody(nil)
-	var msgRecv testPacket
+	var msgRecv packet.Packet
 	if err := c.ReadPacket(&w, decrypt, &msgRecv); err != nil {
 		t.Fatalf("Decode with size %d: %v", size, err)
 	}
