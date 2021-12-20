@@ -13,8 +13,8 @@ import (
 
 const (
 	VersionV1         = 1
-	V1HeaderSize      = 14        // 包头大小
-	V1MaxPayloadBytes = 60 * 1024 // 60K
+	V1HeaderSize      = 14            // 包头大小
+	V1MaxPayloadBytes = (1 << 16) - 1 // 64K
 )
 
 // V1协议主要用于client和gateway之间的通信，设计目标主要是简单、稳定、易实现

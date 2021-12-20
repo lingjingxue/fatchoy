@@ -13,8 +13,8 @@ import (
 
 const (
 	VersionV2         = 2
-	V2HeaderSize      = 20              // 包头大小
-	V2MaxPayloadBytes = 8 * 1024 * 1024 // 8M
+	V2HeaderSize      = 20            // 包头大小
+	V2MaxPayloadBytes = (1 << 24) - 1 // 16M
 )
 
 // V2协议主要用于server内部的通信，一条消息大致分为下面这3段：
@@ -25,7 +25,7 @@ const (
 //       -----------------------------------------------------
 // field | len | type | flag | #ref | seq | node | cmd | crc |
 //       -----------------------------------------------------
-// bytes |  3  |   1  |   1  |   1  |  2  |   4  |   4  |  4 |
+// bytes |  3  |   1  |   1  |   1  |  2  |   4  |  4  |  4  |
 
 type V2Header []byte
 

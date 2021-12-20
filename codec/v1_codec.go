@@ -27,7 +27,7 @@ func NewV1Encoder(threshold int) Encoder {
 }
 
 func init() {
-	Register(NewV1Encoder(0))
+	Register(NewV1Encoder(4096))
 }
 
 func (c *codecV1) Name() string {

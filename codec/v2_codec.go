@@ -29,7 +29,7 @@ func NewV2Encoder(threshold int) Encoder {
 }
 
 func init() {
-	Register(NewV2Encoder(0))
+	Register(NewV2Encoder(8192))
 }
 
 func (c *codecV2) Name() string {
@@ -51,25 +51,25 @@ func (c *codecV2) WritePacket(w io.Writer, encrypt cipher.BlockCryptor, pkt fatc
 		return 0, err
 	}
 
-	var nn = V2HeaderSize + len(refers)*4
-	var nbytes = nn + len(body)
+	var nheader = V2HeaderSize + len(refers)*4
+	var nbytes = nheader + len(body)
 	if nbytes > V2MaxPayloadBytes {
 		return 0, fmt.Errorf("packet %d payload size %d overflow", pkt.Command(), nbytes)
 	}
-	var buf = make([]byte, nn)
+	var headbuf = make([]byte, nheader)
 	if len(refers) > 0 {
 		var i = V2HeaderSize
 		for _, node := range refers {
-			binary.BigEndian.PutUint32(buf[i:], uint32(node))
+			binary.BigEndian.PutUint32(headbuf[i:], uint32(node))
 			i += 4
 		}
 	}
-	var head = V2Header(buf)
+	var head = V2Header(headbuf[:nheader])
 	head.Pack(pkt, uint8(len(refers)), uint32(nbytes))
-	var checksum = head.CalcChecksum(buf[V2HeaderSize:], body)
+	var checksum = head.CalcChecksum(headbuf[V2HeaderSize:], body)
 	head.SetChecksum(checksum)
 
-	if _, err := w.Write(buf); err != nil {
+	if _, err := w.Write(headbuf); err != nil {
 		return 0, err
 	}
 	if _, err := w.Write(body); err != nil {
