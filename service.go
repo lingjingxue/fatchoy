@@ -85,7 +85,11 @@ func (c *ServiceContext) MessageQueue() <-chan IPacket {
 
 func (c *ServiceContext) Run(ctx context.Context, instance Service) error {
 	c.instance = instance
-	return c.instance.Startup(ctx)
+	if err := c.instance.Init(c); err != nil {
+		return c.instance.Startup(ctx)
+	} else {
+		return err
+	}
 }
 
 // 投递一条消息到context
