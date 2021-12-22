@@ -12,154 +12,120 @@ import (
 )
 
 // Packet表示一个应用层消息
-type Packet struct {
-	Cmd     int32              `json:"cmd"`           // 协议ID
-	Seq_    uint32             `json:"seq"`           // 序列号
-	Flg     fatchoy.PacketFlag `json:"flg,omitempty"` // 标志位
-	reserve int16              //
-	Node_   fatchoy.NodeID     `json:"node,omitempty"` // 源/目标节点
-	Body_   interface{}        `json:"body,omitempty"` // 消息内容，int32/int64/float64/string/bytes/proto.Message
-	Refers_ []fatchoy.NodeID   `json:"ref,omitempty"`  // 组播session列表
-
+type PacketBase struct {
+	Cmd      int32                   `json:"cmd"`               // 协议ID
+	Seqno    uint32                  `json:"seq"`               // 序列号
+	Flag     fatchoy.PacketFlag      `json:"flg,omitempty"`     // 标志位
+	Reserve  uint16                  `json:"reserve,omitempty"` //
+	Node_    fatchoy.NodeID          `json:"node,omitempty"`    // 源/目标节点
+	Refer    []fatchoy.NodeID        `json:"ref,omitempty"`     // 组播session列表
+	Body_    interface{}             `json:"body,omitempty"`    // 消息内容，int32/int64/float64/string/bytes/proto.Message
 	endpoint fatchoy.MessageEndpoint // 关联的endpoint
 }
 
-func Make() *Packet {
-	return &Packet{}
-}
-
-func New(command int32, seq uint32, flag fatchoy.PacketFlag, body interface{}) *Packet {
-	return &Packet{
-		Cmd:   command,
-		Flg:   flag,
-		Seq_:  seq,
-		Body_: body,
-	}
-}
-
-func (m *Packet) Command() int32 {
+func (m *PacketBase) Command() int32 {
 	return m.Cmd
 }
 
-func (m *Packet) SetCommand(v int32) {
+func (m *PacketBase) SetCommand(v int32) {
 	m.Cmd = v
 }
 
-func (m *Packet) Seq() uint32 {
-	return m.Seq_
+func (m *PacketBase) Seq() uint32 {
+	return m.Seqno
 }
 
-func (m *Packet) SetSeq(v uint32) {
-	m.Seq_ = v
+func (m *PacketBase) SetSeq(v uint32) {
+	m.Seqno = v
 }
 
-func (m *Packet) Flag() fatchoy.PacketFlag {
-	return m.Flg
+func (m *PacketBase) Flags() fatchoy.PacketFlag {
+	return m.Flag
 }
 
-func (m *Packet) SetFlag(v fatchoy.PacketFlag) {
-	m.Flg = v
+func (m *PacketBase) SetFlags(v fatchoy.PacketFlag) {
+	m.Flag = v
 }
 
-func (m *Packet) Node() fatchoy.NodeID {
+func (m *PacketBase) Node() fatchoy.NodeID {
 	return m.Node_
 }
 
-func (m *Packet) SetNode(n fatchoy.NodeID) {
+func (m *PacketBase) SetNode(n fatchoy.NodeID) {
 	m.Node_ = n
 }
 
-func (m *Packet) Refers() []fatchoy.NodeID {
-	return m.Refers_
+func (m *PacketBase) Refers() []fatchoy.NodeID {
+	return m.Refer
 }
 
-func (m *Packet) SetRefers(v []fatchoy.NodeID) {
-	m.Refers_ = v
+func (m *PacketBase) SetRefers(v []fatchoy.NodeID) {
+	m.Refer = v
 }
 
-func (m *Packet) AddRefers(v ...fatchoy.NodeID) {
-	m.Refers_ = append(m.Refers_, v...)
+func (m *PacketBase) AddRefers(v ...fatchoy.NodeID) {
+	m.Refer = append(m.Refer, v...)
 }
 
-func (m *Packet) Endpoint() fatchoy.MessageEndpoint {
+func (m *PacketBase) Endpoint() fatchoy.MessageEndpoint {
 	return m.endpoint
 }
 
-func (m *Packet) SetEndpoint(endpoint fatchoy.MessageEndpoint) {
+func (m *PacketBase) SetEndpoint(endpoint fatchoy.MessageEndpoint) {
 	m.endpoint = endpoint
 }
 
-func (m *Packet) Reset() {
+func (m *PacketBase) Reset() {
 	m.Cmd = 0
-	m.Seq_ = 0
-	m.Flg = 0
+	m.Seqno = 0
+	m.Flag = 0
 	m.Node_ = 0
-	m.Refers_ = nil
+	m.Refer = nil
 	m.Body_ = nil
 	m.endpoint = nil
 }
 
-func (m *Packet) Clone() fatchoy.IPacket {
-	var clone = Make()
-	clone.Cmd = m.Cmd
-	clone.Seq_ = m.Seq_
-	clone.Flg = m.Flg
-	clone.Refers_ = m.Refers_
-	clone.Body_ = m.Body_
-	return clone
-}
-
-func (m *Packet) Errno() int32 {
-	if (m.Flg & fatchoy.PFlagError) != 0 {
-		return int32(BodyToInt(m.Body_))
+func (m *PacketBase) Errno() int32 {
+	if (m.Flag & fatchoy.PFlagError) != 0 {
+		return int32(BodyToInt(m.Flag))
 	}
 	return 0
 }
 
 // 如果消息表示一个错误码，设置PacketFlagError标记
-func (m *Packet) SetErrno(ec int32) {
-	m.Flg |= fatchoy.PFlagError
+func (m *PacketBase) SetErrno(ec int32) {
+	m.Flag |= fatchoy.PFlagError
 	m.SetBody(ec)
 }
 
-// body的类型仅支持int64/float64/string/bytes/proto.Message
-func (m *Packet) ReplyWith(command int32, body interface{}) error {
-	var pkt = New(command, m.Seq_, m.Flg, body)
-	pkt.Node_ = m.Node_
-	pkt.Refers_ = m.Refers_
-	return m.endpoint.SendPacket(pkt)
+func (m *PacketBase) Body() interface{} {
+	return m.Body_
 }
 
-// 响应proto消息内容
-func (m *Packet) Reply(ack proto.Message) error {
-	var mid = GetMessageIDOf(ack)
-	if mid == 0 {
-		mid = m.Cmd
+func (m *PacketBase) SetBody(val interface{}) {
+	m.Body_ = Conv2Body(val)
+}
+
+func (m *PacketBase) DecodeTo(msg proto.Message) error {
+	var data = m.EncodeToBytes()
+	if len(data) > 0 {
+		return proto.Unmarshal(data, msg)
 	}
-	return m.ReplyWith(mid, ack)
+	return nil
 }
 
-// 返回一个错误码消息
-func (m *Packet) Refuse(errno int32) error {
-	var ackMsgId = GetPairingAckID(m.Cmd)
-	if ackMsgId == 0 {
-		ackMsgId = m.Cmd
-	}
-	return m.RefuseWith(ackMsgId, errno)
+func (m *PacketBase) EncodeToBytes() []byte {
+	return BodyToBytes(m.Body_)
 }
 
-func (m *Packet) RefuseWith(command int32, errno int32) error {
-	var pkt = New(command, m.Seq_, m.Flg|fatchoy.PFlagError, nil)
-	pkt.Node_ = m.Node_
-	pkt.Refers_ = m.Refers_
-	pkt.SetErrno(errno)
-	return m.endpoint.SendPacket(pkt)
+func (m *PacketBase) BodyToString() string {
+	return BodyToString(m.Body_)
 }
 
-func (m Packet) String() string {
+func (m PacketBase) String() string {
 	var nodeID fatchoy.NodeID
 	if m.endpoint != nil {
 		nodeID = m.endpoint.NodeID()
 	}
-	return fmt.Sprintf("%v c:%d seq:%d 0x%x", nodeID, m.Cmd, m.Seq_, m.Flg)
+	return fmt.Sprintf("%v c:%d seq:%d 0x%x", nodeID, m.Cmd, m.Seqno, m.Flag)
 }

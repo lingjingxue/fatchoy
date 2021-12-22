@@ -45,8 +45,8 @@ type IPacket interface {
 	SetSeq(uint32)
 
 	// 消息标记
-	Flag() PacketFlag
-	SetFlag(PacketFlag)
+	Flags() PacketFlag
+	SetFlags(PacketFlag)
 
 	// 消息错误码
 	Errno() int32
@@ -72,19 +72,13 @@ type IPacket interface {
 	Body() interface{}
 	SetBody(v interface{})
 
-	BodyToBytes() []byte
-
-	// 自动解码为pb消息
-	Decode() error
-
-	// 解码body到`msg`里
+	EncodeToBytes() []byte
 	DecodeTo(msg proto.Message) error
 
 	// 响应ack消息
-	ReplyWith(command int32, body interface{}) error
+	ReplyAny(body interface{}) error
 	Reply(ack proto.Message) error
 
 	// 响应错误码
-	RefuseWith(command int32, errno int32) error
 	Refuse(errno int32) error
 }

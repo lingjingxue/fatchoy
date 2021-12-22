@@ -7,13 +7,25 @@ package packet
 import (
 	"testing"
 	"unsafe"
+
+	"qchen.fun/fatchoy"
 )
 
+type AAA struct {
+	Cmd     int32
+	Seq     uint32
+	Flag    uint16
+	Reserve uint16
+	Node    fatchoy.NodeID
+	Refer   []fatchoy.NodeID
+}
+
 func TestNewPacket(t *testing.T) {
-	size := unsafe.Sizeof(Packet{})
+	var a PacketBase
+	size := unsafe.Sizeof(a)
 	println("sizeof packet:", size)
 
-	pkt := New(1234, 1001, 0x1, "")
+	var pkt = FakePacket{}
 
 	pkt.SetBody("hello")
 
