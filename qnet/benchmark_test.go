@@ -50,7 +50,7 @@ func serveBench(t *testing.T, ctx context.Context, addr string, ready chan struc
 			}
 
 		case pkt := <-incoming:
-			pkt.ReplyWith(pkt.Command(), "pong") //返回pong
+			pkt.ReplyAny("pong") //返回pong
 
 		case <-ctx.Done():
 			// handle shutdown
@@ -73,7 +73,9 @@ func startBenchClient(t *testing.T, address string, msgCount int, ready chan str
 	var enc = codec.NewV2Encoder(0)
 	for i := 0; i < msgCount; i++ {
 		var buf bytes.Buffer
-		var pkt = packet.New(int32(i), 0, 0, "ping")
+		var pkt = packet.MakeFake()
+		pkt.SetCommand(int32(i))
+		pkt.SetBody("pong")
 		if _, err := enc.WritePacket(&buf, nil, pkt); err != nil {
 			t.Fatalf("Encode: %v", err)
 		}
@@ -82,7 +84,7 @@ func startBenchClient(t *testing.T, address string, msgCount int, ready chan str
 		}
 	}
 	for i := 0; i < msgCount; i++ {
-		var resp = packet.Make()
+		var resp = packet.MakeFake()
 		if err := enc.ReadPacket(conn, nil, resp); err != nil {
 			t.Fatalf("Decode: %v", err)
 		}

@@ -179,7 +179,7 @@ func (t *TcpConn) readPacket() (fatchoy.IPacket, error) {
 	if err != nil {
 		return nil, err
 	}
-	var pkt = packet.Make()
+	var pkt = packet.MakeFake()
 	if err := t.enc.UnmarshalPacket(head, body, t.decrypt, pkt); err != nil {
 		return nil, err
 	}

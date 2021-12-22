@@ -27,7 +27,7 @@ func startRawClient(t *testing.T, id int, address string, msgCount int) {
 	defer conn.Close()
 
 	var enc = codec.NewV1Encoder(0)
-	var pkt = packet.Make()
+	var pkt = packet.MakeFake()
 	for i := 1; i <= msgCount; i++ {
 		pkt.SetCommand(int32(i))
 		pkt.SetSeq(uint32(i))
@@ -39,7 +39,7 @@ func startRawClient(t *testing.T, id int, address string, msgCount int) {
 		if _, err := buf.WriteTo(conn); err != nil {
 			t.Fatalf("Write: %v", err)
 		}
-		var resp = packet.Make()
+		var resp = packet.MakeFake()
 		if err := enc.ReadPacket(conn, nil, resp); err != nil {
 			t.Fatalf("Decode: %v", err)
 		}
@@ -89,7 +89,7 @@ func startServeRawClient(t *testing.T, ctx context.Context, cancel context.Cance
 
 		case pkt := <-incoming:
 			//println("recv", pkt.BodyToString())
-			pkt.ReplyWith(pkt.Command(), "pong") //返回pong
+			pkt.ReplyAny("pong") //返回pong
 
 			// all message recv, close server
 			recvNum++

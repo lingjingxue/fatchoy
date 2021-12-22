@@ -28,7 +28,7 @@ func handleConn(conn net.Conn, enc codec.Encoder) {
 	defer tconn.Close()
 	for {
 		conn.SetReadDeadline(time.Now().Add(time.Minute))
-		var pkt = packet.Make()
+		var pkt = packet.MakeFake()
 		if err := enc.ReadPacket(conn, nil, pkt); err != nil {
 			fmt.Printf("Decode: %v\n", err)
 			break
@@ -66,7 +66,7 @@ func tconnReadLoop(errchan chan error, inbound chan fatchoy.IPacket) {
 				return
 			}
 			pkt.SetCommand(pkt.Command() + 1)
-			pkt.ReplyWith(pkt.Command(), fmt.Sprintf("ping %d", pkt.Command()))
+			pkt.ReplyAny(fmt.Sprintf("ping %d", pkt.Command()))
 
 		case <-errchan:
 			return
@@ -99,7 +99,7 @@ func TestExampleTcpConn(t *testing.T) {
 	tconn.Go(fatchoy.EndpointReadWriter)
 	defer tconn.Close()
 	stats := tconn.Stats()
-	var pkt = packet.Make()
+	var pkt = packet.MakeFake()
 	pkt.SetCommand(1)
 	pkt.SetBody("ping")
 	tconn.SendPacket(pkt)
