@@ -12,19 +12,19 @@ import (
 	"strings"
 )
 
-// 定长bitset
+// fixed bitset
 type BitSet struct {
-	bitsize int
-	bits    []uint64
+	size int
+	bits []uint64
 }
 
-func BitSetFrom(array []uint64, bitsize int) *BitSet {
-	if bitsize <= 0 {
-		bitsize = len(array) * 64
+func BitSetFrom(array []uint64, size int) *BitSet {
+	if size <= 0 {
+		size = len(array) * 64
 	}
 	return &BitSet{
-		bitsize: bitsize,
-		bits:    array,
+		size: size,
+		bits: array,
 	}
 }
 
@@ -34,19 +34,19 @@ func NewBitSet(bitsize int) *BitSet {
 		n++
 	}
 	return &BitSet{
-		bitsize: bitsize,
-		bits:    make([]uint64, n),
+		size: bitsize,
+		bits: make([]uint64, n),
 	}
 }
 
 // bit的数量
 func (bs *BitSet) Size() int {
-	return bs.bitsize
+	return bs.size
 }
 
 // 设置bits[i]为1
 func (bs *BitSet) Set(i int) bool {
-	if i >= 0 && i < bs.bitsize {
+	if i >= 0 && i < bs.size {
 		var v = uint64(1) << (i % 64)
 		bs.bits[i/64] |= v
 		return true
@@ -56,7 +56,7 @@ func (bs *BitSet) Set(i int) bool {
 
 // 反转第i位
 func (bs *BitSet) Flip(i int) bool {
-	if i >= 0 && i < bs.bitsize {
+	if i >= 0 && i < bs.size {
 		bs.bits[i/64] ^= 1 << (i % 64)
 		return true
 	}
@@ -65,7 +65,7 @@ func (bs *BitSet) Flip(i int) bool {
 
 // 设置bits[i]为0
 func (bs *BitSet) Clear(i int) bool {
-	if i >= 0 && i < bs.bitsize {
+	if i >= 0 && i < bs.size {
 		var v = uint64(1) << (i % 64)
 		bs.bits[i/64] &= ^v
 		return true
@@ -75,7 +75,7 @@ func (bs *BitSet) Clear(i int) bool {
 
 // 查看bits[i]是否为1
 func (bs *BitSet) Test(i int) bool {
-	if i >= 0 && i < bs.bitsize {
+	if i >= 0 && i < bs.size {
 		return bs.bits[i/64]&(1<<(i%64)) != 0
 	}
 	return false
@@ -112,7 +112,7 @@ func (bs BitSet) HashCode() string {
 func (bs BitSet) FormattedString(width int) string {
 	var sb strings.Builder
 	var n = 0
-	for i := 0; i < bs.bitsize; i++ {
+	for i := 0; i < bs.size; i++ {
 		if n%width == 0 {
 			sb.WriteByte('\n')
 		}
@@ -128,8 +128,8 @@ func (bs BitSet) FormattedString(width int) string {
 
 func (bs BitSet) String() string {
 	var sb strings.Builder
-	sb.Grow(bs.bitsize)
-	for i := 0; i < bs.bitsize; i++ {
+	sb.Grow(bs.size)
+	for i := 0; i < bs.size; i++ {
 		if bs.Test(i) {
 			sb.WriteByte('1')
 		} else {
