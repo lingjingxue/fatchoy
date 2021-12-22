@@ -10,15 +10,17 @@ import (
 	"qchen.fun/fatchoy/collections"
 )
 
+type KeyType = collections.Comparable
+
 // 跳表实现的有序字典
 type SortedSet struct {
-	dict map[collections.Comparable]int64 // value and score
-	zsl  *ZSkipList           // indexed linked list
+	dict map[KeyType]int64 // value and score
+	zsl  *ZSkipList        // indexed linked list
 }
 
 func NewSortedSet() *SortedSet {
 	return &SortedSet{
-		dict: make(map[collections.Comparable]int64),
+		dict: make(map[KeyType]int64),
 		zsl:  NewZSkipList(),
 	}
 }
@@ -28,7 +30,7 @@ func (s *SortedSet) Len() int {
 }
 
 // 添加或者更新一个元素的score
-func (s *SortedSet) Add(ele collections.Comparable, score int64) bool {
+func (s *SortedSet) Add(ele KeyType, score int64) bool {
 	curscore, found := s.dict[ele]
 	if found {
 		// Remove and re-insert when score changes.
@@ -46,7 +48,7 @@ func (s *SortedSet) Add(ele collections.Comparable, score int64) bool {
 }
 
 // 删除一个元素
-func (s *SortedSet) Remove(ele collections.Comparable) bool {
+func (s *SortedSet) Remove(ele KeyType) bool {
 	score, found := s.dict[ele]
 	if found {
 		delete(s.dict, ele)
@@ -112,7 +114,7 @@ func (s *SortedSet) Count(min, max int64) int {
 }
 
 // 返回元素的排名，排名从0开始，如果元素不在zset里，返回-1
-func (s *SortedSet) GetRank(ele collections.Comparable, reverse bool) int {
+func (s *SortedSet) GetRank(ele KeyType, reverse bool) int {
 	score, found := s.dict[ele]
 	if found {
 		var llen = s.zsl.Len()
@@ -127,7 +129,7 @@ func (s *SortedSet) GetRank(ele collections.Comparable, reverse bool) int {
 }
 
 // 获取元素的score
-func (s *SortedSet) GetScore(ele collections.Comparable) int64 {
+func (s *SortedSet) GetScore(ele KeyType) int64 {
 	if score, found := s.dict[ele]; found {
 		return score
 	}
@@ -135,7 +137,7 @@ func (s *SortedSet) GetScore(ele collections.Comparable) int64 {
 }
 
 // 返回排名在[start, end]之间的所有元素
-func (s *SortedSet) GetRange(start, end int, reverse bool) []collections.Comparable {
+func (s *SortedSet) GetRange(start, end int, reverse bool) []KeyType {
 	var llen = s.zsl.length
 	if start < 0 {
 		start = llen + start
@@ -166,7 +168,7 @@ func (s *SortedSet) GetRange(start, end int, reverse bool) []collections.Compara
 			node = s.zsl.GetElementByRank(start + 1)
 		}
 	}
-	var result = make([]collections.Comparable, 0, rangeLen)
+	var result = make([]KeyType, 0, rangeLen)
 	for rangeLen > 0 {
 		result = append(result, node.Ele)
 		if reverse {
@@ -180,7 +182,7 @@ func (s *SortedSet) GetRange(start, end int, reverse bool) []collections.Compara
 }
 
 // 获取score在[min, max]之间的所有元素
-func (s *SortedSet) GetRangeByScore(min, max int64, reverse bool) []collections.Comparable {
+func (s *SortedSet) GetRangeByScore(min, max int64, reverse bool) []KeyType {
 	if min > max {
 		return nil
 	}
@@ -194,7 +196,7 @@ func (s *SortedSet) GetRangeByScore(min, max int64, reverse bool) []collections.
 	if node == nil {
 		return nil
 	}
-	var result []collections.Comparable
+	var result []KeyType
 	for node != nil {
 		// Abort when the node is no longer in range
 		if reverse {

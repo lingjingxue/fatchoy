@@ -14,8 +14,6 @@ import (
 	"sort"
 	"testing"
 	"time"
-
-	"qchen.fun/fatchoy/collections"
 )
 
 var _ = os.Open
@@ -32,7 +30,7 @@ type testPlayer struct {
 	Level int16
 }
 
-func (p *testPlayer) CompareTo(other collections.Comparable) int {
+func (p *testPlayer) CompareTo(other KeyType) int {
 	var rhs = other.(*testPlayer)
 	if p.Uid > rhs.Uid {
 		return 1
