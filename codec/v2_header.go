@@ -88,7 +88,7 @@ func (h V2Header) SetChecksum(crc uint32) {
 
 func (h V2Header) Pack(pkt fatchoy.IPacket, refcnt uint16, size uint32) {
 	binary.BigEndian.PutUint32(h[:4], size)
-	binary.BigEndian.PutUint16(h[4:], uint16(pkt.Flag()))
+	binary.BigEndian.PutUint16(h[4:], uint16(pkt.Flags()))
 	binary.BigEndian.PutUint16(h[6:], refcnt)
 	binary.BigEndian.PutUint32(h[8:], pkt.Seq())
 	binary.BigEndian.PutUint32(h[12:], uint32(pkt.Node()))

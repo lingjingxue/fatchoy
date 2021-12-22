@@ -18,8 +18,8 @@ import (
 
 // 把packet序列化为字节流，有压缩和加密
 func marshalPacketBody(pkt fatchoy.IPacket, threshold int, encryptor cipher.BlockCryptor) ([]byte, error) {
-	var flag = pkt.Flag()
-	var body = pkt.BodyToBytes()
+	var flag = pkt.Flags()
+	var body = pkt.EncodeToBytes()
 	if threshold > 0 && len(body) > threshold {
 		if data, err := fsutil.CompressBytes(body); err != nil {
 			return nil, fmt.Errorf("compress packet %v: %w", pkt.Command(), err)
@@ -32,13 +32,13 @@ func marshalPacketBody(pkt fatchoy.IPacket, threshold int, encryptor cipher.Bloc
 		body = encryptor.Encrypt(body)
 		flag |= fatchoy.PFlagEncrypted
 	}
-	pkt.SetFlag(flag)
+	pkt.SetFlags(flag)
 	return body, nil
 }
 
 // 把字节流反序列化为packet，有解密和解压
 func unmarshalPacketBody(body []byte, decrypt cipher.BlockCryptor, pkt fatchoy.IPacket) error {
-	var flag = pkt.Flag()
+	var flag = pkt.Flags()
 	if flag.Has(fatchoy.PFlagEncrypted) {
 		if decrypt == nil {
 			return fmt.Errorf("packet %v must be decrypted", pkt.Command())
@@ -54,7 +54,7 @@ func unmarshalPacketBody(body []byte, decrypt cipher.BlockCryptor, pkt fatchoy.I
 			flag = flag.Clear(fatchoy.PFlagCompressed)
 		}
 	}
-	pkt.SetFlag(flag)
+	pkt.SetFlags(flag)
 	// 如果有FlagError，则body是数值错误码
 	if flag.Has(fatchoy.PFlagError)  {
 		if len(body) == 4 {

@@ -98,7 +98,7 @@ func (codecV2) ReadHeadBody(r io.Reader) ([]byte, []byte, error) {
 // 解码消息到`pkt`
 func (codecV2) UnmarshalPacket(header, body []byte, decrypt cipher.BlockCryptor, pkt fatchoy.IPacket) error {
 	var head = V2Header(header)
-	pkt.SetFlag(fatchoy.PacketFlag(head.Flag()))
+	pkt.SetFlags(fatchoy.PacketFlag(head.Flag()))
 	pkt.SetSeq(head.Seq())
 	pkt.SetCommand(head.Command())
 	pkt.SetNode(head.Node())
